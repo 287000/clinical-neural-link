@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clinical Neural Link | Academic Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #02040a;
+            --accent-blue: #3b82f6;
+            --glass-bg: rgba(10, 15, 30, 0.8);
+            --glass-border: rgba(255, 255, 255, 0.05);
+        }
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: var(--bg-color); 
+            color: #f8fafc; 
+            overflow: hidden; 
+            margin: 0;
+        }
+
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--glass-border);
+            border-radius: 2rem;
+        }
+
+        .neural-background {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: 
+                radial-gradient(circle at 10% 10%, rgba(59, 130, 246, 0.1) 0%, transparent 40%),
+                radial-gradient(circle at 90% 90%, rgba(37, 99, 235, 0.05) 0%, transparent 40%),
+                var(--bg-color);
+            z-index: -1;
+        }
+
+        .btn-primary {
+            background: #fff;
+            color: #000;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-blue);
+            color: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.4);
+        }
+
+        .course-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: 1px solid var(--glass-border);
+        }
+
+        .course-card:hover {
+            border-color: var(--accent-blue);
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .admin-glow {
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+            animation: pulse-blue 2s infinite;
+        }
+
+        @keyframes pulse-blue {
+            0% { box-shadow: 0 0 5px rgba(59, 130, 246, 0.4); }
+            50% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.7); }
+            100% { box-shadow: 0 0 5px rgba(59, 130, 246, 0.4); }
+        }
+
+        .page-enter { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <div class="neural-background"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { 
+            BrainCircuit, Fingerprint, LogOut, ArrowLeft, 
+            ChevronRight, GraduationCap, Zap, Trash2, Users,
+            ShieldCheck, Activity, BookOpen, CheckCircle2, XCircle, LayoutDashboard
+        } = lucide;
+
+        // --- AUTH REGISTRY ---
+        const AUTHORIZED_IDS = [
+            "1024", "1156", "1290", "1432", "1578", "1720", "1864", "2010", "2154", "2298",
+            "2442", "2586", "2730", "2874", "3018", "3162", "3306", "3450", "3594", "3738",
+            "3882", "4026", "4170", "4314", "4458", "4602", "4746", "4890", "5034", "5178",
+            "5322", "5466", "5610", "5754", "5898", "6042", "6186", "6330", "6474", "6618",
+            "6762", "6906", "7050", "7194", "7338", "7482", "7626", "7770", "7914", "8058"
+        ];
+        const ADMIN_KEY = "ADMIN2026";
+
+        const ACADEMIC_DATA = {
+            "2nd Year MBChB, BDS and CM": ["Anatomy", "Pathology", "Physiology", "Biochemistry", "Therapeutic", "Clinical Science", "Diagnostics", "Laboratory Science", "Society and Medicine", "Public Health"],
+            "3rd Year MBChB, BDS and CM": ["Anatomy", "Pathology", "Physiology", "Biochemistry", "Therapeutic", "Clinical Science", "Diagnostics", "Laboratory Science", "Society and Medicine", "Public Health"]
+        };
+
+        function App() {
+            const [user, setUser] = useState(null);
+            const [view, setView] = useState('home'); 
+            const [loading, setLoading] = useState(true);
+            const [year, setYear] = useState(null);
+            const [course, setCourse] = useState(null);
+            const [quizzes, setQuizzes] = useState([]);
+            const [activeQuiz, setActiveQuiz] = useState(null);
+            const [onlineUsers, setOnlineUsers] = useState([]);
+
+            useEffect(() => {
+                const saved = localStorage.getItem('clinic_user');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    setUser(parsed);
+                    updateOnlineStatus(parsed, true);
+                }
+                
+                const savedQuizzes = localStorage.getItem('clinic_quizzes');
+                if (savedQuizzes) setQuizzes(JSON.parse(savedQuizzes));
+
+                const interval = setInterval(() => {
+                    const currentOnline = JSON.parse(localStorage.getItem('online_users') || '[]');
+                    setOnlineUsers(currentOnline);
+                }, 3000);
+
+                setTimeout(() => setLoading(false), 1500);
+                return () => clearInterval(interval);
+            }, []);
+
+            useEffect(() => {
+                lucide.createIcons();
+            }, [user, view, year, course]);
+
+            const updateOnlineStatus = (profile, status) => {
+                let current = JSON.parse(localStorage.getItem('online_users') || '[]');
+                if (status) {
+                    if (!current.find(u => u.id === profile.id)) {
+                        current.push({...profile, loginTime: new Date().toLocaleTimeString()});
+                    }
+                } else {
+                    current = current.filter(u => u.id !== profile.id);
+                }
+                localStorage.setItem('online_users', JSON.stringify(current));
+            };
+
+            const handleLogin = (e) => {
+                e.preventDefault();
+                const name = e.target.name.value;
+                const id = e.target.id.value;
+
+                if (id === ADMIN_KEY) {
+                    const profile = { name: name || "SYSTEM ADMIN", id, role: 'admin' };
+                    setUser(profile);
+                    updateOnlineStatus(profile, true);
+                    localStorage.setItem('clinic_user', JSON.stringify(profile));
+                } else if (AUTHORIZED_IDS.includes(id)) {
+                    const profile = { name, id, role: 'student' };
+                    setUser(profile);
+                    updateOnlineStatus(profile, true);
+                    localStorage.setItem('clinic_user', JSON.stringify(profile));
+                } else {
+                    alert("ACCESS DENIED: PERSONNEL ID NOT IN REGISTRY");
+                }
+            };
+
+            const handleLogout = () => {
+                updateOnlineStatus(user, false);
+                localStorage.removeItem('clinic_user');
+                setUser(null);
+                setYear(null);
+                setCourse(null);
+                setView('home');
+            };
+
+            const deleteQuiz = (id) => {
+                const filtered = quizzes.filter(q => q.id !== id);
+                setQuizzes(filtered);
+                localStorage.setItem('clinic_quizzes', JSON.stringify(filtered));
+            };
+
+            if (loading) return (
+                <div className="h-screen flex flex-col items-center justify-center">
+                    <div className="w-12 h-12 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.8em] text-blue-500 animate-pulse">Initializing Portal</p>
+                </div>
+            );
+
+            if (!user) return (
+                <div className="h-screen flex items-center justify-center p-6 page-enter">
+                    <div className="glass-panel w-full max-w-md p-12 text-center relative">
+                        <div className="w-20 h-20 bg-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-xl shadow-blue-600/30">
+                            <i data-lucide="fingerprint" className="text-white w-10 h-10"></i>
+                        </div>
+                        <h1 className="text-3xl font-black text-white italic uppercase tracking-tighter mb-1">Personnel Auth</h1>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.3em] mb-10 text-center">Secure Clinical Gateway</p>
+                        
+                        <form onSubmit={handleLogin} className="space-y-4">
+                            <input name="name" placeholder="FULL NAME" required className="w-full bg-black/40 border border-white/10 rounded-2xl p-5 text-white font-bold outline-none focus:border-blue-500 transition-all text-sm tracking-wider" />
+                            <input name="id" type="password" placeholder="STUDENT ID / ADMIN KEY" required className="w-full bg-black/40 border border-white/10 rounded-2xl p-5 text-white font-bold outline-none focus:border-blue-500 transition-all text-center tracking-[0.5em]" />
+                            <button type="submit" className="btn-primary w-full py-5 rounded-2xl text-[11px]">Connect</button>
+                        </form>
+                        
+                        <div className="mt-12 pt-8 border-t border-white/5">
+                            <p className="text-[10px] font-black tracking-[0.4em] text-slate-600 uppercase">
+                                Engineered By <span className="text-blue-500">DANNY PHIRI</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            return (
+                <div className="h-screen flex flex-col overflow-hidden">
+                    <nav className="p-6 md:px-12 flex justify-between items-center border-b border-white/5 bg-black/20 backdrop-blur-md z-50">
+                        <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
+                                <i data-lucide="brain-circuit" className="text-white w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <h2 className="text-xs font-black text-white uppercase italic tracking-tighter leading-none">{user.name}</h2>
+                                <span className={`text-[9px] font-bold uppercase tracking-widest mt-1 inline-block ${user.role === 'admin' ? 'text-blue-400' : 'text-slate-500'}`}>
+                                    {user.role === 'admin' ? 'SYSTEM OVERSEER' : 'MEDICAL STUDENT'}
+                                </span>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            {user.role === 'admin' && (
+                                <button 
+                                    onClick={() => setView(view === 'admin' ? 'home' : 'admin')} 
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all font-black text-[10px] uppercase tracking-widest ${view === 'admin' ? 'bg-white text-black' : 'bg-blue-600 text-white admin-glow'}`}
+                                >
+                                    <i data-lucide={view === 'admin' ? "layout-dashboard" : "shield-check"} className="w-4 h-4"></i>
+                                    {view === 'admin' ? "View Portal" : "Admin Hub"}
+                                </button>
+                            )}
+                            <button onClick={handleLogout} className="p-3 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all">
+                                <i data-lucide="log-out" className="w-5 h-5"></i>
+                            </button>
+                        </div>
+                    </nav>
+
+                    <main className="flex-1 overflow-y-auto p-6 md:p-12">
+                        <div className="max-w-6xl mx-auto h-full">
+                            {view === 'admin' ? (
+                                <AdminPanel onlineUsers={onlineUsers} quizzes={quizzes} setQuizzes={setQuizzes} onBack={() => setView('home')} />
+                            ) : view === 'quiz' ? (
+                                <QuizInterface quiz={activeQuiz} onComplete={() => setView('home')} />
+                            ) : (
+                                <div className="page-enter">
+                                    {!year ? (
+                                        <div className="space-y-12">
+                                            <div>
+                                                <h1 className="text-5xl md:text-7xl font-black italic uppercase tracking-tighter text-white">Curriculum</h1>
+                                                <p className="text-blue-500 font-black uppercase tracking-[0.5em] text-[10px] mt-2 ml-1">Academic Tracks</p>
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                {Object.keys(ACADEMIC_DATA).map(y => (
+                                                    <div key={y} onClick={() => setYear(y)} className="glass-panel p-12 text-center course-card group">
+                                                        <i data-lucide="graduation-cap" className="w-10 h-10 text-white mx-auto mb-6 opacity-40 group-hover:opacity-100 group-hover:text-blue-500 transition-all"></i>
+                                                        <h3 className="text-xl font-black text-white italic uppercase tracking-tighter">{y}</h3>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ) : !course ? (
+                                        <div className="space-y-8">
+                                            <button onClick={() => setYear(null)} className="flex items-center gap-2 text-blue-500 font-black uppercase text-[10px] tracking-widest hover:translate-x-[-4px] transition-transform">
+                                                <i data-lucide="arrow-left" className="w-4 h-4"></i> Back
+                                            </button>
+                                            <h2 className="text-3xl font-black italic uppercase text-white">{year}</h2>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                                                {ACADEMIC_DATA[year].map(c => (
+                                                    <div key={c} onClick={() => setCourse(c)} className="glass-panel p-6 text-center course-card group">
+                                                        <h4 className="text-[11px] font-black text-white uppercase tracking-wider">{c}</h4>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-8">
+                                            <button onClick={() => setCourse(null)} className="flex items-center gap-2 text-blue-500 font-black uppercase text-[10px] tracking-widest hover:translate-x-[-4px] transition-transform">
+                                                <i data-lucide="arrow-left" className="w-4 h-4"></i> Back
+                                            </button>
+                                            <div className="flex justify-between items-end">
+                                                <div>
+                                                    <p className="text-blue-500 font-black uppercase tracking-[0.4em] text-[10px] mb-1">{course}</p>
+                                                    <h2 className="text-4xl font-black italic uppercase text-white">Assessments</h2>
+                                                </div>
+                                            </div>
+                                            <div className="grid gap-4">
+                                                {quizzes.filter(q => q.year === year && q.course === course).map(q => (
+                                                    <div key={q.id} className="glass-panel p-8 flex justify-between items-center group">
+                                                        <div>
+                                                            <h4 className="text-2xl font-black text-white italic uppercase tracking-tighter">{q.title}</h4>
+                                                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">{q.questions.length} Diagnostic Objectives</p>
+                                                        </div>
+                                                        <div className="flex items-center gap-3">
+                                                            {user.role === 'admin' && (
+                                                                <button onClick={() => deleteQuiz(q.id)} className="p-4 text-red-500/60 hover:text-red-500 hover:bg-red-500/10 rounded-2xl transition-all">
+                                                                    <i data-lucide="trash-2" className="w-5 h-5"></i>
+                                                                </button>
+                                                            )}
+                                                            <button onClick={() => { setActiveQuiz(q); setView('quiz'); }} className="btn-primary px-10 py-4 rounded-2xl text-[10px]">Start</button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                                {quizzes.filter(q => q.year === year && q.course === course).length === 0 && (
+                                                    <div className="text-center py-20 opacity-20 border-2 border-dashed border-white/5 rounded-[3rem]">
+                                                        <p className="font-black uppercase text-xs tracking-widest">No Active Modules</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </main>
+                </div>
+            );
+        }
+
+        function QuizInterface({ quiz, onComplete }) {
+            const [step, setStep] = useState(0);
+            const [score, setScore] = useState(0);
+            const [answered, setAnswered] = useState(false);
+            const [choice, setChoice] = useState(null);
+            const [done, setDone] = useState(false);
+
+            const q = quiz.questions[step];
+
+            const submit = (i) => {
+                if (answered) return;
+                setChoice(i);
+                setAnswered(true);
+                if (i === q.answer) setScore(s => s + 1);
+            };
+
+            const next = () => {
+                if (step + 1 < quiz.questions.length) {
+                    setStep(step + 1);
+                    setAnswered(false);
+                    setChoice(null);
+                } else {
+                    setDone(true);
+                }
+            };
+
+            const getAdvice = (p) => {
+                if (p >= 80) return "Exceptional performance. Your diagnostic reasoning is highly accurate.";
+                if (p >= 60) return "Competent performance. Focus on reviewing specific logic errors encountered.";
+                if (p >= 40) return "Development required. Re-engage with the core module materials immediately.";
+                return "Critical gaps detected. Fundamental restudy of this clinical topic is mandatory.";
+            };
+
+            if (done) {
+                const percent = Math.round((score/quiz.questions.length)*100);
+                return (
+                    <div className="h-full flex items-center justify-center page-enter">
+                        <div className="glass-panel p-16 text-center max-w-xl w-full">
+                            <h2 className="text-[10px] font-black text-blue-500 uppercase tracking-[0.5em] mb-4">Diagnostic Report</h2>
+                            <div className="text-8xl font-black italic text-white mb-4 tracking-tighter">{percent}%</div>
+                            <p className="text-slate-400 font-bold uppercase text-[11px] tracking-widest mb-10">{score} of {quiz.questions.length} CORRECT</p>
+                            
+                            <div className="bg-blue-600/5 border border-blue-500/10 rounded-3xl p-8 mb-10 text-left">
+                                <p className="text-white font-semibold italic text-lg leading-relaxed">"{getAdvice(percent)}"</p>
+                            </div>
+
+                            <button onClick={onComplete} className="btn-primary w-full py-5 rounded-2xl text-[11px]">Return to Library</button>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="max-w-3xl mx-auto page-enter py-10">
+                    <div className="flex justify-between items-center mb-8">
+                        <span className="text-[11px] font-black text-blue-500 uppercase tracking-[0.4em]">Objective {step + 1}/{quiz.questions.length}</span>
+                        <div className="flex-1 mx-10 h-1 bg-white/5 rounded-full overflow-hidden">
+                            <div className="h-full bg-blue-500 transition-all duration-500" style={{width: `${((step+1)/quiz.questions.length)*100}%`}}></div>
+                        </div>
+                    </div>
+
+                    <div className="glass-panel p-10 md:p-14 space-y-10">
+                        <h2 className="text-2xl font-bold text-white leading-tight">{q.q}</h2>
+                        
+                        <div className="grid gap-3">
+                            {q.options.map((opt, i) => {
+                                let style = "border-white/5 bg-white/5 text-slate-300 hover:border-blue-500/50";
+                                if (answered) {
+                                    if (i === q.answer) style = "border-green-500 bg-green-500/10 text-green-400";
+                                    else if (i === choice) style = "border-red-500 bg-red-500/10 text-red-400";
+                                    else style = "border-white/5 opacity-20 text-slate-500";
+                                }
+
+                                return (
+                                    <button key={i} onClick={() => submit(i)} className={`w-full text-left p-6 rounded-2xl border-2 transition-all font-bold flex items-center justify-between ${style}`}>
+                                        <span>{opt}</span>
+                                        {answered && i === q.answer && <i data-lucide="check-circle-2" className="w-5 h-5"></i>}
+                                        {answered && i === choice && i !== q.answer && <i data-lucide="x-circle" className="w-5 h-5"></i>}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        {answered && (
+                            <div className="pt-6 page-enter">
+                                <div className="p-6 bg-blue-600/5 border border-blue-500/20 rounded-2xl mb-8">
+                                    <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-2">Diagnostic Logic:</p>
+                                    <p className="text-slate-300 italic text-sm leading-relaxed">{q.reason || "Logic validation pending for this specific diagnostic query."}</p>
+                                </div>
+                                <button onClick={next} className="btn-primary w-full py-5 rounded-2xl text-[11px]">Continue Assessment</button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        function AdminPanel({ onlineUsers, quizzes, setQuizzes, onBack }) {
+            const [json, setJson] = useState('');
+            const [meta, setMeta] = useState({ title: '', year: '2nd Year MBChB, BDS and CM', course: 'Anatomy' });
+
+            const deploy = () => {
+                try {
+                    const parsed = JSON.parse(json);
+                    const newQuiz = { ...meta, questions: parsed.questions, id: Date.now() };
+                    const updated = [...quizzes, newQuiz];
+                    setQuizzes(updated);
+                    localStorage.setItem('clinic_quizzes', JSON.stringify(updated));
+                    alert("DEPLOYMENT SUCCESS");
+                    setJson('');
+                } catch(e) { alert("JSON ERROR: Verify structure."); }
+            };
+
+            return (
+                <div className="page-enter space-y-12">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h2 className="text-4xl font-black italic uppercase text-white">Central Hub</h2>
+                            <p className="text-blue-500 font-bold text-[10px] uppercase tracking-[0.4em] mt-1">System Master Control</p>
+                        </div>
+                        <button onClick={onBack} className="text-slate-400 hover:text-white font-black text-[10px] uppercase tracking-widest flex items-center gap-2">
+                            <i data-lucide="layout-dashboard" className="w-4 h-4"></i> Back to Portal
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div className="lg:col-span-2 glass-panel p-10 space-y-6">
+                            <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Create Assessment</h3>
+                            <input placeholder="TITLE" className="w-full bg-black/40 border border-white/10 p-5 rounded-2xl text-white font-bold outline-none" onChange={e => setMeta({...meta, title: e.target.value})} />
+                            <div className="grid grid-cols-2 gap-4">
+                                <select className="bg-black/40 border border-white/10 p-5 rounded-2xl text-white font-bold appearance-none outline-none" onChange={e => setMeta({...meta, year: e.target.value})}>
+                                    {Object.keys(ACADEMIC_DATA).map(y => <option key={y} value={y}>{y}</option>)}
+                                </select>
+                                <select className="bg-black/40 border border-white/10 p-5 rounded-2xl text-white font-bold appearance-none outline-none" onChange={e => setMeta({...meta, course: e.target.value})}>
+                                    {ACADEMIC_DATA[meta.year].map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                            </div>
+                            <textarea placeholder='PASTE QUIZ JSON HERE' className="w-full h-64 bg-black/40 border border-white/10 p-6 rounded-2xl text-blue-400 font-mono text-xs outline-none" value={json} onChange={e => setJson(e.target.value)}></textarea>
+                            <button onClick={deploy} className="btn-primary w-full py-5 rounded-2xl text-[11px]">Deploy Quiz</button>
+                        </div>
+
+                        <div className="glass-panel p-8">
+                            <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6">Live Presence ({onlineUsers.length})</h3>
+                            <div className="space-y-3">
+                                {onlineUsers.map(u => (
+                                    <div key={u.id} className="p-4 bg-white/5 rounded-2xl border border-white/5 flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                                            <span className="text-[11px] font-black text-white uppercase">{u.name}</span>
+                                        </div>
+                                        <span className={`text-[9px] font-bold ${u.role === 'admin' ? 'text-blue-500' : 'text-slate-600'}`}>{u.id}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
