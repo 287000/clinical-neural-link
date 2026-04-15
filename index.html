@@ -4,552 +4,915 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Clinical Neural Link | Academic Portal</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
-    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
-
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+ 
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+ 
         :root {
-            --bg-color: #02040a;
-            --accent-blue: #3b82f6;
-            --glass-bg: rgba(10, 15, 30, 0.8);
-            --glass-border: rgba(255, 255, 255, 0.05);
+          --neon-blue: #3b82f6;
+          --dark-bg: #050505;
         }
-
-        body { 
-            font-family: 'Inter', sans-serif; 
-            background-color: var(--bg-color); 
-            color: #f8fafc; 
-            overflow: hidden; 
-            margin: 0;
+ 
+        body {
+          margin: 0;
+          font-family: 'Inter', sans-serif;
+          background: var(--dark-bg);
+          background-image: radial-gradient(circle at 50% 50%, #1e293b 0%, #050505 100%);
+          color: white;
+          overflow: hidden;
         }
-
+ 
         .glass-panel {
-            background: var(--glass-bg);
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
-            border: 1px solid var(--glass-border);
-            border-radius: 2rem;
+          background: rgba(255, 255, 255, 0.03);
+          backdrop-filter: blur(12px);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 24px;
         }
-
-        .neural-background {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: 
-                radial-gradient(circle at 10% 10%, rgba(59, 130, 246, 0.1) 0%, transparent 40%),
-                radial-gradient(circle at 90% 90%, rgba(37, 99, 235, 0.05) 0%, transparent 40%),
-                var(--bg-color);
-            z-index: -1;
-        }
-
+ 
         .btn-primary {
-            background: #fff;
-            color: #000;
-            font-weight: 900;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          background: var(--neon-blue);
+          color: white;
+          font-weight: 900;
+          text-transform: uppercase;
+          letter-spacing: 2px;
+          transition: all 0.3s ease;
+          box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
         }
-
+ 
         .btn-primary:hover {
-            background: var(--accent-blue);
-            color: #fff;
-            transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.4);
+          transform: translateY(-2px);
+          box-shadow: 0 0 30px rgba(59, 130, 246, 0.5);
         }
-
+ 
+        .btn-danger {
+          background: rgba(239, 68, 68, 0.1);
+          color: #ef4444;
+          border: 1px solid rgba(239, 68, 68, 0.2);
+          font-weight: 900;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          transition: all 0.3s ease;
+        }
+ 
+        .btn-danger:hover {
+          background: #ef4444;
+          color: white;
+        }
+ 
         .course-card {
-            transition: all 0.3s ease;
-            cursor: pointer;
-            border: 1px solid var(--glass-border);
+          transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
-
-        .course-card:hover {
-            border-color: var(--accent-blue);
-            background: rgba(59, 130, 246, 0.05);
+ 
+        .course-card:not(.frozen):hover {
+          background: rgba(59, 130, 246, 0.1);
+          border-color: var(--neon-blue);
+          transform: scale(1.02);
         }
-
-        .admin-glow {
-            box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
-            animation: pulse-blue 2s infinite;
+        .course-card.frozen {
+          opacity: 0.2;
+          cursor: not-allowed;
+          filter: grayscale(1);
+          pointer-events: none;
         }
-
-        @keyframes pulse-blue {
-            0% { box-shadow: 0 0 5px rgba(59, 130, 246, 0.4); }
-            50% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.7); }
-            100% { box-shadow: 0 0 5px rgba(59, 130, 246, 0.4); }
+ 
+        .admin-input {
+          width: 100%;
+          background: rgba(0, 0, 0, 0.4);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          padding: 1rem;
+          border-radius: 12px;
+          color: white;
+          outline: none;
+          font-size: 0.8rem;
         }
-
-        .page-enter { animation: fadeIn 0.4s ease-out forwards; }
+ 
+        .admin-input:focus { border-color: var(--neon-blue); }
+ 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+ 
+        .page-enter { animation: fadeIn 0.5s ease forwards; }
+ 
+        .timer-bar {
+          height: 4px;
+          background: var(--neon-blue);
+          transition: width 1s linear;
+          box-shadow: 0 0 10px var(--neon-blue);
+          border-radius: 2px;
+        }
+ 
+        .switch {
+          position: relative;
+          display: inline-block;
+          width: 40px;
+          height: 20px;
+        }
+ 
+        .switch input { opacity: 0; width: 0; height: 0; }
+ 
+        .slider {
+          position: absolute;
+          cursor: pointer;
+          top: 0; left: 0; right: 0; bottom: 0;
+          background-color: rgba(255, 255, 255, 0.1);
+          transition: .4s;
+          border-radius: 20px;
+        }
+ 
+        .slider:before {
+          position: absolute;
+          content: "";
+          height: 14px;
+          width: 14px;
+          left: 3px;
+          bottom: 3px;
+          background-color: white;
+          transition: .4s;
+          border-radius: 50%;
+        }
+ 
+        input:checked + .slider { background-color: var(--neon-blue); }
+        input:checked + .slider:before { transform: translateX(20px); }
+        
+        .diagram-view {
+            background: rgba(0,0,0,0.3);
+            border-radius: 16px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            min-height: 250px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .diagram-view img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        
+        .quiz-scroll-container {
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+        
+        .quiz-scroll-container::-webkit-scrollbar {
+            width: 4px;
+        }
+        .quiz-scroll-container::-webkit-scrollbar-thumb {
+            background: rgba(59, 130, 246, 0.3);
+            border-radius: 10px;
         }
 
-        ::-webkit-scrollbar { width: 5px; }
-        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
+        .builder-scroll {
+            max-height: 550px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+        .builder-scroll::-webkit-scrollbar { width: 4px; }
+        .builder-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
     </style>
 </head>
 <body>
     <div id="root"></div>
-    <div class="neural-background"></div>
-
+ 
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script type="text/babel">
-        // --- FIREBASE INITIALIZATION ---
         const firebaseConfig = {
-            apiKey: "AIzaSyAb3PLcvPAFs-ahyqIHVuq2O2R4sks8ezQ",
-            authDomain: "brain-challenger-8c40f.firebaseapp.com",
-            projectId: "brain-challenger-8c40f",
-            storageBucket: "brain-challenger-8c40f.firebasestorage.app",
-            messagingSenderId: "1012096202340",
-            appId: "1:1012096202340:web:39d8f65880976bbc711171",
-            measurementId: "G-4MF13TRJZ5"
-        };
-        
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+    apiKey: "AIzaSyDL-7Usxf8i_VdcKrtPl8W7dKgm0nJLIeo",
+    authDomain: "clinical-neural-link-aacdb.firebaseapp.com",
+    projectId: "clinical-neural-link-aacdb",
+    storageBucket: "clinical-neural-link-aacdb.firebasestorage.app",
+    messagingSenderId: "702894575080",
+    appId: "1:702894575080:web:de2f16f1374c9e7baf285d",
+    measurementId: "G-VND4F8S494"
+  };
 
-        // --- DATABASE TEST SIGNAL ---
-        // This will change 'null' to 'Connected' in your Firebase console
-        db.ref('system_status').set({
-            connection: "Connected",
-            portal_name: "Brain-Challenger",
-            last_ping: new Date().toLocaleTimeString()
-        });
+  // This starts the cloud connection
+  if (!window.firebaseInitialized) {
+      firebase.initializeApp(firebaseConfig);
+      window.firebaseInitialized = true;
+  }
+  const db = firebase.firestore();
 
-        const { useState, useEffect } = React;
-        const { 
-            BrainCircuit, Fingerprint, LogOut, ArrowLeft, 
-            ChevronRight, GraduationCap, Zap, Trash2, Users,
-            ShieldCheck, Activity, BookOpen, CheckCircle2, XCircle, LayoutDashboard
-        } = lucide;
-
-        // --- AUTH REGISTRY ---
-        const AUTHORIZED_IDS = [
-            "1024", "1156", "1290", "1432", "1578", "1720", "1864", "2010", "2154", "2298",
-            "2442", "2586", "2730", "2874", "3018", "3162", "3306", "3450", "3594", "3738",
-            "3882", "4026", "4170", "4314", "4458", "4602", "4746", "4890", "5034", "5178",
-            "5322", "5466", "5610", "5754", "5898", "6042", "6186", "6330", "6474", "6618",
-            "6762", "6906", "7050", "7194", "7338", "7482", "7626", "7770", "7914", "8058"
-        ];
+  console.log("Success! Your cloud locker is open.");
+        const { useState, useEffect, useRef } = React;
+ 
         const ADMIN_KEY = "ADMIN2026";
-
-        const ACADEMIC_DATA = {
-            "2nd Year MBChB, BDS and CM": ["Anatomy", "Pathology", "Physiology", "Biochemistry", "Therapeutic", "Clinical Science", "Diagnostics", "Laboratory Science", "Society and Medicine", "Public Health"],
-            "3rd Year MBChB, BDS and CM": ["Anatomy", "Pathology", "Physiology", "Biochemistry", "Therapeutic", "Clinical Science", "Diagnostics", "Laboratory Science", "Society and Medicine", "Public Health"]
+ 
+        const ACADEMIC_STRUCTURE = {
+          "MBchB, BDS and CM": {
+              "2nd Year": ["Anatomy","Pathology","Physiology","Biochemistry","Therapeutics","Clinical Science","Society and Medicine","Laboratory Science","Diagnostics","Public Health"],
+              "3rd Year": ["Anatomy","Pathology","Physiology","Biochemistry","Therapeutics","Clinical Science","Society and Medicine","Laboratory Science","Diagnostics","Public Health"],
+              "4th Year BDS": ["Clinical Dentistry","Oral Pathology","Maxillofacial Surgery"],
+              "5th Year BDS": ["Advanced Clinical Practice","Pedodontics"],
+              "6th Year BDS": ["Final Clinical Rotation"]
+          },
+          "Biomedical Science": {
+              "2nd Year": ["Introduction to Biomedical Science","Introduction to Human Anatomy","Introduction to Medical Physiology","Introduction to Medical Microbiology","General Biochemistry"],
+              "3rd Year": ["Society and Medicine","Histology","Physiology","Parasitology","Virology/Mycology","Biochemistry","Molecular and Cell Biology","Bacteriology"],
+              "4th Year": ["Public Health","General and systematic Pathology","Pharmacology, Therapeutics and Toxicology","Immunology","Medical Genetics","Biostatics","Haematology and Blood Transfusion","Research Methodology"],
+              "5th Year": ["Skills in Laboratory Management","Medical Teaching Methodology","Cellular Pathology","Clinical Biochemistry","Research Project"]
+          },
+          "Public Health": {
+              "2nd Year": ["Primary Health Care","Microbiology","Health promotion","Human Anatomy and Physiology","Environmental health"],
+              "3rd Year": ["Psychology and Medicine","Epidemiology","Food Technology and Hygiene","Monitoring and Evaluation","Research and Biostatistics"],
+              "4th Year": ["Emerging Public Health issues","Occupational Health and Ergonomics","Food and Nutrition","Research Project and Data Management","Industrial Attachment"],
+              "5th Year": ["Global Health","Health Policies and Economics","Medical Parasitology","Health system, Management II and Health Promotion II","Basic Pharmacology and Toxicology"]
+          },
+          "Environmental Health": {
+              "2nd Year": ["Principles of Building and Construction","Primary Health Care","Environmental Health","Microbiology","Human Anatomy and Physiology"],
+              "3rd Year": ["Biostatistics and Research","Food Animal Anatomy and Slaughter houses", "Epidemiology","Food Technology and hygiene","Building development and Planning"],
+              "4th Year": ["Occupational Health and Ergonomics","Industrial Training","Food animal Pathology and meat inspections", "Food and Nutrition", "Inspection of premises and reporting", "Research project and Data Management"],
+              "5th Year": ["Environmental economics, management, laws and policies", "Medical parasitology", "Occupational Health and Risk Analysis", "Food processing and inspection", "Basic Pharmacology and Toxicology", "Environmental Health", "Introduction to Public Health"]
+          }
         };
+        const PROGRAM_MAP = {
+            'M': "MBchB, BDS and CM",
+            'B': "Biomedical Science",
+            'P': "Public Health",
+            'E': "Environmental Health"
+        };
+ 
+        const LIBRARIES = [
+            "Practice Questions MCQs", 
+            "Practice Questions T/F", 
+            "Practice Questions S/A", 
+            "Past Paper Questions"
+        ];
+ 
+        function Icon({ name, className }) {
+          useEffect(() => { if (window.lucide) lucide.createIcons(); }, [name]);
+          return <i data-lucide={name} className={className}></i>;
+        }
+ 
+        function App() {const [cloudQuiz, setCloudQuiz] = React.useState(null);
 
-        function App() {
-            const [user, setUser] = useState(null);
-            const [view, setView] = useState('home'); 
-            const [loading, setLoading] = useState(true);
-            const [year, setYear] = useState(null);
-            const [course, setCourse] = useState(null);
-            const [quizzes, setQuizzes] = useState([]);
-            const [activeQuiz, setActiveQuiz] = useState(null);
-            const [onlineUsers, setOnlineUsers] = useState([]);
+  React.useEffect(() => {
+    const unsubscribe = db.collection("quizzes").doc("active_quiz")
+      .onSnapshot((doc) => {
+        if (doc.exists) {
+          setCloudQuiz(doc.data());
+        }
+      });
+    return () => unsubscribe();
+  }, []);
+          const [user, setUser] = useState(null);
+          const [authorizedIds, setAuthorizedIds] = useState([]);
+          const [view, setView] = useState('home');
+          const [loading, setLoading] = useState(true);
+          const [program, setProgram] = useState(null);
+          const [year, setYear] = useState(null);
+          const [course, setCourse] = useState(null);
+          const [library, setLibrary] = useState(null);
+          const [quizzes, setQuizzes] = useState([]);
+          const [activeQuiz, setActiveQuiz] = useState(null);
+          const [blitzEnabled, setBlitzEnabled] = useState(false);
+ 
+          useEffect(() => {
+              const savedUser = localStorage.getItem('clinic_user');
+              if (savedUser) setUser(JSON.parse(savedUser));
+              
+              const savedQuizzes = localStorage.getItem('local_quizzes');
+              if (savedQuizzes) setQuizzes(JSON.parse(savedQuizzes));
+              
+              const savedIds = localStorage.getItem('authorized_students');
+              if (savedIds) {
+                  setAuthorizedIds(JSON.parse(savedIds));
+              } else {
+                  const initial = ["23130155-B-2", "1156-M-3", "1290-P-4"];
+                  setAuthorizedIds(initial);
+                  localStorage.setItem('authorized_students', JSON.stringify(initial));
+              }
+              setTimeout(() => setLoading(false), 800);
+          }, []);
+ 
+          const handleLogout = () => {
+              localStorage.removeItem('clinic_user');
+              setUser(null); setProgram(null); setYear(null); setCourse(null); setLibrary(null); setView('home');
+          };
+ 
+          if (loading) return <div className="h-screen flex items-center justify-center font-black text-blue-500 tracking-widest uppercase italic">Initializing Neural Link...</div>;
+ 
+          if (!user) return (
+              <div className="h-screen flex items-center justify-center p-6">
+                  <div className="glass-panel w-full max-w-md p-10 text-center">
+                      <Icon name="fingerprint" className="text-blue-500 w-12 h-12 mx-auto mb-6" />
+                      <h1 className="text-2xl font-black italic uppercase mb-8">Access Portal</h1>
+                      <form onSubmit={(e) => {
+                          e.preventDefault();
+                          const inputId = e.target.id.value;
+                          
+                          if (inputId === ADMIN_KEY) {
+                              const adminProfile = { name: "ADMIN", id: "ADMIN", role: 'admin' };
+                              setUser(adminProfile);
+                              localStorage.setItem('clinic_user', JSON.stringify(adminProfile));
+                              return;
+                          }
+                          const permissionString = authorizedIds.find(str => str.startsWith(inputId + "-"));
+                          
+                          if (permissionString) {
+                              const [id, progCode, yearNum] = permissionString.split("-");
+                              const profile = { 
+                                  name: e.target.name.value, 
+                                  id, 
+                                  role: 'student',
+                                  allowedProgram: PROGRAM_MAP[progCode],
+                                  allowedYear: `${yearNum}${yearNum === "2" ? "nd" : yearNum === "3" ? "rd" : "th"} Year`
+                              };
+                              setUser(profile);
+                              localStorage.setItem('clinic_user', JSON.stringify(profile));
+                          } else {
+                              alert("ACCESS DENIED: NO PERMISSION STRING FOUND FOR THIS ID");
+                          }
+                      }} className="space-y-4">
+                          <input name="name" placeholder="FULL NAME" required className="admin-input"/>
+                          <input name="id" type="text" placeholder="STUDENT NUMBER" required className="admin-input text-center" />
+                          <button className="btn-primary w-full py-4 rounded-xl">Connect</button>
+                      </form>
+                  </div>
+              </div>
+          );
+ 
+          return (
+              <div className="h-screen flex flex-col">
+                  <nav className="p-4 px-6 border-b border-white/5 flex justify-between items-center bg-black/20">
+                      <div 
+                        className="flex items-start gap-4" 
+                        onClick={() => { if (view !== 'quiz') { setView('home'); setProgram(null); setYear(null); setCourse(null); setLibrary(null); } }} 
+                        style={{ cursor: 'pointer' }}
+                      >
+                          <div className="bg-blue-500/10 p-2 rounded-lg border border-blue-500/20">
+                            <Icon name="brain-circuit" className="text-blue-500 w-6 h-6" />
+                          </div>
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-black uppercase text-blue-400 tracking-tighter">Student Name:</span>
+                                <span className="text-xs font-black italic uppercase tracking-wider">{user.name}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-black uppercase text-blue-400 tracking-tighter">Student ID:</span>
+                                <span className="text-xs font-mono font-bold opacity-80">{user.id}</span>
+                            </div>
+                          </div>
+                      </div>
+                      <div className="flex gap-4">
+                          {user.role === 'admin' && view !== 'quiz' && <button onClick={() => setView(view === 'admin' ? 'home' : 'admin')} className="text-[10px] font-black uppercase bg-blue-600 px-4 py-2 rounded-lg">Admin Hub</button>}
+                          <button onClick={handleLogout} className="text-red-500 hover:scale-110 transition-transform"><Icon name="log-out" /></button>
+                      </div>
+                  </nav>
+ 
+                  <main className="flex-1 overflow-y-auto p-4 md:p-10">
+                      {view === 'admin' ? (
+                          <AdminPanel 
+                              quizzes={quizzes} 
+                              authorizedIds={authorizedIds}
+                              setAuthorizedIds={(list) => { setAuthorizedIds(list); localStorage.setItem('authorized_students', JSON.stringify(list)); }}
+                              onDelete={(id) => { const updated = quizzes.filter(q => q.id !== id); setQuizzes(updated); localStorage.setItem('local_quizzes', JSON.stringify(updated)); }}
+                              onSave={(q) => { const updated = [...quizzes, { ...q, id: Date.now() }]; setQuizzes(updated); localStorage.setItem('local_quizzes', JSON.stringify(updated)); }}
+                          />
+                      ) : view === 'quiz' ? (
+                          <QuizInterface quiz={activeQuiz} isBlitz={blitzEnabled} onQuit={() => setView('home')} />
+                      ) : (
+                          <Portal 
+    user={user}
+    program={program} setProgram={setProgram}
+    year={year} setYear={setYear}
+    course={course} setCourse={setCourse}
+    library={library} setLibrary={setLibrary}
+    quizzes={quizzes}
+    blitzEnabled={blitzEnabled}
+    setBlitzEnabled={setBlitzEnabled}
+    startQuiz={(q) => { setActiveQuiz(q); setView('quiz'); }}
+    // --- ADD THESE TWO LINES BELOW ---
+    cloudQuiz={cloudQuiz}
+    setCurrentQuiz={setActiveQuiz}
+    // ---------------------------------
 
-            useEffect(() => {
-                // Load user from local storage
-                const saved = localStorage.getItem('clinic_user');
-                if (saved) {
-                    const parsed = JSON.parse(saved);
-                    setUser(parsed);
-                }
-
-                // --- CLOUD FETCH: LISTEN FOR QUIZZES ---
-                const quizzesRef = db.ref('quizzes');
-                quizzesRef.on('value', (snapshot) => {
-                    const data = snapshot.val();
-                    if (data) {
-                        const quizList = Object.keys(data).map(key => ({
-                            ...data[key],
-                            id: key
-                        }));
-                        setQuizzes(quizList);
-                    } else {
-                        setQuizzes([]);
-                    }
-                });
-
-                // --- CLOUD FETCH: LISTEN FOR ONLINE USERS ---
-                const usersRef = db.ref('online_users');
-                usersRef.on('value', (snapshot) => {
-                    const data = snapshot.val();
-                    if (data) {
-                        const userList = Object.values(data);
-                        setOnlineUsers(userList);
-                    }
-                });
-
-                setTimeout(() => setLoading(false), 1500);
-            }, []);
-
-            useEffect(() => {
-                lucide.createIcons();
-            }, [user, view, year, course, quizzes]);
-
-            const updateOnlineStatus = (profile, status) => {
-                if (status) {
-                    db.ref('online_users/' + profile.id).set({
-                        ...profile,
-                        loginTime: new Date().toLocaleTimeString()
-                    });
-                } else {
-                    db.ref('online_users/' + profile.id).remove();
-                }
-            };
-
-            const handleLogin = (e) => {
-                e.preventDefault();
-                const name = e.target.name.value;
-                const id = e.target.id.value;
-
-                if (id === ADMIN_KEY) {
-                    const profile = { name: name || "SYSTEM ADMIN", id, role: 'admin' };
-                    setUser(profile);
-                    updateOnlineStatus(profile, true);
-                    localStorage.setItem('clinic_user', JSON.stringify(profile));
-                } else if (AUTHORIZED_IDS.includes(id)) {
-                    const profile = { name, id, role: 'student' };
-                    setUser(profile);
-                    updateOnlineStatus(profile, true);
-                    localStorage.setItem('clinic_user', JSON.stringify(profile));
-                } else {
-                    alert("ACCESS DENIED: PERSONNEL ID NOT IN REGISTRY");
-                }
-            };
-
-            const handleLogout = () => {
-                updateOnlineStatus(user, false);
-                localStorage.removeItem('clinic_user');
-                setUser(null);
-                setYear(null);
-                setCourse(null);
-                setView('home');
-            };
-
-            const deleteQuiz = (id) => {
-                if(confirm("Confirm deletion of diagnostic module?")) {
-                    db.ref('quizzes/' + id).remove();
-                }
-            };
-
-            if (loading) return (
-                <div className="h-screen flex flex-col items-center justify-center">
-                    <div className="w-12 h-12 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.8em] text-blue-500 animate-pulse">Initializing Neural Link</p>
-                </div>
-            );
-
-            if (!user) return (
-                <div className="h-screen flex items-center justify-center p-6 page-enter">
-                    <div className="glass-panel w-full max-w-md p-12 text-center relative">
-                        <div className="w-20 h-20 bg-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-xl shadow-blue-600/30">
-                            <i data-lucide="fingerprint" className="text-white w-10 h-10"></i>
+                          />
+                      )}
+                  </main>
+              </div>
+          );
+        }
+ 
+        function Portal({ user, program, setProgram, year, setYear, course, setCourse, library, setLibrary, quizzes, blitzEnabled, setBlitzEnabled, startQuiz, cloudQuiz, setCurrentQuiz }) {
+           {cloudQuiz && (
+  <div className="p-6 page-enter">
+    <div 
+      className="bg-blue-600 text-white p-8 rounded-2xl shadow-2xl border-4 border-blue-400 cursor-pointer animate-pulse"
+      onClick={() => setCurrentQuiz(cloudQuiz)}
+    >
+      <h3 className="text-2xl font-black uppercase italic mb-2">LIVE DEPLOYMENT: {cloudQuiz.title}</h3>
+      <p className="opacity-90 font-medium">An instructor has pushed a new assessment. Click here to start now.</p>
+    </div>
+  </div>
+)}
+          if (!program) return (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 page-enter">
+                  {Object.keys(ACADEMIC_STRUCTURE).map(p => {
+                      const isFrozen = user.role !== 'admin' && user.allowedProgram !== p;
+                      return (
+                        <div key={p} 
+                            onClick={() => !isFrozen && setProgram(p)} 
+                            className={`glass-panel p-10 text-center course-card cursor-pointer ${isFrozen ? 'frozen' : ''}`}>
+                            <h3 className="text-xl font-black italic uppercase">{p}</h3>
+                            {isFrozen && <div className="text-[9px] mt-2 opacity-50">LOCKED</div>}
                         </div>
-                        <h1 className="text-3xl font-black text-white italic uppercase tracking-tighter mb-1">Personnel Auth</h1>
-                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.3em] mb-10 text-center">Secure Clinical Gateway</p>
-                        
-                        <form onSubmit={handleLogin} className="space-y-4">
-                            <input name="name" placeholder="FULL NAME" required className="w-full bg-black/40 border border-white/10 rounded-2xl p-5 text-white font-bold outline-none focus:border-blue-500 transition-all text-sm tracking-wider" />
-                            <input name="id" type="password" placeholder="STUDENT ID / ADMIN KEY" required className="w-full bg-black/40 border border-white/10 rounded-2xl p-5 text-white font-bold outline-none focus:border-blue-500 transition-all text-center tracking-[0.5em]" />
-                            <button type="submit" className="btn-primary w-full py-5 rounded-2xl text-[11px]">Connect</button>
-                        </form>
-                        
-                        <div className="mt-12 pt-8 border-t border-white/5">
-                            <p className="text-[10px] font-black tracking-[0.4em] text-slate-600 uppercase">
-                                Engineered By <span className="text-blue-500">DANNY PHIRI</span>
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            );
+                      );
+                  })}
+              </div>
+          );
+ 
+          if (!year) return (
+              <div className="page-enter">
+                  <button onClick={() => setProgram(null)} className="text-blue-500 text-[10px] font-black mb-6 uppercase">← Back</button>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {Object.keys(ACADEMIC_STRUCTURE[program]).map(y => {
+                          const isFrozen = user.role !== 'admin' && user.allowedYear !== y;
+                          return (
+                            <div key={y} 
+                                onClick={() => !isFrozen && setYear(y)} 
+                                className={`glass-panel p-8 text-center course-card cursor-pointer uppercase font-black ${isFrozen ? 'frozen' : ''}`}>
+                                {y}
+                                {isFrozen && <div className="text-[9px] opacity-50">LOCKED</div>}
+                            </div>
+                          );
+                      })}
+                  </div>
+              </div>
+          );
+ 
+          if (!course) return (
+              <div className="page-enter">
+                  <button onClick={() => setYear(null)} className="text-blue-500 text-[10px] font-black mb-6 uppercase">← Back</button>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {ACADEMIC_STRUCTURE[program][year].map(c => (
+                          <div key={c} onClick={() => setCourse(c)} className="glass-panel p-6 text-center course-card cursor-pointer text-[10px] font-bold uppercase">{c}</div>
+                      ))}
+                  </div>
+              </div>
+          );
+ 
+          if (!library) return (
+              <div className="page-enter">
+                  <button onClick={() => setCourse(null)} className="text-blue-500 text-[10px] font-black mb-6 uppercase">← Back</button>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {LIBRARIES.map(l => (
+                          <div key={l} onClick={() => setLibrary(l)} className="glass-panel p-8 text-center course-card cursor-pointer font-black uppercase text-xs">{l}</div>
+                      ))}
+                  </div>
+              </div>
+          );
+ 
+          const filtered = quizzes.filter(q => q.program === program && q.year === year && q.course === course && q.library === library);
+ 
+          return (
+              <div className="page-enter">
+                  <div className="flex justify-between items-center mb-6">
+                      <button onClick={() => setLibrary(null)} className="text-blue-500 text-[10px] font-black uppercase">← Back</button>
+                      <div className="glass-panel px-4 py-2 flex items-center gap-3">
+                          <span className={`text-[10px] font-black uppercase ${blitzEnabled ? 'text-blue-400' : 'opacity-40'}`}>Neural Blitz (15s)</span>
+                          <label className="switch">
+                              <input type="checkbox" checked={blitzEnabled} onChange={() => setBlitzEnabled(!blitzEnabled)} />
+                              <span className="slider"></span>
+                          </label>
+                      </div>
+                  </div>
+                  <div className="space-y-4">
+                      {filtered.length > 0 ? filtered.map(q => (
+                          <div key={q.id} className="glass-panel p-8 flex justify-between items-center">
+                              <h4 className="text-xl font-black italic uppercase">{q.title}</h4>
+                              <button onClick={() => startQuiz(q)} className="btn-primary px-8 py-3 rounded-xl text-[10px]">Start</button>
+                          </div>
+                      )) : <div className="opacity-30 text-center py-20 font-black uppercase italic tracking-widest">No Assessments Found</div>}
+                  </div>
+              </div>
+          );
+        }
+ 
+        function AdminPanel({ onSave, quizzes, onDelete, authorizedIds, setAuthorizedIds }) {
+          const [mode, setMode] = useState('builder');
+          const [json, setJson] = useState('');
+          const [meta, setMeta] = useState({ 
+              title: '',
+              program: 'MBchB, BDS and CM', 
+              year: '2nd Year', 
+              course: 'Anatomy',
+              library: 'Practice Questions MCQs' 
+          });
 
-            return (
-                <div className="h-screen flex flex-col overflow-hidden">
-                    <nav className="p-6 md:px-12 flex justify-between items-center border-b border-white/5 bg-black/20 backdrop-blur-md z-50">
-                        <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
-                                <i data-lucide="brain-circuit" className="text-white w-6 h-6"></i>
+          const [builderQuestions, setBuilderQuestions] = useState([
+            { q: '', options: ['', '', '', ''], answer: 0, explanation: '', image: null }
+          ]);
+          React.useEffect(() => {
+          const currentCourses = ACADEMIC_STRUCTURE[meta.program][meta.year];
+          if (!currentCourses.includes(meta.course)) {
+            setMeta(prev => ({ ...prev, course: currentCourses[0] }));
+          }
+        }, [meta.program, meta.year]);
+ 
+          const [loggedInUser, setLoggedInUser] = useState(null);
+          useEffect(() => {
+              const session = localStorage.getItem('clinic_user');
+              if (session) setLoggedInUser(JSON.parse(session));
+          }, []);
+
+          const handleImageUpload = (qIdx, file) => {
+              if (!file) return;
+              const reader = new FileReader();
+              reader.onload = (e) => {
+                  updateQuestion(qIdx, 'image', e.target.result);
+              };
+              reader.readAsDataURL(file);
+          };
+
+          const handleDeploy = async () => {
+    if (!meta.title) return alert("Please enter a title");
+    
+    try {
+      // 1. Prepare the data to be sent
+      const quizData = {
+        ...meta,
+        questions: mode === 'json' ? JSON.parse(json).questions : builderQuestions,
+        deployedAt: new Date()
+      };
+
+      // 2. The Cloud Command: This sends it to Firebase!
+      await db.collection("quizzes").doc("active_quiz").set(quizData);
+
+      // 3. Keep your local save and clear the screen
+      onSave(quizData);
+      
+      alert("Successfully Deployed to the Cloud!");
+      
+      setMeta({ ...meta, title: '' });
+      setJson('');
+      setBuilderQuestions([{ q: '', options: ['', '', '', ''], answer: 0, explanation: '', image: null }]);
+      
+    } catch (e) {
+      console.error("Firebase Error:", e);
+      alert("ERROR: Cloud connection failed. Check your internet!");
+    }
+  };
+
+          const addQuestion = () => {
+              setBuilderQuestions([...builderQuestions, { q: '', options: ['', '', '', ''], answer: 0, explanation: '', image: null }]);
+          };
+
+          const updateQuestion = (idx, field, value) => {
+              const updated = [...builderQuestions];
+              updated[idx][field] = value;
+              setBuilderQuestions(updated);
+          };
+
+          const updateOption = (qIdx, optIdx, val) => {
+              const updated = [...builderQuestions];
+              updated[qIdx].options[optIdx] = val;
+              setBuilderQuestions(updated);
+          };
+
+          const removeQuestion = (idx) => {
+              if (builderQuestions.length > 1) {
+                  setBuilderQuestions(builderQuestions.filter((_, i) => i !== idx));
+              }
+          };
+ 
+          return (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 page-enter pb-20">
+                  <div className="lg:col-span-3 space-y-6">
+                      <div className="glass-panel p-8 border-l-4 border-blue-500">
+                          <h2 className="font-black italic uppercase mb-2 text-blue-500 text-xs">Access Provision</h2>
+                          <p className="text-[8px] opacity-40 uppercase mb-4">Format: ID-CODE-YEAR</p>
+                          <input placeholder="23130155-B-2" className="admin-input mb-4" id="newId" onKeyDown={e => { if (e.key === 'Enter') { setAuthorizedIds([...authorizedIds, e.target.value]); e.target.value = ''; } }} />
+                          <div className="space-y-2 max-h-[25vh] overflow-y-auto pr-2">
+                              {authorizedIds.map(id => (
+                                  <div key={id} className="bg-white/5 p-3 rounded-lg flex justify-between items-center text-[10px] font-bold">
+                                      {id}
+                                      <button onClick={() => setAuthorizedIds(authorizedIds.filter(i => i !== id))} className="text-red-500"><Icon name="trash-2" className="w-3 h-3" /></button>
+                                  </div>
+                              ))}
+                          </div>
+                      </div>
+                      <div className="glass-panel p-8 border-l-4 border-green-500">
+                          <h2 className="font-black italic uppercase mb-4 text-green-500 text-xs">Active Sessions</h2>
+                          {loggedInUser ? (
+                              <div className="flex items-center gap-3 bg-white/5 p-3 rounded-lg">
+                                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                  <span className="text-[10px] font-black uppercase">{loggedInUser.name} ({loggedInUser.id})</span>
+                              </div>
+                          ) : <div className="text-[10px] opacity-40 uppercase">No active sessions</div>}
+                      </div>
+
+                      <div className="glass-panel p-8">
+                        <h2 className="font-black italic uppercase mb-4 text-xs text-blue-500">Live Inventory</h2>
+                        <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-2">
+                            {quizzes.map(q => (
+                                <div key={q.id} className="bg-white/5 p-4 rounded-xl border border-white/5 flex justify-between items-start">
+                                    <div className="flex-1">
+                                        <div className="text-[8px] font-black uppercase text-blue-400">{q.course}</div>
+                                        <div className="text-[10px] font-black uppercase truncate max-w-[120px]">{q.title}</div>
+                                    </div>
+                                    <button onClick={() => onDelete(q.id)} className="text-red-500"><Icon name="trash-2" className="w-3 h-3" /></button>
+                                </div>
+                            ))}
+                        </div>
+                      </div>
+                  </div>
+ 
+                  <div className="lg:col-span-9 space-y-6">
+                    <div className="glass-panel p-8">
+                        <div className="flex justify-between items-center mb-8">
+                            <h2 className="font-black italic uppercase text-blue-500 text-lg">Deploy Neural Assessment</h2>
+                            <div className="flex bg-black/40 p-1 rounded-xl border border-white/10">
+                                <button onClick={() => setMode('builder')} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${mode === 'builder' ? 'bg-blue-600 text-white' : 'opacity-40'}`}>Interactive Builder</button>
+                                <button onClick={() => setMode('json')} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${mode === 'json' ? 'bg-blue-600 text-white' : 'opacity-40'}`}>JSON Mode</button>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+                            <div className="lg:col-span-2">
+                                <label className="text-[9px] font-black uppercase opacity-50 ml-1">Assessment Title</label>
+                                <input placeholder="e.g. Mid-Term Anatomy Quiz" className="admin-input" value={meta.title} onChange={e => setMeta({ ...meta, title: e.target.value })} />
                             </div>
                             <div>
-                                <h2 className="text-xs font-black text-white uppercase italic tracking-tighter leading-none">{user.name}</h2>
-                                <span className={`text-[9px] font-bold uppercase tracking-widest mt-1 inline-block ${user.role === 'admin' ? 'text-blue-400' : 'text-slate-500'}`}>
-                                    {user.role === 'admin' ? 'SYSTEM OVERSEER' : 'MEDICAL STUDENT'}
-                                </span>
+                                <label className="text-[9px] font-black uppercase opacity-50 ml-1">Program</label>
+                                <select className="admin-input" value={meta.program} onChange={e => setMeta({ ...meta, program: e.target.value })}>
+                                    {Object.keys(ACADEMIC_STRUCTURE).map(p => <option key={p} value={p}>{p}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="text-[9px] font-black uppercase opacity-50 ml-1">Year</label>
+                                <select className="admin-input" value={meta.year} onChange={e => setMeta({ ...meta, year: e.target.value })}>
+                                    {Object.keys(ACADEMIC_STRUCTURE[meta.program]).map(y => <option key={y} value={y}>{y}</option>)}
+                                </select>
+                            </div>
+                            <div>
+        <label className="text-[9px] font-black uppercase opacity-50 ml-1">Target Course</label>
+        <select value={meta.course} onChange={e => setMeta({...meta, course: e.target.value})} className="admin-input">
+            {ACADEMIC_STRUCTURE[meta.program][meta.year].map(c => (
+                <option key={c} value={c}>{c}</option>
+            ))}
+        </select>
+    </div>
+                            <div>
+                                <label className="text-[9px] font-black uppercase opacity-50 ml-1">Library</label>
+                                <select className="admin-input" value={meta.library} onChange={e => setMeta({ ...meta, library: e.target.value })}>
+                                    {LIBRARIES.map(l => <option key={l} value={l}>{l}</option>)}
+                                </select>
                             </div>
                         </div>
-                        <div className="flex items-center gap-4">
-                            {user.role === 'admin' && (
-                                <button 
-                                    onClick={() => setView(view === 'admin' ? 'home' : 'admin')} 
-                                    className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all font-black text-[10px] uppercase tracking-widest ${view === 'admin' ? 'bg-white text-black' : 'bg-blue-600 text-white admin-glow'}`}
-                                >
-                                    <i data-lucide={view === 'admin' ? "layout-dashboard" : "shield-check"} className="w-4 h-4"></i>
-                                    {view === 'admin' ? "View Portal" : "Admin Hub"}
-                                </button>
-                            )}
-                            <button onClick={handleLogout} className="p-3 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all">
-                                <i data-lucide="log-out" className="w-5 h-5"></i>
-                            </button>
-                        </div>
-                    </nav>
 
-                    <main className="flex-1 overflow-y-auto p-6 md:p-12">
-                        <div className="max-w-6xl mx-auto h-full">
-                            {view === 'admin' ? (
-                                <AdminPanel onlineUsers={onlineUsers} quizzes={quizzes} onBack={() => setView('home')} />
-                            ) : view === 'quiz' ? (
-                                <QuizInterface quiz={activeQuiz} onComplete={() => setView('home')} />
-                            ) : (
-                                <div className="page-enter">
-                                    {!year ? (
-                                        <div className="space-y-12">
-                                            <div>
-                                                <h1 className="text-5xl md:text-7xl font-black italic uppercase tracking-tighter text-white">Curriculum</h1>
-                                                <p className="text-blue-500 font-black uppercase tracking-[0.5em] text-[10px] mt-2 ml-1">Academic Tracks</p>
-                                            </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                {Object.keys(ACADEMIC_DATA).map(y => (
-                                                    <div key={y} onClick={() => setYear(y)} className="glass-panel p-12 text-center course-card group">
-                                                        <i data-lucide="graduation-cap" className="w-10 h-10 text-white mx-auto mb-6 opacity-40 group-hover:opacity-100 group-hover:text-blue-500 transition-all"></i>
-                                                        <h3 className="text-xl font-black text-white italic uppercase tracking-tighter">{y}</h3>
-                                                    </div>
-                                                ))}
-                                            </div>
+                        {mode === 'json' ? (
+                            <div className="space-y-4">
+                                <textarea placeholder='{"questions": [...] }' className="admin-input h-[400px] font-mono text-xs" value={json} onChange={e => setJson(e.target.value)} />
+                            </div>
+                        ) : (
+                            <div className="space-y-8 builder-scroll mb-6">
+                                {builderQuestions.map((bq, qIdx) => (
+                                    <div key={qIdx} className="bg-white/5 border border-white/5 p-6 rounded-2xl relative">
+                                        <div className="flex justify-between items-center mb-4">
+                                            <span className="text-[10px] font-black text-blue-500 uppercase">Question #{qIdx + 1}</span>
+                                            <button onClick={() => removeQuestion(qIdx)} className="text-red-500 opacity-50 hover:opacity-100"><Icon name="x-circle" className="w-4 h-4" /></button>
                                         </div>
-                                    ) : !course ? (
-                                        <div className="space-y-8">
-                                            <button onClick={() => setYear(null)} className="flex items-center gap-2 text-blue-500 font-black uppercase text-[10px] tracking-widest hover:translate-x-[-4px] transition-transform">
-                                                <i data-lucide="arrow-left" className="w-4 h-4"></i> Back
-                                            </button>
-                                            <h2 className="text-3xl font-black italic uppercase text-white">{year}</h2>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                                                {ACADEMIC_DATA[year].map(c => (
-                                                    <div key={c} onClick={() => setCourse(c)} className="glass-panel p-6 text-center course-card group">
-                                                        <h4 className="text-[11px] font-black text-white uppercase tracking-wider">{c}</h4>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-8">
-                                            <button onClick={() => setCourse(null)} className="flex items-center gap-2 text-blue-500 font-black uppercase text-[10px] tracking-widest hover:translate-x-[-4px] transition-transform">
-                                                <i data-lucide="arrow-left" className="w-4 h-4"></i> Back
-                                            </button>
-                                            <div className="flex justify-between items-end">
-                                                <div>
-                                                    <p className="text-blue-500 font-black uppercase tracking-[0.4em] text-[10px] mb-1">{course}</p>
-                                                    <h2 className="text-4xl font-black italic uppercase text-white">Assessments</h2>
+                                        
+                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-4">
+                                            <div className="md:col-span-3">
+                                                <input 
+                                                    placeholder="The question text..." 
+                                                    className="admin-input mb-4" 
+                                                    value={bq.q} 
+                                                    onChange={e => updateQuestion(qIdx, 'q', e.target.value)}
+                                                />
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                    {bq.options ? bq.options.map((opt, oIdx) => (
+                                                        <div key={oIdx} className="flex items-center gap-2 bg-black/20 p-2 rounded-xl">
+                                                            <input 
+                                                                type="radio" 
+                                                                name={`correct-${qIdx}`} 
+                                                                checked={bq.answer === oIdx} 
+                                                                onChange={() => updateQuestion(qIdx, 'answer', oIdx)}
+                                                            />
+                                                            <input 
+                                                                placeholder={`Option ${oIdx + 1}`} 
+                                                                className="bg-transparent text-xs w-full outline-none" 
+                                                                value={opt} 
+                                                                onChange={e => updateOption(qIdx, oIdx, e.target.value)}
+                                                            />
+                                                        </div>
+                                                    )) : (
+                                                        <div className="col-span-2">
+                                                            <input 
+                                                                placeholder="Correct Answer (Short Text)" 
+                                                                className="admin-input" 
+                                                                value={bq.answer} 
+                                                                onChange={e => updateQuestion(qIdx, 'answer', e.target.value)}
+                                                            />
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
-                                            <div className="grid gap-4">
-                                                {quizzes.filter(q => q.year === year && q.course === course).map(q => (
-                                                    <div key={q.id} className="glass-panel p-8 flex justify-between items-center group">
-                                                        <div>
-                                                            <h4 className="text-2xl font-black text-white italic uppercase tracking-tighter">{q.title}</h4>
-                                                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">{q.questions.length} Diagnostic Objectives</p>
+                                            <div className="md:col-span-1">
+                                                <div className="h-full min-h-[120px] glass-panel border-dashed border-2 flex flex-col items-center justify-center p-2 relative overflow-hidden group">
+                                                    {bq.image ? (
+                                                        <>
+                                                            <img src={bq.image} className="absolute inset-0 w-full h-full object-cover opacity-40" />
+                                                            <button onClick={() => updateQuestion(qIdx, 'image', null)} className="absolute top-2 right-2 bg-black/60 rounded-full p-1"><Icon name="x" className="w-3 h-3 text-red-400"/></button>
+                                                            <span className="relative text-[8px] font-black uppercase bg-black/50 px-2 py-1 rounded">Update Image</span>
+                                                        </>
+                                                    ) : (
+                                                        <div className="text-center">
+                                                            <Icon name="image-plus" className="w-6 h-6 mx-auto mb-2 opacity-30" />
+                                                            <span className="text-[8px] font-black uppercase opacity-40">Add Diagram</span>
                                                         </div>
-                                                        <div className="flex items-center gap-3">
-                                                            {user.role === 'admin' && (
-                                                                <button onClick={() => deleteQuiz(q.id)} className="p-4 text-red-500/60 hover:text-red-500 hover:bg-red-500/10 rounded-2xl transition-all">
-                                                                    <i data-lucide="trash-2" className="w-5 h-5"></i>
-                                                                </button>
-                                                            )}
-                                                            <button onClick={() => { setActiveQuiz(q); setView('quiz'); }} className="btn-primary px-10 py-4 rounded-2xl text-[10px]">Start</button>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                                {quizzes.filter(q => q.year === year && q.course === course).length === 0 && (
-                                                    <div className="text-center py-20 opacity-20 border-2 border-dashed border-white/5 rounded-[3rem]">
-                                                        <p className="font-black uppercase text-xs tracking-widest">No Active Modules</p>
-                                                    </div>
-                                                )}
+                                                    )}
+                                                    <input type="file" accept="image/*" onChange={(e) => handleImageUpload(qIdx, e.target.files[0])} className="absolute inset-0 opacity-0 cursor-pointer" />
+                                                </div>
                                             </div>
                                         </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </main>
-                </div>
-            );
-        }
 
-        function QuizInterface({ quiz, onComplete }) {
-            const [step, setStep] = useState(0);
-            const [score, setScore] = useState(0);
-            const [answered, setAnswered] = useState(false);
-            const [choice, setChoice] = useState(null);
-            const [done, setDone] = useState(false);
-
-            const q = quiz.questions[step];
-
-            const submit = (i) => {
-                if (answered) return;
-                setChoice(i);
-                setAnswered(true);
-                if (i === q.answer) setScore(s => s + 1);
-            };
-
-            const next = () => {
-                if (step + 1 < quiz.questions.length) {
-                    setStep(step + 1);
-                    setAnswered(false);
-                    setChoice(null);
-                } else {
-                    setDone(true);
-                }
-            };
-
-            const getAdvice = (p) => {
-                if (p >= 80) return "Exceptional performance. Your diagnostic reasoning is highly accurate.";
-                if (p >= 60) return "Competent performance. Focus on reviewing specific logic errors encountered.";
-                if (p >= 40) return "Development required. Re-engage with the core module materials immediately.";
-                return "Critical gaps detected. Fundamental restudy of this clinical topic is mandatory.";
-            };
-
-            if (done) {
-                const percent = Math.round((score/quiz.questions.length)*100);
-                return (
-                    <div className="h-full flex items-center justify-center page-enter">
-                        <div className="glass-panel p-16 text-center max-w-xl w-full">
-                            <h2 className="text-[10px] font-black text-blue-500 uppercase tracking-[0.5em] mb-4">Diagnostic Report</h2>
-                            <div className="text-8xl font-black italic text-white mb-4 tracking-tighter">{percent}%</div>
-                            <p className="text-slate-400 font-bold uppercase text-[11px] tracking-widest mb-10">{score} of {quiz.questions.length} CORRECT</p>
-                            
-                            <div className="bg-blue-600/5 border border-blue-500/10 rounded-3xl p-8 mb-10 text-left">
-                                <p className="text-white font-semibold italic text-lg leading-relaxed">"{getAdvice(percent)}"</p>
-                            </div>
-
-                            <button onClick={onComplete} className="btn-primary w-full py-5 rounded-2xl text-[11px]">Return to Library</button>
-                        </div>
-                    </div>
-                );
-            }
-
-            return (
-                <div className="max-w-3xl mx-auto page-enter py-10">
-                    <div className="flex justify-between items-center mb-8">
-                        <span className="text-[11px] font-black text-blue-500 uppercase tracking-[0.4em]">Objective {step + 1}/{quiz.questions.length}</span>
-                        <div className="flex-1 mx-10 h-1 bg-white/5 rounded-full overflow-hidden">
-                            <div className="h-full bg-blue-500 transition-all duration-500" style={{width: `${((step+1)/quiz.questions.length)*100}%`}}></div>
-                        </div>
-                    </div>
-
-                    <div className="glass-panel p-10 md:p-14 space-y-10">
-                        <h2 className="text-2xl font-bold text-white leading-tight">{q.q}</h2>
-                        
-                        <div className="grid gap-3">
-                            {q.options.map((opt, i) => {
-                                let style = "border-white/5 bg-white/5 text-slate-300 hover:border-blue-500/50";
-                                if (answered) {
-                                    if (i === q.answer) style = "border-green-500 bg-green-500/10 text-green-400";
-                                    else if (i === choice) style = "border-red-500 bg-red-500/10 text-red-400";
-                                    else style = "border-white/5 opacity-20 text-slate-500";
-                                }
-
-                                return (
-                                    <button key={i} onClick={() => submit(i)} className={`w-full text-left p-6 rounded-2xl border-2 transition-all font-bold flex items-center justify-between ${style}`}>
-                                        <span>{opt}</span>
-                                        {answered && i === q.answer && <i data-lucide="check-circle-2" className="w-5 h-5"></i>}
-                                        {answered && i === choice && i !== q.answer && <i data-lucide="x-circle" className="w-5 h-5"></i>}
-                                    </button>
-                                );
-                            })}
-                        </div>
-
-                        {answered && (
-                            <div className="pt-6 page-enter">
-                                <div className="p-6 bg-blue-600/5 border border-blue-500/20 rounded-2xl mb-8">
-                                    <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-2">Diagnostic Logic:</p>
-                                    <p className="text-slate-300 italic text-sm leading-relaxed">{q.reason || "Logic validation pending for this specific diagnostic query."}</p>
-                                </div>
-                                <button onClick={next} className="btn-primary w-full py-5 rounded-2xl text-[11px]">Continue Assessment</button>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            );
-        }
-
-        function AdminPanel({ onlineUsers, quizzes, onBack }) {
-            const [json, setJson] = useState('');
-            const [meta, setMeta] = useState({ title: '', year: '2nd Year MBChB, BDS and CM', course: 'Anatomy' });
-
-            const deploy = () => {
-                try {
-                    const parsed = JSON.parse(json);
-                    const newQuiz = { 
-                        ...meta, 
-                        questions: parsed.questions, 
-                        createdAt: new Date().getTime() 
-                    };
-                    
-                    // --- CLOUD PUSH: SAVE TO FIREBASE ---
-                    db.ref('quizzes').push(newQuiz);
-                    
-                    alert("DEPLOYMENT SUCCESS TO CLOUD");
-                    setJson('');
-                } catch(e) { alert("JSON ERROR: Verify structure."); }
-            };
-
-            return (
-                <div className="page-enter space-y-12">
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <h2 className="text-4xl font-black italic uppercase text-white">Central Hub</h2>
-                            <p className="text-blue-500 font-bold text-[10px] uppercase tracking-[0.4em] mt-1">System Master Control</p>
-                        </div>
-                        <button onClick={onBack} className="text-slate-400 hover:text-white font-black text-[10px] uppercase tracking-widest flex items-center gap-2">
-                            <i data-lucide="layout-dashboard" className="w-4 h-4"></i> Back to Portal
-                        </button>
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        <div className="lg:col-span-2 glass-panel p-10 space-y-6">
-                            <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Create Assessment</h3>
-                            <input placeholder="TITLE" className="w-full bg-black/40 border border-white/10 p-5 rounded-2xl text-white font-bold outline-none" onChange={e => setMeta({...meta, title: e.target.value})} />
-                            <div className="grid grid-cols-2 gap-4">
-                                <select className="bg-black/40 border border-white/10 p-5 rounded-2xl text-white font-bold appearance-none outline-none" onChange={e => setMeta({...meta, year: e.target.value})}>
-                                    {Object.keys(ACADEMIC_DATA).map(y => <option key={y} value={y}>{y}</option>)}
-                                </select>
-                                <select className="bg-black/40 border border-white/10 p-5 rounded-2xl text-white font-bold appearance-none outline-none" onChange={e => setMeta({...meta, course: e.target.value})}>
-                                    {ACADEMIC_DATA[meta.year].map(c => <option key={c} value={c}>{c}</option>)}
-                                </select>
-                            </div>
-                            <textarea placeholder='PASTE QUIZ JSON HERE' className="w-full h-64 bg-black/40 border border-white/10 p-6 rounded-2xl text-blue-400 font-mono text-xs outline-none" value={json} onChange={e => setJson(e.target.value)}></textarea>
-                            <button onClick={deploy} className="btn-primary w-full py-5 rounded-2xl text-[11px]">Deploy Quiz to Cloud</button>
-                        </div>
-
-                        <div className="glass-panel p-8">
-                            <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6">Live Presence ({onlineUsers.length})</h3>
-                            <div className="space-y-3">
-                                {onlineUsers.map(u => (
-                                    <div key={u.id} className="p-4 bg-white/5 rounded-2xl border border-white/5 flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                                            <span className="text-[11px] font-black text-white uppercase">{u.name}</span>
+                                        <div className="flex gap-4">
+                                            <button 
+                                                onClick={() => updateQuestion(qIdx, 'options', bq.options ? null : ['', '', '', ''])}
+                                                className="text-[9px] font-black uppercase text-blue-400 opacity-70 hover:opacity-100"
+                                            >
+                                                Switch to {bq.options ? 'Short Answer' : 'MCQ'}
+                                            </button>
+                                            <input 
+                                                placeholder="Explanation / Neural Insight (Optional)" 
+                                                className="bg-transparent border-b border-white/10 text-[10px] flex-1 outline-none pb-1"
+                                                value={bq.explanation}
+                                                onChange={e => updateQuestion(qIdx, 'explanation', e.target.value)}
+                                            />
                                         </div>
-                                        <span className={`text-[9px] font-bold ${u.role === 'admin' ? 'text-blue-500' : 'text-slate-600'}`}>{u.id}</span>
                                     </div>
                                 ))}
-                                {onlineUsers.length === 0 && <p className="text-[10px] text-slate-600 text-center uppercase font-black">No active signals</p>}
+                                <button onClick={addQuestion} className="w-full py-4 border-2 border-dashed border-white/10 rounded-2xl text-[10px] font-black uppercase opacity-50 hover:opacity-100 hover:border-blue-500 transition-all">+ Add Next Question</button>
+                            </div>
+                        )}
+
+                        <button onClick={handleDeploy} className="btn-primary w-full py-6 rounded-2xl text-xs mt-4">Initialize Deployment</button>
+                    </div>
+                  </div>
+              </div>
+          );
+        }
+ 
+        function QuizInterface({ quiz, isBlitz, onQuit }) {
+          const [step, setStep] = useState(0);
+          const [score, setScore] = useState(0);
+          const [timeLeft, setTimeLeft] = useState(15);
+          const [userSelection, setUserSelection] = useState(null);
+          const [shortAnswer, setShortAnswer] = useState("");
+          const [isCorrect, setIsCorrect] = useState(null);
+          const [done, setDone] = useState(false);
+          const timerRef = useRef(null);
+ 
+          const q = quiz.questions[step];
+          const hasAnswered = userSelection !== null || isCorrect !== null;
+ 
+          const handleNext = () => {
+              if (step + 1 < quiz.questions.length) {
+                  setStep(step + 1);
+                  setUserSelection(null);
+                  setShortAnswer("");
+                  setIsCorrect(null);
+                  setTimeLeft(15);
+              } else {
+                  setDone(true);
+              }
+          };
+ 
+          const checkShortAnswer = () => {
+              const cleanUser = shortAnswer.trim().toLowerCase();
+              let isMatch = false;
+              if (Array.isArray(q.answer)) {
+                  isMatch = q.answer.some(ans => ans.toString().toLowerCase().trim() === cleanUser);
+              } else {
+                  isMatch = q.answer.toString().toLowerCase().trim() === cleanUser;
+              }
+              if (isMatch) {
+                  setScore(score + 1);
+                  setIsCorrect(true);
+              } else {
+                  setIsCorrect(false);
+              }
+          };
+ 
+          useEffect(() => {
+              if (isBlitz && !done && !hasAnswered) {
+                  timerRef.current = setInterval(() => {
+                      setTimeLeft(p => {
+                          if (p <= 1) { clearInterval(timerRef.current); handleNext(); return 0; }
+                          return p - 1;
+                      });
+                  }, 1000);
+              }
+              return () => clearInterval(timerRef.current);
+          }, [step, isBlitz, hasAnswered, done]);
+ 
+          if (done) return (
+              <div className="text-center p-20 glass-panel page-enter max-w-xl mx-auto">
+                  <h2 className="text-6xl font-black mb-4 text-blue-500">{Math.round((score / quiz.questions.length) * 100)}%</h2>
+                  <p className="uppercase font-bold opacity-40 mb-10">{score} / {quiz.questions.length} Correct</p>
+                  <button onClick={onQuit} className="btn-primary px-10 py-4 rounded-xl text-[10px]">Return to Hub</button>
+              </div>
+          );
+ 
+          return (
+              <div className={`page-enter w-full mx-auto ${q.image ? 'max-w-6xl' : 'max-w-xl'}`}>
+                  <div className={`grid gap-6 ${q.image ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
+                      {q.image && (
+                        <div className="glass-panel p-6 flex flex-col">
+                            <div className="flex items-center gap-2 mb-4 border-b border-white/5 pb-2">
+                                <Icon name="image" className="text-blue-500 w-4 h-4" />
+                                <span className="text-[10px] font-black uppercase text-blue-400">Biological Diagram</span>
+                            </div>
+                            <div className="flex-1 flex items-center justify-center diagram-view">
+                                <img src={q.image} alt="Medical Diagram" />
                             </div>
                         </div>
-                    </div>
-                </div>
-            );
+                      )}
+                      <div className="glass-panel p-10 flex flex-col justify-between space-y-6 relative h-full">
+                          <div className="flex justify-between items-center">
+                              <div className="text-[10px] font-black opacity-40 uppercase">Question {step + 1} / {quiz.questions.length}</div>
+                              <button onClick={onQuit} className="btn-danger px-3 py-1 rounded-md text-[9px]">Quit Quiz</button>
+                          </div>
+                          {isBlitz && (
+                              <div className="bg-white/5 h-1 rounded-full overflow-hidden">
+                                  <div className="timer-bar" style={{ width: `${(timeLeft / 15) * 100}%` }}></div>
+                              </div>
+                          )}
+                          <div className="quiz-scroll-container">
+                              <h3 className="text-lg font-bold mb-6">{q.q}</h3>
+                              {q.options ? (
+                                  <div className="grid gap-2">
+                                      {q.options.map((opt, i) => {
+                                          let btnClass = "border-white/10 hover:border-blue-500";
+                                          if (userSelection !== null) {
+                                              if (i === q.answer) {
+                                                  btnClass = "bg-green-500/20 border-green-500 text-green-400 shadow-[0_0_15px_rgba(34,197,94,0.3)]";
+                                              } else if (i === userSelection) {
+                                                  btnClass = "bg-red-500/20 border-red-500 text-red-400";
+                                              } else {
+                                                  btnClass = "opacity-30 border-white/10";
+                                              }
+                                          }
+                                          return (
+                                              <button key={i} onClick={() => { if (!hasAnswered) { setUserSelection(i); if (i === q.answer) setScore(score + 1); } }} className={`p-4 rounded-xl border text-left font-bold transition-all ${btnClass}`}>
+                                                  {opt}
+                                              </button>
+                                          );
+                                      })}
+                                  </div>
+                              ) : (
+                                  <div className="space-y-4">
+                                      <textarea 
+                                          rows="2"
+                                          value={shortAnswer} 
+                                          disabled={hasAnswered} 
+                                          onChange={(e) => setShortAnswer(e.target.value)} 
+                                          placeholder="Type medical answer..." 
+                                          className={`admin-input text-lg font-bold ${isCorrect === true ? 'border-green-500 bg-green-500/10' : isCorrect === false ? 'border-red-500 bg-red-500/10' : ''}`}
+                                      />
+                                      {!hasAnswered && <button onClick={checkShortAnswer} className="btn-primary w-full py-4 rounded-xl">Submit Answer</button>}
+                                  </div>
+                              )}
+                              {hasAnswered && (
+                                  <div className="page-enter bg-blue-500/5 border border-blue-500/20 p-6 rounded-2xl mt-6">
+                                      <div className="flex items-center gap-2 mb-2">
+                                          <Icon name="info" className="text-blue-400 w-4 h-4" />
+                                          <span className="text-[10px] font-black uppercase text-blue-400">Neural Insight</span>
+                                      </div>
+                                      <p className="text-sm opacity-80 leading-relaxed italic">
+                                          {q.explanation || "System analysis confirms this as the core concept."}
+                                      </p>
+                                      {isCorrect === false && !q.options && <div className="mt-2 text-xs font-black text-green-500 uppercase">Correct Answer: {Array.isArray(q.answer) ? q.answer[0] : q.answer}</div>}
+                                      <button onClick={handleNext} className="btn-primary w-full py-4 rounded-xl mt-6">Continue Link</button>
+                                  </div>
+                              )}
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          );
         }
-
+ 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
 </body>
 </html>
+
+
