@@ -9,12 +9,6 @@
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
- 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
  
@@ -189,27 +183,24 @@
 <body>
     <div id="root"></div>
  
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script type="text/babel">
-        const firebaseConfig = {
-    apiKey: "AIzaSyDL-7Usxf8i_VdcKrtPl8W7dKgm0nJLIeo",
-    authDomain: "clinical-neural-link-aacdb.firebaseapp.com",
-    projectId: "clinical-neural-link-aacdb",
-    storageBucket: "clinical-neural-link-aacdb.firebasestorage.app",
-    messagingSenderId: "702894575080",
-    appId: "1:702894575080:web:de2f16f1374c9e7baf285d",
-    measurementId: "G-VND4F8S494"
-  };
-
-  // This starts the cloud connection
-  if (!window.firebaseInitialized) {
-      firebase.initializeApp(firebaseConfig);
-      window.firebaseInitialized = true;
-  }
-  const db = firebase.firestore();
-
-  console.log("Success! Your cloud locker is open.");
         const { useState, useEffect, useRef } = React;
+        const firebaseConfig = {
+          apiKey: 'AIzaSyDbykzrmAN_mjw9dz4mJZIy0IGIDDKoL4U',
+          authDomain: 'clinical-neural-link-e5678.firebaseapp.com',
+          projectId: 'clinical-neural-link-e5678',
+          storageBucket: 'clinical-neural-link-e5678.firebasestorage.app',
+          messagingSenderId: '551101049906',
+          appId: '1:551101049906:web:5b93b288b0f1b544dc202b',
+          measurementId: 'G-0GL83C02GF'
+        };
+        if (!firebase.apps.length) {
+          firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.firestore();
  
         const ADMIN_KEY = "ADMIN2026";
  
@@ -259,17 +250,7 @@
           return <i data-lucide={name} className={className}></i>;
         }
  
-        function App() {const [cloudQuiz, setCloudQuiz] = React.useState(null);
-
-  React.useEffect(() => {
-    const unsubscribe = db.collection("quizzes").doc("active_quiz")
-      .onSnapshot((doc) => {
-        if (doc.exists) {
-          setCloudQuiz(doc.data());
-        }
-      });
-    return () => unsubscribe();
-  }, []);
+        function App() {
           const [user, setUser] = useState(null);
           const [authorizedIds, setAuthorizedIds] = useState([]);
           const [view, setView] = useState('home');
@@ -285,10 +266,7 @@
           useEffect(() => {
               const savedUser = localStorage.getItem('clinic_user');
               if (savedUser) setUser(JSON.parse(savedUser));
-              
-              const savedQuizzes = localStorage.getItem('local_quizzes');
-              if (savedQuizzes) setQuizzes(JSON.parse(savedQuizzes));
-              
+
               const savedIds = localStorage.getItem('authorized_students');
               if (savedIds) {
                   setAuthorizedIds(JSON.parse(savedIds));
@@ -298,6 +276,21 @@
                   localStorage.setItem('authorized_students', JSON.stringify(initial));
               }
               setTimeout(() => setLoading(false), 800);
+          }, []);
+
+          useEffect(() => {
+              const unsubscribe = db.collection('quizzes')
+                  .orderBy('deployedAtMs', 'desc')
+                  .onSnapshot(
+                      (snapshot) => {
+                          const liveQuizzes = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+                          setQuizzes(liveQuizzes);
+                      },
+                      (error) => {
+                          console.error('Realtime quiz listener failed:', error);
+                      }
+                  );
+              return () => unsubscribe();
           }, []);
  
           const handleLogout = () => {
@@ -381,8 +374,16 @@
                               quizzes={quizzes} 
                               authorizedIds={authorizedIds}
                               setAuthorizedIds={(list) => { setAuthorizedIds(list); localStorage.setItem('authorized_students', JSON.stringify(list)); }}
-                              onDelete={(id) => { const updated = quizzes.filter(q => q.id !== id); setQuizzes(updated); localStorage.setItem('local_quizzes', JSON.stringify(updated)); }}
-                              onSave={(q) => { const updated = [...quizzes, { ...q, id: Date.now() }]; setQuizzes(updated); localStorage.setItem('local_quizzes', JSON.stringify(updated)); }}
+                              onDelete={async (id) => {
+                                  await db.collection('quizzes').doc(id).delete();
+                              }}
+                              onSave={async (q) => {
+                                  await db.collection('quizzes').add({
+                                      ...q,
+                                      deployedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                                      deployedAtMs: Date.now()
+                                  });
+                              }}
                           />
                       ) : view === 'quiz' ? (
                           <QuizInterface quiz={activeQuiz} isBlitz={blitzEnabled} onQuit={() => setView('home')} />
@@ -397,11 +398,6 @@
     blitzEnabled={blitzEnabled}
     setBlitzEnabled={setBlitzEnabled}
     startQuiz={(q) => { setActiveQuiz(q); setView('quiz'); }}
-    // --- ADD THESE TWO LINES BELOW ---
-    cloudQuiz={cloudQuiz}
-    setCurrentQuiz={setActiveQuiz}
-    // ---------------------------------
-
                           />
                       )}
                   </main>
@@ -409,18 +405,7 @@
           );
         }
  
-        function Portal({ user, program, setProgram, year, setYear, course, setCourse, library, setLibrary, quizzes, blitzEnabled, setBlitzEnabled, startQuiz, cloudQuiz, setCurrentQuiz }) {
-           {cloudQuiz && (
-  <div className="p-6 page-enter">
-    <div 
-      className="bg-blue-600 text-white p-8 rounded-2xl shadow-2xl border-4 border-blue-400 cursor-pointer animate-pulse"
-      onClick={() => setCurrentQuiz(cloudQuiz)}
-    >
-      <h3 className="text-2xl font-black uppercase italic mb-2">LIVE DEPLOYMENT: {cloudQuiz.title}</h3>
-      <p className="opacity-90 font-medium">An instructor has pushed a new assessment. Click here to start now.</p>
-    </div>
-  </div>
-)}
+        function Portal({ user, program, setProgram, year, setYear, course, setCourse, library, setLibrary, quizzes, blitzEnabled, setBlitzEnabled, startQuiz }) {
           if (!program) return (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 page-enter">
                   {Object.keys(ACADEMIC_STRUCTURE).map(p => {
@@ -542,30 +527,21 @@
 
           const handleDeploy = async () => {
     if (!meta.title) return alert("Please enter a title");
-    
     try {
-      // 1. Prepare the data to be sent
       const quizData = {
         ...meta,
-        questions: mode === 'json' ? JSON.parse(json).questions : builderQuestions,
-        deployedAt: new Date()
+        questions: mode === 'json' ? JSON.parse(json).questions : builderQuestions
       };
 
-      // 2. The Cloud Command: This sends it to Firebase!
-      await db.collection("quizzes").doc("active_quiz").set(quizData);
+      await onSave(quizData);
+      alert("Deployment saved to Firestore.");
 
-      // 3. Keep your local save and clear the screen
-      onSave(quizData);
-      
-      alert("Successfully Deployed to the Cloud!");
-      
       setMeta({ ...meta, title: '' });
       setJson('');
       setBuilderQuestions([{ q: '', options: ['', '', '', ''], answer: 0, explanation: '', image: null }]);
-      
-    } catch (e) {
-      console.error("Firebase Error:", e);
-      alert("ERROR: Cloud connection failed. Check your internet!");
+    } catch (error) {
+      console.error('Failed to deploy quiz:', error);
+      alert("Failed to save quiz. Check console and Firestore rules.");
     }
   };
 
