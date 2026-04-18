@@ -183,24 +183,13 @@
 <body>
     <div id="root"></div>
  
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
-        const firebaseConfig = {
-          apiKey: 'AIzaSyDbykzrmAN_mjw9dz4mJZIy0IGIDDKoL4U',
-          authDomain: 'clinical-neural-link-e5678.firebaseapp.com',
-          projectId: 'clinical-neural-link-e5678',
-          storageBucket: 'clinical-neural-link-e5678.firebasestorage.app',
-          messagingSenderId: '551101049906',
-          appId: '1:551101049906:web:5b93b288b0f1b544dc202b',
-          measurementId: 'G-0GL83C02GF'
-        };
-        if (!firebase.apps.length) {
-          firebase.initializeApp(firebaseConfig);
-        }
-        const db = firebase.firestore();
+        const SUPABASE_URL = 'https://jdspqwqxkvuujjsqrbpo.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_ywhLjqdNu7KGp-SMBFDm0Q_R8wOH5vI';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
  
         const ADMIN_KEY = "ADMIN2026";
  
@@ -278,19 +267,62 @@
               setTimeout(() => setLoading(false), 800);
           }, []);
 
+          const uploadQuiz = async (quizName, quizObject) => {
+              const { data, error } = await supabase.from('quizzes').insert([
+                  { name: quizName, data: quizObject }
+              ]).select();
+              if (error) throw error;
+              return data;
+          };
+
           useEffect(() => {
-              const unsubscribe = db.collection('quizzes')
-                  .orderBy('deployedAtMs', 'desc')
-                  .onSnapshot(
-                      (snapshot) => {
-                          const liveQuizzes = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-                          setQuizzes(liveQuizzes);
-                      },
-                      (error) => {
-                          console.error('Realtime quiz listener failed:', error);
+              let isMounted = true;
+
+              const fetchQuizzes = async () => {
+                  const { data, error } = await supabase
+                      .from('quizzes')
+                      .select('id, name, data, created_at')
+                      .order('created_at', { ascending: false });
+                  if (error) {
+                      console.error('Failed to fetch quizzes:', error);
+                      return;
+                  }
+                  if (!isMounted || !Array.isArray(data)) return;
+                  const normalized = data.map((row) => ({
+                      id: row.id,
+                      ...(row.data || {}),
+                      title: row.data?.title || row.name
+                  }));
+                  setQuizzes(normalized);
+              };
+
+              fetchQuizzes();
+
+              const quizChannel = supabase
+                  .channel('quizzes-insert-listener')
+                  .on(
+                      'postgres_changes',
+                      { event: 'INSERT', schema: 'public', table: 'quizzes' },
+                      (payload) => {
+                          const row = payload.new || {};
+                          const liveQuiz = {
+                              id: row.id,
+                              ...(row.data || {}),
+                              title: row.data?.title || row.name
+                          };
+                          setQuizzes((prev) => [liveQuiz, ...prev.filter((q) => q.id !== liveQuiz.id)]);
                       }
-                  );
-              return () => unsubscribe();
+                  )
+                  .subscribe((status) => {
+                      if (status === 'CHANNEL_ERROR') {
+                          console.error('Realtime quiz listener failed: channel error');
+                      }
+                  });
+
+              return () => {
+                  isMounted = false;
+                  supabase.removeChannel(quizChannel);
+              };
           }, []);
  
           const handleLogout = () => {
@@ -375,14 +407,12 @@
                               authorizedIds={authorizedIds}
                               setAuthorizedIds={(list) => { setAuthorizedIds(list); localStorage.setItem('authorized_students', JSON.stringify(list)); }}
                               onDelete={async (id) => {
-                                  await db.collection('quizzes').doc(id).delete();
+                                  const { error } = await supabase.from('quizzes').delete().eq('id', id);
+                                  if (error) throw error;
+                                  setQuizzes((prev) => prev.filter((q) => q.id !== id));
                               }}
                               onSave={async (q) => {
-                                  await db.collection('quizzes').add({
-                                      ...q,
-                                      deployedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                                      deployedAtMs: Date.now()
-                                  });
+                                  await uploadQuiz(q.title, q);
                               }}
                           />
                       ) : view === 'quiz' ? (
@@ -534,14 +564,14 @@
       };
 
       await onSave(quizData);
-      alert("Deployment saved to Firestore.");
+      alert("Deployment saved to Supabase.");
 
       setMeta({ ...meta, title: '' });
       setJson('');
       setBuilderQuestions([{ q: '', options: ['', '', '', ''], answer: 0, explanation: '', image: null }]);
     } catch (error) {
       console.error('Failed to deploy quiz:', error);
-      alert("Failed to save quiz. Check console and Firestore rules.");
+      alert("Failed to save quiz. Check console and Supabase table/RLS.");
     }
   };
 
