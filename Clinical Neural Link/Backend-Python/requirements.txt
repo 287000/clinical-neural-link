@@ -6,3 +6,4 @@ python-dotenv
 groq
 psycopg2-binary
 httpx
+pusher
