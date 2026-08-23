@@ -7,3 +7,4 @@ groq
 psycopg2-binary
 httpx
 pusher
+python-multipart
