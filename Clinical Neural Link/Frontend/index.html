@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Clinical Neural Link | Academic Portal</title>
 
     <!-- PWA Web App Manifest & Mobile Theme Setup -->
@@ -24,40 +24,40 @@
 
     <!-- Supabase Initialization Matrix -->
     <script>
-        // 🌌 Your Project URL (derived from your Project ID)
         const SUPABASE_URL = "https://djaiakndrpptwgyfkyfk.supabase.co";
-        
-        // 🔑 Your Publishable Key placed in the correct variable slot
         const SUPABASE_ANON_KEY = "sb_publishable_TV1Ug-BsfbZU534oD90O0Q_-YVQL3an";
 
-        // Expose the supabase client onto the global window object for all your JS modules
         window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         console.log("🌌 Supabase API core client context successfully attached to window object.");
     </script>
 
     <style>
-        /* This removes the "Invisible Wall" at the top of the screen */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        body, html {
+        
+        /* Allow natural vertical expansion and scrolling on mobile devices */
+        html, body {
             width: 100%;
-            height: 100%;
-            overflow: hidden; /* Prevents accidental scrolling */
+            min-height: 100%;
+            overflow-x: hidden;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
         }
+
         .hidden-viewport {
             display: none !important;
         }
+
         /* Custom pulsing dots timeline animation */
-        /* 🌟 Updated to cycle perfectly twice within our 2-second loader window */
         .neural-loading-dots span {
             animation: neuralDotPulse 1.0s infinite both;
             display: inline-block;
         }
         .neural-loading-dots span:nth-child(1) { animation-delay: 0s; }
-        .neural-loading-dots span:nth-child(2) { animation-delay: 0.15s; } /* Slightly tighter stagger */
+        .neural-loading-dots span:nth-child(2) { animation-delay: 0.15s; }
         .neural-loading-dots span:nth-child(3) { animation-delay: 0.3s; }
 
         @keyframes neuralDotPulse {
@@ -68,37 +68,38 @@
             40% { 
                 opacity: 1; 
                 transform: scale(1.1); 
-                color: #c084fc; /* High-yield glowing purple pulse */
+                color: #c084fc; 
             }
         }
-        /* Lock the sidebar to always fill the screen height */
-        aside, #sidebar-container {
-            min-height: calc(100vh - 60px) !important; /* Adjust offset based on top nav height */
-            display: flex !important;
-            flex-direction: column !important;
-            justify-content: space-between !important;
-        }
 
-        /* Ensure the footer item stays anchored at the bottom edge */
-        #sidebar-profile {
-            margin-top: auto !important;
+        /* Desktop specific sidebar layout constraints */
+        @media (min-width: 768px) {
+            aside, #sidebar-container {
+                min-height: calc(100vh - 60px);
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+            }
+            #sidebar-profile {
+                margin-top: auto;
+            }
         }
     </style>
 </head>
-<body class="bg-[#050b18] text-slate-300 font-sans min-h-screen flex items-center justify-center">
+<body class="bg-[#050b18] text-slate-300 font-sans min-h-screen flex items-center justify-center p-4 md:p-0">
 
-    <div id="app-viewport" class="w-screen h-screen"></div>
-    <div id="toast-container" class="fixed top-6 right-6 z-[9999] flex flex-col gap-3 pointer-events-none"></div>
+    <div id="app-viewport" class="w-full min-h-screen flex flex-col items-center justify-center"></div>
+    <div id="toast-container" class="fixed top-4 right-4 z-[9999] flex flex-col gap-3 pointer-events-none max-w-xs md:max-w-sm w-full"></div>
 
     <!-- 📡 LOAD PUSHER FIRST SO IT'S READY FOR YOUR OTHER SCRIPTS -->
     <script src="https://js.pusher.com/8.4.0/pusher.min.js"></script>
 
     <!-- Application modules -->
-    <!-- Application modules -->
-<script src="./js/library.js"></script>
-<script src="./js/app.js"></script>
-<script src="./js/Qin.js"></script>
-<script src="./js/ncss.js"></script>
+    <script src="./js/library.js"></script>
+    <script src="./js/app.js"></script>
+    <script src="./js/Qin.js"></script>
+    <script src="./js/ncss.js"></script>
+    
     <!-- ⚡ PWA Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
