@@ -4,17 +4,17 @@ import base64
 import re
 import asyncio
 import uuid
-import shutil
-from datetime import datetime, timedelta
-from typing import List, Optional, Literal, Union, Dict, Any
+from datetime import datetime
+from typing import List, Optional, Literal
 
-from fastapi import FastAPI, Depends, HTTPException, status, Header, UploadFile, File
+from fastapi import FastAPI, Depends, HTTPException, Header, UploadFile, File
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 from groq import AsyncGroq, RateLimitError, APIError
+from supabase import create_client, Client
 import pusher
 
 import models
@@ -25,9 +25,17 @@ from database import engine, get_db
 # =========================================================================
 load_dotenv()
 
-# Ensure static directories exist for diagram uploads
-UPLOAD_DIR = os.path.join("static", "diagrams")
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+# Initialize Supabase Python Client
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://djaiakndrpptwgyfkyfk.supabase.co")
+SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_ANON_KEY")
+
+supabase_client: Client = None
+if SUPABASE_URL and SUPABASE_KEY:
+    try:
+        supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        print("🌌 Supabase Python client context successfully initialized.")
+    except Exception as err:
+        print(f"⚠️ Supabase Client Initialization Warning: {err}")
 
 # Async Groq Client for non-blocking I/O
 groq_client = AsyncGroq(api_key=os.environ.get("GROQ_API_KEY"))
@@ -48,8 +56,9 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(redirect_slashes=False)
 
-# Serve uploaded diagram images publicly
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# Serve static files fallback
+if os.path.exists("static"):
+    app.mount("/static", StaticFiles(directory="static"), name="static")
 
 app.add_middleware(
     CORSMiddleware,
@@ -58,6 +67,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # ==========================================
 # 1. PYDANTIC SCHEMAS (Data Validation/DTOs)
@@ -154,7 +164,7 @@ PROMPTS = {
 
     "EXPLANATION": PRECISION_RULES + """You are a strict medical professor evaluating an explanatory physiological mechanism or procedural question.
 
-1. BOUNDED DIAGRAM & CONTEXT READING: Carefully confirm all image phases, pathway routes, and anatomical relationships with the ADMIN ANSWER KEY before parsing the response.
+1. BOUNDED DIAGRAM READING: Carefully confirm all image phases, pathway routes, and anatomical relationships with the ADMIN ANSWER KEY before parsing the response.
 2. Evaluate the core medical mechanisms, anatomical landmarks, target organs, and signaling pathways in the Student Response against required concepts in the Answer Key.
 3. RIGID SCORING BRACKETS:
    - High Marks (8–10 / 10): Factually flawless mechanism/procedure, correct anatomical structures, and accurate signaling cascades.
@@ -219,14 +229,10 @@ def parse_ai_json(raw_text: str) -> dict:
     if not raw_text or not raw_text.strip():
         return {"score": 0, "reasoning": "AI evaluation engine returned an empty response."}
 
-    # 1. Strip thinking tags <think>...</think>
     cleaned = re.sub(r'<think>.*?</think>', '', raw_text, flags=re.DOTALL)
-
-    # 2. Strip Markdown code blocks (e.g. ```json ... ```)
     cleaned = re.sub(r'```(?:json)?', '', cleaned, flags=re.IGNORECASE)
     cleaned = cleaned.replace('```', '').strip()
 
-    # 3. Helper to extract data dictionary safely
     def extract_fields(data_dict: dict) -> dict:
         score_val = max(0, min(10, int(data_dict.get("score", 0))))
         reasoning_val = str(
@@ -239,7 +245,6 @@ def parse_ai_json(raw_text: str) -> dict:
             reasoning_val = "You provided a complete and correct response."
         return {"score": score_val, "reasoning": reasoning_val}
 
-    # 4. Direct JSON parsing
     try:
         data = json.loads(cleaned)
         if isinstance(data, dict):
@@ -247,7 +252,6 @@ def parse_ai_json(raw_text: str) -> dict:
     except Exception:
         pass
 
-    # 5. Extract outer JSON object
     json_match = re.search(r'\{[\s\S]*\}', cleaned)
     if json_match:
         try:
@@ -257,7 +261,6 @@ def parse_ai_json(raw_text: str) -> dict:
         except Exception:
             pass
 
-    # 6. Regex extraction fallback
     score_match = re.search(r'"score"\s*:\s*(\d+)', cleaned)
     score = int(score_match.group(1)) if score_match else 0
 
@@ -271,19 +274,16 @@ def parse_ai_json(raw_text: str) -> dict:
 
 async def call_groq_with_retry(messages: list, target_model: str, max_retries: int = 4):
     """Executes non-blocking Groq API requests with an async concurrency queue and exponential backoff retry logic."""
-    # Acquire a slot from the semaphore before sending the request to Groq
     async with GROQ_CONCURRENCY_LIMITER:
         delay = 1.5
         for attempt in range(1, max_retries + 1):
             try:
-                # Build request parameters dynamically
                 kwargs = {
                     "model": target_model,
                     "messages": messages,
                     "temperature": 0.0,
                 }
                 
-                # Only include reasoning_effort for models that support reasoning (e.g. qwen/qwen3.6-27b)
                 if "qwen" in target_model.lower():
                     kwargs["extra_body"] = {"reasoning_effort": "none"}
 
@@ -320,7 +320,7 @@ def admin_login(credentials: AdminLoginRequest):
             "accessMode": "ADMIN_HUB"
         }
         
-    elif credentials.name == "D@niel Phiri" and credentials.username in [ "cbucnl-287-a"]:
+    elif credentials.name == "D@niel Phiri" and credentials.username in ["cbucnl-287-a"]:
         return {
             "name": "D@niel Phiri",
             "studentNumber": "cbucnl-287-a",
@@ -336,26 +336,44 @@ def admin_login(credentials: AdminLoginRequest):
     )
 
 # ----------------------------
-# 🟢 Upload Diagram Endpoint (Fixes Pusher Payload Limit)
+# 🟢 Upload Diagram Endpoint (Supabase Storage Cloud Integration)
 # ----------------------------
 
 @app.post("/upload-diagram")
 async def upload_diagram(file: UploadFile = File(...)):
-    """Saves uploaded question diagrams to static storage and returns a lightweight URL."""
+    """Uploads question diagrams directly to Supabase Cloud Storage and returns a permanent public URL."""
     try:
+        contents = await file.read()
         extension = os.path.splitext(file.filename)[1] or ".png"
         unique_filename = f"diagram_{uuid.uuid4().hex}{extension}"
-        file_path = os.path.join(UPLOAD_DIR, unique_filename)
+        storage_path = f"diagrams/{unique_filename}"
 
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+        if supabase_client:
+            # Upload directly to the 'question-diagrams' Supabase bucket
+            res = supabase_client.storage.from_("question-diagrams").upload(
+                path=storage_path,
+                file=contents,
+                file_options={"content-type": file.content_type or "image/png"}
+            )
+            
+            # Retrieve the permanent public URL
+            public_url = supabase_client.storage.from_("question-diagrams").get_public_url(storage_path)
+            print(f"☁️ Successfully uploaded diagram to Supabase Storage: {public_url}")
+            return {"image_url": public_url}
 
-        return {"image_url": f"/static/diagrams/{unique_filename}"}
+        else:
+            # Fallback to local storage if Supabase credentials are missing locally
+            os.makedirs(os.path.join("static", "diagrams"), exist_ok=True)
+            local_path = os.path.join("static", "diagrams", unique_filename)
+            with open(local_path, "wb") as buffer:
+                buffer.write(contents)
+            return {"image_url": f"/static/diagrams/{unique_filename}"}
 
     except Exception as e:
+        print(f"❌ Diagram Upload Error: {str(e)}")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to upload diagram image: {str(e)}"
+            detail=f"Failed to upload diagram image to Supabase Cloud: {str(e)}"
         )
 
 # ----------------------------
@@ -456,7 +474,6 @@ def create_assessment(
     db.refresh(db_assessment)
 
     try:
-        # Send a tiny notification payload over Pusher to bypass Pusher size limits
         pusher_client.trigger("assessments-channel", "assessment_published", {
             "id": db_assessment.id,
             "note_id": db_assessment.note_id,
@@ -552,40 +569,37 @@ def delete_note(note_id: int, db: Session = Depends(get_db)):
 # ----------------------------
 # 🟢 Groq AI Evaluation Endpoint
 # ----------------------------
-def _sync_read_and_encode_image(image_url: str) -> Optional[str]:
-    """Helper function executed in a separate worker thread to avoid blocking the event loop."""
+
+async def prepare_image_for_groq(image_url: str) -> Optional[str]:
+    """Passes direct public Supabase URLs or converts legacy local disk images into Base64 format."""
     if not image_url:
         return None
         
-    if image_url.startswith("data:image"):
+    # Standard public URLs (Supabase Storage links) pass straight through to Groq
+    if image_url.startswith(("http://", "https://", "data:image")):
         return image_url
 
-    filename = os.path.basename(image_url.split("?")[0])
-    possible_paths = [
-        os.path.join("static", "diagrams", filename),
-        os.path.join("static", filename),
-        image_url.lstrip("/")
-    ]
+    def _sync_read():
+        filename = os.path.basename(image_url.split("?")[0])
+        possible_paths = [
+            os.path.join("static", "diagrams", filename),
+            os.path.join("static", filename),
+            image_url.lstrip("/")
+        ]
 
-    for local_path in possible_paths:
-        if os.path.exists(local_path) and os.path.isfile(local_path):
-            try:
-                with open(local_path, "rb") as file:
-                    encoded_string = base64.b64encode(file.read()).decode("utf-8")
-                    ext = os.path.splitext(local_path)[1].lower().lstrip(".")
-                    mime = "png" if ext in ["png", ""] else ("jpeg" if ext in ["jpg", "jpeg"] else ext)
-                    return f"data:image/{mime};base64,{encoded_string}"
-            except Exception as e:
-                print(f"⚠️ Failed to read local image file {local_path}: {e}")
+        for local_path in possible_paths:
+            if os.path.exists(local_path) and os.path.isfile(local_path):
+                try:
+                    with open(local_path, "rb") as file:
+                        encoded_string = base64.b64encode(file.read()).decode("utf-8")
+                        ext = os.path.splitext(local_path)[1].lower().lstrip(".")
+                        mime = "png" if ext in ["png", ""] else ("jpeg" if ext in ["jpg", "jpeg"] else ext)
+                        return f"data:image/{mime};base64,{encoded_string}"
+                except Exception as e:
+                    print(f"⚠️ Failed to read local image file {local_path}: {e}")
+        return image_url
 
-    return image_url
-
-
-async def prepare_image_for_groq(image_url: str) -> Optional[str]:
-    """Asynchronously delegates disk I/O to a worker thread using asyncio.to_thread."""
-    if not image_url:
-        return None
-    return await asyncio.to_thread(_sync_read_and_encode_image, image_url)
+    return await asyncio.to_thread(_sync_read)
 
 
 @app.post("/assessments/evaluate", response_model=EvaluationResult)
@@ -595,7 +609,6 @@ async def evaluate_student_long_answer(payload: GradeRequest):
         raw_img = (payload.image_url or "").strip()
         has_image = bool(raw_img and raw_img.lower() not in ["none", "null", "undefined"])
 
-        # Enforce Admin Answer Key Supremacy across all grading paths
         admin_key_rule = (
             "CRITICAL GRADING DIRECTIVE — ADMIN ANSWER KEY IS ABSOLUTE GROUND TRUTH:\n"
             "1. The provided ADMIN ANSWER KEY is supreme and non-negotiable.\n"
@@ -622,7 +635,6 @@ async def evaluate_student_long_answer(payload: GradeRequest):
                 f"STUDENT RESPONSE: {payload.student_response.strip()}"
             )
 
-        # Inject Spatial Diagram Analysis Rule if an image is attached
         if has_image:
             spatial_instruction = (
                 "VISUAL DIAGRAM GROUNDING DIRECTIVE:\n"
@@ -634,12 +646,8 @@ async def evaluate_student_long_answer(payload: GradeRequest):
         target_model = "qwen/qwen3.6-27b"
 
         if has_image:
-            # 🟢 Non-blocking async call using 'await'
             image_url_str = await prepare_image_for_groq(raw_img)
             
-            if image_url_str and not image_url_str.startswith(("http", "data:image")):
-                image_url_str = f"data:image/png;base64,{image_url_str}"
-
             user_content = [
                 {"type": "text", "text": text_prompt},
                 {"type": "image_url", "image_url": {"url": image_url_str}}
