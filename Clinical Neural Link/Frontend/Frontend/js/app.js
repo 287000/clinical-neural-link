@@ -4348,6 +4348,11 @@ async function handleQuizImageIngestion(eventOrInput, questionId) {
         const formData = new FormData();
         formData.append('file', chosenFile);
 
+        // Dynamically resolution for backend base URL (works for local dev & production Render backend)
+        const API_BASE_URL = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
+            ? 'http://127.0.0.1:8000'
+            : 'https://clinical-neural-link.onrender.com'; // Adjust to your actual Render URL if different
+
         const response = await fetch(`${API_BASE_URL}/upload-diagram`, {
             method: 'POST',
             body: formData
@@ -4359,37 +4364,37 @@ async function handleQuizImageIngestion(eventOrInput, questionId) {
 
         const data = await response.json();
         
-        // 5. Build absolute URL pointing to FastAPI (prevents Live Server 5501 relative 404s)
+        // 5. Build absolute URL (Supabase URLs starting with http/https pass straight through)
         const rawUrl = data.image_url;
         const serverImageUrl = rawUrl.startsWith('http') 
             ? rawUrl 
             : `${API_BASE_URL}${rawUrl}`;
 
-        // 6. Update memory heap pointer with absolute static URL
+        // 6. Update memory heap pointer with absolute cloud/static URL
         const targetNode = currentQuizQuestionsHeap.find(q => q.id === questionId);
         if (targetNode) {
             targetNode.image_url = serverImageUrl;
             delete targetNode.imageBase64; // Clear legacy Base64 key if present
         }
 
-        // 7. Update DOM attribute context node with absolute static URL
+        // 7. Update DOM attribute context node with absolute URL
         const parentQuestionCard = document.getElementById(questionId);
         if (parentQuestionCard) {
             parentQuestionCard.setAttribute('data-attached-image', serverImageUrl);
         }
 
-        // 8. Finalize UI Preview State
+        // 8. Finalize UI Preview State using the public Supabase link
         previewBox.innerHTML = `
             <img src="${serverImageUrl}" class="max-h-14 max-w-full rounded border border-purple-500/30 object-contain shadow-md">
         `;
 
-        console.log(`Diagram uploaded and linked successfully for question ${questionId}: ${serverImageUrl}`);
+        console.log(`Diagram uploaded to cloud and linked successfully for question ${questionId}: ${serverImageUrl}`);
 
     } catch (error) {
         console.error(`Failed to ingest diagram for ${questionId}:`, error);
         previewBox.innerHTML = `<span class="text-red-400 font-bold text-[9px]">Upload Failed</span>`;
     }
-}
+}    
 // Exit clean up loop to return home and put student links back
 function exitAdminHub() {
     // 1. Restore Admin Hub Trigger button in header
