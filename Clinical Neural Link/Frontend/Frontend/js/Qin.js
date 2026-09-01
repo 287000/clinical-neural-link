@@ -1387,7 +1387,8 @@ window.submitClinicalLongAnswerSubmission = async function(currentResponseKey) {
 
     const session = window.activeQuizSession;
     if (!session) return;
-// Dynamic backend URL mapped to central deployment configuration
+    
+    // Dynamic backend URL mapped to central deployment configuration
     const apiBaseUrl = API_BASE_URL;
 
     // Safe fallback key resolution
@@ -1508,13 +1509,29 @@ window.submitClinicalLongAnswerSubmission = async function(currentResponseKey) {
         "Evaluate the clinical scenario."
     ).trim();
 
-    const rawAnswerKey = String(
+    // UPDATED: Comprehensive AI Answer Key Resolution with Fallback Guards
+    let resolvedKey = 
+        targetQuestion?.ai_answer_key || 
+        targetQuestion?.aiAnswerKey || 
         targetQuestion?.correctAnswer || 
         targetQuestion?.answerKey || 
         targetQuestion?.answer_key || 
         targetQuestion?.answer || 
-        "No reference criteria defined."
-    ).trim();
+        targetQuestion?.explanation || 
+        "";
+
+    resolvedKey = String(resolvedKey).trim();
+
+    // Safeguard against empty or hardcoded placeholder strings
+    if (
+        !resolvedKey || 
+        resolvedKey.toLowerCase().includes("written submission evaluation slot") || 
+        resolvedKey === "No reference criteria defined."
+    ) {
+        resolvedKey = questionStem;
+    }
+
+    const rawAnswerKey = resolvedKey;
 
     const explicitType = 
         targetQuestion?.questionType || 
