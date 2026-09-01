@@ -1945,19 +1945,34 @@ window.evaluateLongAnswerWithAI = async function(
     imageUrl = null
 ) {
     if (!studentResponse || studentResponse.trim() === "") {
-        alert("Please type a response before evaluating.");
+        if (typeof window.showToast === 'function') {
+            window.showToast("Evaluation Blocked", "Please type a response before evaluating.", "warning");
+        } else {
+            alert("⚠️ Please type a response before evaluating.");
+        }
         return;
     }
 
     // Determine target prompt strategy for the AI evaluator
     const resolvedType = resolveQuestionType(questionType, questionStem);
 
-   // Dynamic API host resolution mapped to central deployment configuration
+    // Dynamic API host resolution mapped to central deployment configuration
     const apiBaseUrl = API_BASE_URL;
+
     // Visual feedback: Transition badge to loading state
     if (scoreBadgeElement) {
         scoreBadgeElement.innerText = `AI EVALUATING (${resolvedType})...`;
         scoreBadgeElement.style.opacity = "0.7";
+    }
+
+    // UPDATED: Answer Key Sanitizer & Fallback Guard
+    let sanitizedKey = String(aiAnswerKey || "").trim();
+    if (
+        !sanitizedKey || 
+        sanitizedKey.toLowerCase().includes("written submission evaluation slot") || 
+        sanitizedKey === "No reference criteria defined."
+    ) {
+        sanitizedKey = questionStem; // Fallback to question stem as reference baseline
     }
 
     try {
@@ -1971,10 +1986,10 @@ window.evaluateLongAnswerWithAI = async function(
             body: JSON.stringify({
                 question_stem: questionStem,
                 student_response: studentResponse,
-                ai_answer_key: aiAnswerKey,
+                ai_answer_key: sanitizedKey, // <-- Uses sanitized answer key payload
                 question_type: resolvedType,
                 vignette_context: vignetteContext && vignetteContext.trim() ? vignetteContext.trim() : null,
-                image_url: imageUrl && imageUrl.trim() ? imageUrl.trim() : null
+                image_url: imageUrl && imageUrl.trim() && imageUrl !== "null" ? imageUrl.trim() : null
             })
         });
 
@@ -1983,18 +1998,24 @@ window.evaluateLongAnswerWithAI = async function(
         }
 
         const data = await response.json();
-        const aiScore = data.score;         // Integer 0–10
-        const aiReasoning = data.reasoning; // Direct clinical feedback
+        const aiScore = typeof data.score === 'number' ? data.score : 0; // Integer 0–10
+        const aiReasoning = data.reasoning || "Evaluation completed successfully."; // Direct clinical feedback
 
         // Lock score and feedback safely into active quiz session memory
         if (window.activeQuizSession) {
             window.activeQuizSession.studentResponses = window.activeQuizSession.studentResponses || {};
-            if (!window.activeQuizSession.studentResponses[responseKey]) {
-                window.activeQuizSession.studentResponses[responseKey] = {};
-            }
-            window.activeQuizSession.studentResponses[responseKey].score = aiScore;
-            window.activeQuizSession.studentResponses[responseKey].reasoning = aiReasoning;
-            window.activeQuizSession.studentResponses[responseKey].type = resolvedType;
+            const existingRecord = window.activeQuizSession.studentResponses[responseKey] || {};
+            
+            window.activeQuizSession.studentResponses[responseKey] = {
+                ...existingRecord,
+                score: aiScore,
+                aiReasoning: aiReasoning,
+                reasoning: aiReasoning,
+                questionType: resolvedType,
+                type: resolvedType,
+                isCorrect: aiScore >= 7,
+                evaluatedAt: new Date().toISOString()
+            };
         }
 
         console.log(`🎯 AI Evaluation Locked: ${aiScore}/10 (${resolvedType}) for key [${responseKey}]`);
@@ -2021,6 +2042,10 @@ window.evaluateLongAnswerWithAI = async function(
         if (scoreBadgeElement) {
             scoreBadgeElement.innerText = "ERROR - TRY AGAIN";
             scoreBadgeElement.style.opacity = "1";
+        }
+
+        if (typeof window.showToast === 'function') {
+            window.showToast("AI Grader Error", "FastAPI connection failed. Evaluation could not complete.", "error");
         }
     }
 };
