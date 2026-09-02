@@ -643,7 +643,7 @@ async def evaluate_student_long_answer(payload: GradeRequest):
             )
             text_prompt = spatial_instruction + text_prompt
 
-        target_model = "qwen/qwen3.6-27b"
+        target_model = "qwen/Qwen3.8-27B"
 
         if has_image:
             image_url_str = await prepare_image_for_groq(raw_img)
