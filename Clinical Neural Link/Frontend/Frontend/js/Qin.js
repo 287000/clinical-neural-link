@@ -1440,12 +1440,13 @@ window.submitClinicalLongAnswerSubmission = async function(currentResponseKey) {
 
     // Safely extract question context, case vignette, & image URL
     let targetQuestion = null;
+    let parentQ = null;
     let vignetteContext = "";
     let imageUrl = "";
 
     if (responseKey.includes("_sub_")) {
         const [parentIdx, subIdx] = responseKey.split("_sub_").map(Number);
-        const parentQ = session.flatQuestionsList?.[parentIdx];
+        parentQ = session.flatQuestionsList?.[parentIdx];
 
         vignetteContext = 
             parentQ?.vignette || 
@@ -1509,7 +1510,24 @@ window.submitClinicalLongAnswerSubmission = async function(currentResponseKey) {
         "Evaluate the clinical scenario."
     ).trim();
 
-    // UPDATED: Comprehensive AI Answer Key Resolution with Fallback Guards
+    // Context Chain Aggregator for cross-referenced sub-questions
+    let questionContextPrompt = questionStem;
+    if (responseKey.includes("_sub_") && parentQ?.subQuestions) {
+        const chainText = parentQ.subQuestions
+            .map((sq, idx) => {
+                const label = String.fromCharCode(97 + idx); // 0 -> 'a', 1 -> 'b', etc.
+                const qText = sq.question || sq.stem || sq.prompt || sq.questionText || "";
+                return `Sub-question (${label}): ${qText}`;
+            })
+            .filter(text => text.length > 18)
+            .join("\n");
+
+        if (chainText) {
+            questionContextPrompt = `Full Question Context Chain:\n${chainText}\n\nCurrent Target Question: ${questionStem}`;
+        }
+    }
+
+    // Comprehensive AI Answer Key Resolution with Fallback Guards
     let resolvedKey = 
         targetQuestion?.ai_answer_key || 
         targetQuestion?.aiAnswerKey || 
@@ -1528,7 +1546,7 @@ window.submitClinicalLongAnswerSubmission = async function(currentResponseKey) {
         resolvedKey.toLowerCase().includes("written submission evaluation slot") || 
         resolvedKey === "No reference criteria defined."
     ) {
-        resolvedKey = questionStem;
+        resolvedKey = questionContextPrompt;
     }
 
     const rawAnswerKey = resolvedKey;
@@ -1554,7 +1572,7 @@ window.submitClinicalLongAnswerSubmission = async function(currentResponseKey) {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                question_stem: questionStem,
+                question_stem: questionContextPrompt,
                 student_response: writtenText,
                 ai_answer_key: rawAnswerKey,
                 question_type: questionType,
