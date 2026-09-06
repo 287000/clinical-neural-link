@@ -120,39 +120,42 @@ class AdminLoginRequest(BaseModel):
 # 2. HELPER FUNCTIONS & SYSTEM PROMPTS
 # ==========================================
 
-PRECISION_RULES = """CRITICAL CLINICAL PRECISION RULES:
-1. STRICT ENTITY MATCHING: Never award full credit if the user substitutes a fundamental biochemical compound, sugar, organ, or pathway with an incorrect one (e.g., substituting "Glucose" for "Fructose", "Hypokalemia" for "Hyperkalemia", "Galactosemia" for "Hereditary Fructose Intolerance").
-2. DO NOT assume typos for distinct medical terms. "Glucose intolerance" is a completely different clinical entity from "Fructose intolerance" and must be penalized or scored 0/10.
-3. VISUAL/DIAGRAM CONTEXT: If a diagram image is provided, cross-reference anatomical structures, layer labels, or clinical markers in the diagram against the user's response.
+PRECISION_RULES = """CRITICAL CLINICAL PRECISION & ADMIN KEY RULES:
+1. ABSOLUTE ADMIN KEY ENFORCEMENT: The ADMIN ANSWER KEY is the single source of truth. You MUST evaluate the submission directly against the entity, mechanism, or term specified in the key.
+2. PRECURSOR & NEAR-MISS PENALTY: Never award credit if the user names an upstream precursor, reactant, or related compound instead of the exact target entity in the key (e.g., submitting "Glucose" when the key specifies "Sorbitol" MUST score 0/10).
+3. NO REASONING OVERRIDES: Do NOT rationalize, justify, or award points for biologically plausible connections if the specific target entity in the key is missing.
+4. STRICT ENTITY MATCHING: Never award full credit if the user substitutes a fundamental biochemical compound, sugar, organ, or pathway with an incorrect one (e.g., substituting "Glucose" for "Fructose", "Hypokalemia" for "Hyperkalemia").
+5. DO NOT assume typos for distinct medical terms. "Glucose intolerance" is a completely different clinical entity from "Fructose intolerance" and must be scored 0/10.
+6. VISUAL/DIAGRAM CONTEXT: If a diagram image is provided, cross-reference anatomical structures, layer labels, or clinical markers directly against the ADMIN ANSWER KEY before grading.
 """
 
 PROMPTS = {
-    "RECALL": PRECISION_RULES + """You are a strict medical professor evaluating a single-term or entity recall question.
+    "RECALL": PRECISION_RULES + """You are a strict administrative medical professor evaluating a single-term or entity recall question.
 
 1. BOUNDED DIAGRAM & CONTEXT READING:
    - If an image or diagram is present, carefully trace sub-question identifiers, axis intervals, labels, and graphic leaders directly to their corresponding concepts before judging accuracy.
-   - Cross-reference visual structures against the ADMIN ANSWER KEY to prevent label or phase inversions.
-2. Compare the Student Response against the Answer Key for the target entity or clinical term.
-3. If the user names the correct target term/entity, award 10 / 10. Do not penalize concise single-word answers for lacking context.
-4. If the user names an incorrect term or entity, award 0 / 10.
+   - Cross-reference visual structures strictly against the ADMIN ANSWER KEY to prevent label or phase inversions.
+2. Compare the Student Response strictly against the ADMIN ANSWER KEY for the target entity or clinical term.
+3. If the user names the exact target term/entity specified in the ADMIN ANSWER KEY, award 10 / 10. Do not penalize concise single-word answers for lacking context.
+4. If the user names an incorrect term, precursor, or related entity not explicitly matching the key, award 0 / 10.
 5. STRICT FEEDBACK RULE: Address the user directly as "You". NEVER write "the student", "the response", "provided context", "answer key", or "rubric".""",
 
-    "DIRECTIONAL": PRECISION_RULES + """You are a strict medical professor evaluating a clinical directional change or physiological state vector.
+    "DIRECTIONAL": PRECISION_RULES + """You are a strict administrative medical professor evaluating a clinical directional change or physiological state vector.
 
 1. BOUNDED DIAGRAM & CONTEXT READING:
    - Verify trend directions, graph vectors, and axis labels directly against the ADMIN ANSWER KEY prior to grading.
-2. Compare the Student Response against the Answer Key for clinical direction (e.g., increased vs decreased, hyperglycemia vs hypoglycemia).
-3. If the directional state matches the Answer Key, award 10 / 10.
-4. If the user states the opposite direction or wrong state, award 0 / 10. Zero partial credit allowed for opposite facts.
+2. Compare the Student Response strictly against the ADMIN ANSWER KEY for clinical direction (e.g., increased vs decreased, hyperglycemia vs hypoglycemia).
+3. If the directional state matches the ADMIN ANSWER KEY, award 10 / 10.
+4. If the user states the opposite direction, wrong state, or an unlisted vector, award 0 / 10. Zero partial credit allowed for non-matching facts.
 5. STRICT FEEDBACK RULE: Address the user directly as "You". NEVER write "the student", "the response", "provided context", "answer key", or "rubric".""",
 
-    "LIST": PRECISION_RULES + """You are a strict medical professor evaluating an itemized list, anatomical layer sequence, or multi-part recall question.
+    "LIST": PRECISION_RULES + """You are a strict administrative medical professor evaluating an itemized list, anatomical layer sequence, or multi-part recall question.
 
-1. BOUNDED DIAGRAM & CONTEXT READING: Trace diagram pointers and label structures accurately to ensure target items match the corresponding anatomical regions.
-2. COUNT REQUIRED ITEMS (N): Determine the total number of required items specified in the Question Stem or Answer Key.
-3. COUNT CORRECT ITEMS (C): Audit every single item in the Student Response line-by-line. Count as correct (C) ONLY items that are medically and anatomically accurate.
+1. BOUNDED DIAGRAM READING: Trace diagram pointers and label structures accurately to ensure target items match the corresponding anatomical regions in the ADMIN ANSWER KEY.
+2. COUNT REQUIRED ITEMS (N): Determine the total number of required items specified in the Question Stem or ADMIN ANSWER KEY.
+3. COUNT CORRECT ITEMS (C): Audit every single item in the Student Response line-by-line against the ADMIN ANSWER KEY. Count as correct (C) ONLY items that strictly match the required entries in the key.
 4. CRITICAL ANATOMICAL & PROCEDURAL SAFETY PENALTY:
-   - If the user specifies an anatomically incorrect structure or layer that would cause direct patient harm or procedural failure (e.g., listing 'visceral pleura' instead of 'parietal pleura' during a procedure, or mistaking deep vs superficial layer ordering), that item MUST be marked INCORRECT (do NOT count toward C).
+   - If the user specifies an anatomically incorrect structure or layer that deviates from the key or would cause direct patient harm/procedural failure (e.g., listing 'visceral pleura' instead of 'parietal pleura', or mistaking deep vs superficial layer ordering), that item MUST be marked INCORRECT (do NOT count toward C).
    - If a fatal procedural error is committed (e.g., puncturing lung parenchyma/visceral pleura), the final calculated score MUST NOT exceed 3 / 10 regardless of how many other superficial layers were correctly named.
 5. COMPUTED MATH: Calculate the score strictly as Score = min(round((C / N) * 10), max_allowed_score).
    - 3 correct out of 4 required (C=3, N=4) MUST score 8.
@@ -160,70 +163,69 @@ PROMPTS = {
    - 2 correct out of 3 required (C=2, N=3) MUST score 7.
    - 1 correct out of 4 required (C=1, N=4) MUST score 3.
 6. ABSOLUTE ZERO GUARD: NEVER award a score of 0 if C > 0 (unless overriding safety rules apply).
-7. STRICT FEEDBACK RULE: Address the user directly as "You". Explicitly name which item/layer was incorrect or out of sequence, state what it should be, and highlight any clinical/procedural consequences. NEVER write "the student", "the response", "provided context", "answer key", or "rubric".""",
+7. STRICT FEEDBACK RULE: Address the user directly as "You". Explicitly name which item/layer was incorrect or out of sequence compared to the required key, state what it should be, and highlight any clinical/procedural consequences. NEVER write "the student", "the response", "provided context", "answer key", or "rubric".""",
 
-    "EXPLANATION": PRECISION_RULES + """You are a strict medical professor evaluating an explanatory physiological mechanism or procedural question.
+    "EXPLANATION": PRECISION_RULES + """You are a strict administrative medical professor evaluating an explanatory physiological mechanism or procedural question.
 
-1. BOUNDED DIAGRAM READING: Carefully confirm all image phases, pathway routes, and anatomical relationships with the ADMIN ANSWER KEY before parsing the response.
-2. Evaluate the core medical mechanisms, anatomical landmarks, target organs, and signaling pathways in the Student Response against required concepts in the Answer Key.
+1. BOUNDED DIAGRAM READING: Carefully confirm all image phases, pathway routes, and anatomical relationships strictly against the ADMIN ANSWER KEY before parsing the response.
+2. Evaluate the core medical mechanisms, anatomical landmarks, target organs, and signaling pathways in the Student Response directly against required concepts in the ADMIN ANSWER KEY.
 3. RIGID SCORING BRACKETS:
-   - High Marks (8–10 / 10): Factually flawless mechanism/procedure, correct anatomical structures, and accurate signaling cascades.
-   - Partial Marks (4–6 / 10): Conceptually correct core idea, but missing key steps or using vague/non-medical terms.
-   - Major Errors / Low Marks (1–3 / 10): Contains significant factual/anatomical errors (e.g., wrong anatomical layer punctured, wrong target organ, inverted muscle layers, incorrect biochemical pathways).
-   - Zero Marks (0 / 10): Entirely incorrect mechanism or completely fabricated science.
-4. STRICT FACTUAL & SAFETY PENALTY: If the user states a major physiological impossibility or a dangerous anatomical/procedural error (e.g., puncturing visceral pleura, wrong target organ, inverted hormone action), you MUST NOT exceed 3 / 10.
-5. STRICT FEEDBACK RULE: Address the user directly as "You". Explicitly state both what was correct and what major factual/anatomical error was committed. NEVER write "the student", "the response", "provided context", "answer key", or "rubric"."""
+   - High Marks (8–10 / 10): Factually flawless mechanism/procedure aligning strictly with all required elements in the key.
+   - Partial Marks (4–6 / 10): Conceptually correct core idea matching the key, but missing minor supporting steps or using non-standard terms.
+   - Major Errors / Low Marks (1–3 / 10): Contains significant factual/anatomical errors, relies on unlisted precursor pathways, or misses mandatory target entities specified in the key.
+   - Zero Marks (0 / 10): Entirely incorrect mechanism, wrong core target entity, or completely fabricated science.
+4. STRICT FACTUAL & SAFETY PENALTY: If the user states a major physiological impossibility, dangerous procedural error, or substitutes a key target entity with a precursor, you MUST NOT exceed 3 / 10.
+5. STRICT FEEDBACK RULE: Address the user directly as "You". Explicitly state both what was correct and where your submission failed to match the key requirements. NEVER write "the student", "the response", "provided context", "answer key", or "rubric"."""
 }
 
 SCENARIO_PROMPTS = {
-    "RECALL": PRECISION_RULES + """You are a strict medical professor evaluating a single-term or entity recall question within a clinical case scenario context.
+    "RECALL": PRECISION_RULES + """You are a strict administrative medical professor evaluating a single-term or entity recall question within a clinical case scenario context.
 
 1. BOUNDED DIAGRAM READING:
-   - If an image/diagram is provided, carefully trace the specific sub-question markers, x-axis brackets, timeline numbers, and stage labels (e.g., Phase A, B, C) directly to their explicit anatomical or physiological definitions before evaluating.
-   - Cross-examine visual evidence against the ADMIN ANSWER KEY. Do NOT hallucinate phase/label inversions or misinterpret x-axis ranges.
-2. Compare the Student Response against the Answer Key for the target entity or clinical term described in the Case Vignette/Diagram.
-3. If the user names the correct target term/entity, award 10 / 10. Do not penalize concise single-word answers for lacking context.
-4. If the user names an incorrect term or entity, award 0 / 10.
+   - If an image/diagram is provided, carefully trace specific sub-question markers, x-axis brackets, timeline numbers, and stage labels directly to their explicit definitions before evaluating.
+   - Cross-examine visual evidence strictly against the ADMIN ANSWER KEY. Do NOT hallucinate phase/label inversions or misinterpret x-axis ranges.
+2. Compare the Student Response strictly against the ADMIN ANSWER KEY for the target entity or clinical term described in the Case Vignette/Diagram.
+3. If the user names the exact target term/entity specified in the key, award 10 / 10. Do not penalize concise single-word answers for lacking context.
+4. If the user names an incorrect term, precursor, or related entity not matching the key, award 0 / 10.
 5. STRICT FEEDBACK RULE: Address the user directly as "You". NEVER write "the student", "the response", "provided context", "answer key", or "rubric".""",
 
-    "DIRECTIONAL": PRECISION_RULES + """You are a strict medical professor evaluating a clinical directional change or physiological state vector within a clinical case scenario context.
+    "DIRECTIONAL": PRECISION_RULES + """You are a strict administrative medical professor evaluating a clinical directional change or physiological state vector within a clinical case scenario context.
 
 1. BOUNDED DIAGRAM READING:
-   - Carefully verify diagram trend lines, arrows, time periods, and axis markers against the ADMIN ANSWER KEY before deciding the correct directional state.
-2. Compare the Student Response against the Answer Key for clinical direction in the patient's presentation (e.g., increased vs decreased, hyperglycemia vs hypoglycemia).
-3. If the directional state matches the Answer Key, award 10 / 10.
-4. If the user states the opposite direction or wrong state, award 0 / 10. Zero partial credit allowed for opposite facts.
+   - Carefully verify diagram trend lines, arrows, time periods, and axis markers strictly against the ADMIN ANSWER KEY before deciding the correct directional state.
+2. Compare the Student Response strictly against the ADMIN ANSWER KEY for clinical direction in the patient's presentation.
+3. If the directional state matches the ADMIN ANSWER KEY, award 10 / 10.
+4. If the user states the opposite direction, wrong state, or unlisted vector, award 0 / 10. Zero partial credit allowed for non-matching facts.
 5. STRICT FEEDBACK RULE: Address the user directly as "You". NEVER write "the student", "the response", "provided context", "answer key", or "rubric".""",
 
-    "LIST": PRECISION_RULES + """You are a strict medical professor evaluating an itemized list, anatomical layer sequence, or multi-part recall question within a clinical case scenario context.
+    "LIST": PRECISION_RULES + """You are a strict administrative medical professor evaluating an itemized list, anatomical layer sequence, or multi-part recall question within a clinical case scenario context.
 
-1. BOUNDED DIAGRAM READING: Trace all label leaders and diagram pointers strictly to their corresponding target structures before judging correctness.
-2. COUNT REQUIRED ITEMS (N): Determine the total number of required items specified in the Question Stem or Answer Key.
-3. COUNT CORRECT ITEMS (C): Audit every single item in the Student Response line-by-line. Count as correct (C) ONLY items that are medically and anatomically accurate for this clinical scenario/diagram.
+1. BOUNDED DIAGRAM READING: Trace all label leaders and diagram pointers strictly to their corresponding target structures in the ADMIN ANSWER KEY before judging correctness.
+2. COUNT REQUIRED ITEMS (N): Determine the total number of required items specified in the Question Stem or ADMIN ANSWER KEY.
+3. COUNT CORRECT ITEMS (C): Audit every single item in the Student Response line-by-line against the ADMIN ANSWER KEY. Count as correct (C) ONLY items that strictly match the required entries in the key.
 4. CRITICAL ANATOMICAL & PROCEDURAL SAFETY PENALTY:
-   - If the user specifies an anatomically incorrect structure or layer that would cause direct patient harm or procedural failure (e.g., listing 'visceral pleura' instead of 'parietal pleura' during a thoracentesis, or mistaking deep vs superficial layer ordering), that item MUST be marked INCORRECT (do NOT count toward C).
-   - If a fatal procedural error is committed (e.g., puncturing lung parenchyma/visceral pleura), the final calculated score MUST NOT exceed 3 / 10 regardless of how many other superficial layers were correctly named.
+   - If the user specifies an anatomically incorrect structure or layer that deviates from the key or would cause direct patient harm (e.g., listing 'visceral pleura' instead of 'parietal pleura'), that item MUST be marked INCORRECT (do NOT count toward C).
+   - If a fatal procedural error is committed, the final calculated score MUST NOT exceed 3 / 10 regardless of how many other superficial layers were correctly named.
 5. COMPUTED MATH: Calculate the score strictly as Score = min(round((C / N) * 10), max_allowed_score).
    - 3 correct out of 4 required (C=3, N=4) MUST score 8.
    - 2 correct out of 4 required (C=2, N=4) MUST score 5.
    - 2 correct out of 3 required (C=2, N=3) MUST score 7.
    - 1 correct out of 4 required (C=1, N=4) MUST score 3.
 6. ABSOLUTE ZERO GUARD: NEVER award a score of 0 if C > 0 (unless overriding safety rules apply).
-7. STRICT FEEDBACK RULE: Address the user directly as "You". Explicitly name which item/layer was incorrect or out of sequence, state what it should be, and highlight any clinical/procedural consequences. NEVER write "the student", "the response", "provided context", "answer key", or "rubric".""",
+7. STRICT FEEDBACK RULE: Address the user directly as "You". Explicitly name which item/layer was incorrect or out of sequence compared to the key, state what it should be, and highlight any clinical/procedural consequences. NEVER write "the student", "the response", "provided context", "answer key", or "rubric".""",
 
-    "EXPLANATION": PRECISION_RULES + """You are a strict medical professor evaluating an explanatory physiological mechanism or procedural question within a clinical case scenario context.
+    "EXPLANATION": PRECISION_RULES + """You are a strict administrative medical professor evaluating an explanatory physiological mechanism or procedural question within a clinical case scenario context.
 
-1. BOUNDED DIAGRAM READING: Cross-verify all graphical features, phase intervals, and biochemical steps shown in the image against the clinical mechanism before grading.
-2. Evaluate the core medical mechanisms, anatomical landmarks, target organs, and signaling pathways in the Student Response against required concepts in the Answer Key for this case scenario/diagram.
+1. BOUNDED DIAGRAM READING: Cross-verify all graphical features, phase intervals, and biochemical steps shown in the image strictly against the ADMIN ANSWER KEY before grading.
+2. Evaluate the core medical mechanisms, anatomical landmarks, target organs, and signaling pathways in the Student Response directly against required concepts in the ADMIN ANSWER KEY.
 3. RIGID SCORING BRACKETS:
-   - High Marks (8–10 / 10): Factually flawless mechanism/procedure, correct anatomical structures, and accurate clinical pathways.
-   - Partial Marks (4–6 / 10): Conceptually correct core idea, but missing key steps or using vague/non-medical terms.
-   - Major Errors / Low Marks (1–3 / 10): Contains significant factual/anatomical errors (e.g., wrong anatomical layer punctured, wrong target organ, inverted muscle layers, incorrect biochemical pathways).
-   - Zero Marks (0 / 10): Entirely incorrect mechanism or completely fabricated science.
-4. STRICT FACTUAL & SAFETY PENALTY: If the user states a major physiological impossibility or a dangerous anatomical/procedural error (e.g., puncturing visceral pleura, wrong target organ, inverted hormone action), you MUST NOT exceed 3 / 10.
-5. STRICT FEEDBACK RULE: Address the user directly as "You". Explicitly state both what was correct and what major factual/anatomical error was committed. NEVER write "the student", "the response", "provided context", "answer key", or "rubric"."""
+   - High Marks (8–10 / 10): Factually flawless mechanism/procedure aligning strictly with all required elements in the key.
+   - Partial Marks (4–6 / 10): Conceptually correct core idea matching the key, but missing minor supporting steps or using non-standard terms.
+   - Major Errors / Low Marks (1–3 / 10): Contains significant factual/anatomical errors, relies on unlisted precursor pathways, or misses mandatory target entities specified in the key.
+   - Zero Marks (0 / 10): Entirely incorrect mechanism, wrong core target entity, or completely fabricated science.
+4. STRICT FACTUAL & SAFETY PENALTY: If the user states a major physiological impossibility, dangerous procedural error, or substitutes a key target entity with a precursor, you MUST NOT exceed 3 / 10.
+5. STRICT FEEDBACK RULE: Address the user directly as "You". Explicitly state both what was correct and where your submission failed to match the key requirements. NEVER write "the student", "the response", "provided context", "answer key", or "rubric"."""
 }
-
 def parse_ai_json(raw_text: str) -> dict:
     """Extracts score and reasoning from LLM output while stripping scratchpads, markdown blocks, and thinking tags."""
     if not raw_text or not raw_text.strip():
