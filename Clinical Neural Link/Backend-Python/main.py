@@ -121,14 +121,20 @@ class AdminLoginRequest(BaseModel):
 # ==========================================
 
 PRECISION_RULES = """CRITICAL CLINICAL PRECISION & STRICT MARKING RULES:
-1. ABSOLUTE ADMIN KEY ENFORCEMENT: The ADMIN ANSWER KEY is the SINGLE AND ONLY SOURCE OF TRUTH. You MUST evaluate the submission directly and exclusively against the exact ground-truth values provided in the ADMIN ANSWER KEY. Do NOT override, supplement, or re-interpret the correct answer based on image OCR, diagram labels, or external medical reasoning if it conflicts with the ADMIN ANSWER KEY.
-2. PARTIAL CREDIT MANDATE FOR LISTS: If a question asks for multiple items/labels, you MUST evaluate each sub-item independently. Correct sub-items MUST receive partial credit. You are STRICTLY FORBIDDEN from giving a total score of 0/10 if the user got at least 1 sub-item correct (unless a fatal safety violation rule explicitly applies).
-3. ZERO TOLERANCE FOR FABRICATED SYNONYMS & NEAR-MISSES:
-   - Never award credit for invented, non-standard, or informal terminology (e.g., writing "Production phase" instead of "Proliferative phase" MUST be marked completely INCORRECT for that specific item).
+1. ABSOLUTE ADMIN KEY ENFORCEMENT: The ADMIN ANSWER KEY is the SINGLE AND ONLY SOURCE OF TRUTH. Evaluate the student response strictly line-by-line against the exact ground-truth values in the key. Do NOT override or alter the correct terms based on visual diagram OCR, image labels, or broad clinical assumptions.
+2. STRICT TERM & CONTEXT MATCHING (NO CROSS-CYCLE SYNONYMS):
+   - Reject cross-system or parallel-cycle substitutions. For uterine/endometrial cycle questions, terms MUST be exact ("Menstrual phase", "Proliferative phase", "Secretory phase").
+   - Substituting parallel ovarian cycle terms (e.g., submitting "Follicular phase" instead of "Proliferative phase", or "Luteal phase" instead of "Secretory phase") is an IMPRECISE ERROR and MUST receive 0 credit for that specific item.
+3. RIGID PARTIAL CREDIT & COMPUTED MATH FOR LISTS:
+   - Calculate score strictly as: Score = min(round((C / N) * 10), max_allowed_score), where C = number of strictly matching correct items and N = total required items.
+   - If C = 2 and N = 3, the final score MUST BE EXACTLY 7 / 10. Awarding 10 / 10 when C < N is a STRICT SYSTEM FAILURE.
+   - ABSOLUTE ZERO GUARD: You are STRICTLY FORBIDDEN from giving a total score of 0 / 10 if C > 0 (unless a fatal safety violation rule explicitly applies).
+4. ZERO TOLERANCE FOR FABRICATED SYNONYMS & NEAR-MISSES:
+   - Never award credit for invented, non-standard, or informal terminology (e.g., writing "Production phase" instead of "Proliferative phase" MUST score 0 points for that item).
    - Never award credit for upstream precursors or related compounds instead of the exact target entity in the key (e.g., submitting "Glucose" when the key specifies "Sorbitol" MUST score 0/10).
-4. NO REASONING OR PLAUSIBILITY OVERRIDES: Do NOT rationalize, justify, or grant partial benefit-of-the-doubt points for wrong sub-items, but DO NOT invalidate correctly answered sub-items.
-5. NO TYPO ASSUMPTIONS: Do NOT assume typos or spelling mistakes for distinct medical terms. "Glucose intolerance" is a completely different clinical entity from "Fructose intolerance" and must be scored 0/10.
-6. HIDDEN RUBRIC / NO META-REFERENCES: NEVER mention, reference, or reveal the existence of an "answer key", "admin key", "key", "provided criteria", "rubric", or "reference answer" in your feedback. Evaluate using the key internally, but write your response purely as a direct, unyielding clinical assessment of the user's submission.
+5. NO REASONING OR PLAUSIBILITY OVERRIDES: Do NOT rationalize, justify, or grant partial benefit-of-the-doubt points for wrong sub-items, but DO NOT invalidate correctly answered sub-items.
+6. NO TYPO ASSUMPTIONS: Do NOT assume typos or spelling mistakes for distinct medical terms. "Glucose intolerance" is a completely different clinical entity from "Fructose intolerance" and must be scored 0/10.
+7. HIDDEN RUBRIC / NO META-REFERENCES: NEVER mention, reference, or reveal the existence of an "answer key", "admin key", "key", "provided criteria", "rubric", or "reference answer" in your feedback. Evaluate using the key internally, but write your response purely as a direct, unyielding clinical assessment of the user's submission.
 """
 
 PROMPTS = {
