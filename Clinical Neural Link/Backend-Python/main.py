@@ -121,21 +121,22 @@ class AdminLoginRequest(BaseModel):
 # ==========================================
 
 PRECISION_RULES = """CRITICAL CLINICAL PRECISION & STRICT ADMIN KEY ENFORCEMENT:
-1. ABSOLUTE ADMIN KEY SOVEREIGNTY: The ADMIN ANSWER KEY provided in the context is the SINGLE, UNYIELDING GROUND TRUTH. You are STRICTLY FORBIDDEN from using internal pre-trained medical knowledge, image interpretations, or plausible reasoning to validate a response that contradicts or diverges from the ADMIN ANSWER KEY string.
-2. MANDATORY LINE-BY-LINE AUDIT ALGORITHM:
-   - Step 1: Parse the user submission into discrete sub-claims (e.g., Target D Label, Target D Blood Supply, Target E Label, Target E Blood Supply, Target F Label, Target F Blood Supply).
-   - Step 2: Compare EACH sub-claim individually and strictly against the exact value/term in the ADMIN ANSWER KEY.
-   - Step 3: If a sub-claim does NOT match the exact value/term in the key (e.g., User submitted 'straight arteries' for Target F, but Key specifies 'spiral arteries'), mark that specific sub-claim IMMEDIATELY as INCORRECT (0 credit for that sub-item).
-3. ZERO TOLERANCE FOR HALLUCINATED VALIDATIONS & RATIONALIZATIONS:
-   - NEVER rationalize, invent clinical exceptions, or justify incorrect sub-claims submitted by the user. If the submission string differs from the key string, it is wrong.
-   - Rejection of Cross-Cycle Terms: Substituting parallel or related terms (e.g., submitting "Follicular phase" instead of "Proliferative phase", or "straight arteries" for the compactum layer) MUST BE MARKED INCORRECT for that specific item.
-4. RIGID MATHEMATICAL PARTIAL CREDIT (COMPUTED MATH):
-   - Determine total required elements (N) and strictly matching correct elements (C).
-   - Compute Score = min(round((C / N) * 10), max_allowed_score).
-   - CRITICAL SYSTEM CONSTRAINT: You are STRICTLY PROHIBITED from outputting 10 / 10 when C < N. If C = 5 and N = 6, the score MUST BE EXACTLY 8 / 10.
-   - ABSOLUTE ZERO GUARD: You are STRICTLY FORBIDDEN from giving a total score of 0 / 10 if C > 0 (unless a fatal safety violation rule explicitly applies).
-5. NO TYPO ASSUMPTIONS: Do NOT assume typos or spelling mistakes for distinct medical terms. "Glucose intolerance" is a completely different clinical entity from "Fructose intolerance" and must be scored 0/10.
-6. HIDDEN RUBRIC / NO META-REFERENCES: NEVER mention, reference, or reveal the existence of an "answer key", "admin key", "key", "provided criteria", "rubric", or "reference answer" in your feedback. Address the user directly as "You", acknowledge correct elements, explicitly point out the mismatched sub-claims, state the standard correct terms, and write your response purely as a direct, unyielding clinical assessment.
+1. ABSOLUTE EXACT-STRING MATCHING (NO SEMANTIC FLEXIBILITY):
+   - The ADMIN ANSWER KEY is the SINGLE AND ONLY SOURCE OF TRUTH.
+   - You MUST perform an EXACT CHARACTER/STRING COMPARISON between the user's submission and the key.
+   - Descriptive synonyms, informal terms, or layman phrasing (e.g., "Bleeding phase" instead of "Menstrual phase", "Production phase" instead of "Proliferative phase") ARE STRICTLY INCORRECT. Mark them as 0 credit immediately.
+2. ZERO TOLERANCE FOR SYNONYM RATIONALIZATION:
+   - You are STRICTLY FORBIDDEN from writing that informal or non-standard terms "match standard nomenclature" or are "clinically accurate."
+   - If the submitted string does not match the standardized medical term in the key, it is an automatic failure for that sub-item.
+3. MANDATORY ALGORITHMIC STEP-BY-STEP EVALUATION:
+   - Step 1: Break the response into N discrete items.
+   - Step 2: Mark each item as MATCH (1) or MISMATCH (0) based purely on string alignment with the key.
+   - Step 3: Calculate score as Score = min(round((C / N) * 10), max_allowed_score).
+   - CONSTRAINT: If C < N, giving 10 / 10 is a SYSTEM FAILURE. (For 2/3 correct, the score MUST BE 7 / 10).
+4. HIDDEN RUBRIC / NO META-REFERENCES:
+   - Evaluate using the key internally, but write feedback purely as a direct clinical assessment to "You".
+   - State clearly: "[Submitted Term] is informal/non-standard. The standard clinical term is [Correct Term]."
+   - NEVER mention "admin key", "rubric", or "provided context".
 """
 
 PROMPTS = {
