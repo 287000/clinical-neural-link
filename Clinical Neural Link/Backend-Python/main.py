@@ -578,15 +578,67 @@ def delete_note(note_id: int, db: Session = Depends(get_db)):
     return {"message": f"Course note {note_id} and all related assessments successfully scrubbed."}
 
 # ----------------------------
-# 🟢 Groq AI Evaluation Endpoint
+# 🟢 Deterministic Scoring & Verification Helpers
 # ----------------------------
+
+def compute_strict_score(user_submission_dict: dict, admin_key_dict: dict) -> Tuple[int, int, int, List[dict]]:
+    """
+    Programmatically calculates exact matches (C) out of total items (N).
+    Prevents LLM math hallucinations and synonym pass-throughs.
+    """
+    total_items = len(admin_key_dict)
+    if total_items == 0:
+        return 0, 0, 0, []
+
+    correct_count = 0
+    mismatches = []
+
+    for key, target_val in admin_key_dict.items():
+        user_val = str(user_submission_dict.get(key, "")).strip()
+        target_val_str = str(target_val).strip()
+
+        # Enforce exact string match (case-insensitive)
+        if user_val.lower() == target_val_str.lower():
+            correct_count += 1
+        else:
+            mismatches.append({
+                "item": key,
+                "submitted": user_val,
+                "expected": target_val_str
+            })
+
+    # Hard mathematical calculation: round((C / N) * 10)
+    calculated_score = round((correct_count / total_items) * 10)
+
+    return calculated_score, correct_count, total_items, mismatches
+
+
+def validate_output_score(parsed_result: dict, expected_score: int) -> dict:
+    """
+    Hard-overrides the returned JSON score to match the programmatically calculated score.
+    Also cleans any score mismatch inside the reasoning text.
+    """
+    parsed_result["score"] = expected_score
+
+    # Fix score text inside reasoning if the LLM outputted a conflicting score string
+    reasoning_text = parsed_result.get("reasoning", "")
+    score_match = re.search(r'(\d+)\s*/\s*10', reasoning_text)
+
+    if score_match:
+        found_score = int(score_match.group(1))
+        if found_score != expected_score:
+            reasoning_text = reasoning_text.replace(f"{found_score}/10", f"{expected_score}/10")
+            reasoning_text = reasoning_text.replace(f"{found_score} / 10", f"{expected_score} / 10")
+            parsed_result["reasoning"] = reasoning_text
+
+    return parsed_result
+
 
 async def prepare_image_for_groq(image_url: str) -> Optional[str]:
     """Passes direct public Supabase URLs or converts legacy local disk images into Base64 format."""
     if not image_url:
         return None
-        
-    # Standard public URLs (Supabase Storage links) pass straight through to Groq
+
     if image_url.startswith(("http://", "https://", "data:image")):
         return image_url
 
@@ -612,6 +664,9 @@ async def prepare_image_for_groq(image_url: str) -> Optional[str]:
 
     return await asyncio.to_thread(_sync_read)
 
+# ----------------------------
+# 🟢 Groq AI Evaluation Endpoint
+# ----------------------------
 
 @app.post("/assessments/evaluate", response_model=EvaluationResult)
 async def evaluate_student_long_answer(payload: GradeRequest):
@@ -674,6 +729,21 @@ async def evaluate_student_long_answer(payload: GradeRequest):
             "1. Start response immediately with '{' and end with '}'.\n"
             "2. DO NOT write scratchpads or markdown formatting outside the JSON."
         )
+        system_eval_prompt = f"""
+SYSTEM OVERRIDE - SCORE IS LOCKED:
+The deterministic grading engine has audited the student response against the database.
+- MANDATORY SCORE: {calculated_score} / 10
+- TOTAL ITEMS (N): {total_items}
+- CORRECT MATCHES (C): {correct_count}
+- MISMATCHED ITEMS: {mismatches}
+
+YOUR TASK:
+Write the clinical feedback for the student. 
+1. State the score as EXACTLY {calculated_score} / 10.
+2. Acknowledge the correct items.
+3. Explicitly penalize the mismatched items listed above. Explain why the submitted term fails exact medical standardization compared to the target term.
+4. DO NOT change the score. DO NOT justify or forgive any mismatched items.
+"""
 
         messages = [
             {"role": "system", "content": base_instruction + format_directive},
