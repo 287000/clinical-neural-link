@@ -620,6 +620,34 @@ def delete_note(note_id: int, db: Session = Depends(get_db)):
 # ----------------------------
 # 🟢 Deterministic Scoring & Verification Helpers
 # ----------------------------
+def parse_student_response_to_dict(response_str) -> dict:
+    """Safely parses JSON strings or key-value structures into a dictionary."""
+    if not response_str:
+        return {}
+
+    if isinstance(response_str, dict):
+        return response_str
+
+    text = str(response_str).strip()
+
+    # Attempt direct JSON parsing
+    try:
+        parsed = json.loads(text)
+        if isinstance(parsed, dict):
+            return parsed
+    except Exception:
+        pass
+
+    # Fallback key-value parser (e.g. "A: Answer\nB: Answer")
+    result = {}
+    for line in text.splitlines():
+        line = line.strip()
+        match = re.match(r"^([A-Za-z0-9\-_]+)[\s:]+(.+)$", line)
+        if match:
+            k, v = match.groups()
+            result[k.strip().upper()] = v.strip()
+
+    return result
 
 from typing import Tuple, List, Dict, Union, Any
 
@@ -729,21 +757,25 @@ async def prepare_image_for_groq(image_url: str) -> Optional[str]:
 @app.post("/assessments/evaluate", response_model=EvaluationResult)
 async def evaluate_student_long_answer(payload: GradeRequest):
     try:
-        is_scenario = bool(payload.vignette_context and payload.vignette_context.strip())
-        raw_img = (payload.image_url or "").strip()
+        # Sanitized string extraction to prevent .strip() crashes on None values
+        vignette_str = str(payload.vignette_context or "").strip()
+        stem_str = str(payload.question_stem or "").strip()
+        key_raw_str = str(payload.ai_answer_key or "").strip()
+        student_raw_str = str(payload.student_response or "").strip()
+        raw_img = str(payload.image_url or "").strip()
+
+        is_scenario = bool(vignette_str)
         has_image = bool(raw_img and raw_img.lower() not in ["none", "null", "undefined"])
 
         # -------------------------------------------------------------
-        # 1. ALWAYS AUDIT MULTI-ITEM RESPONSES (HANDLES STRINGS + JSON)
+        # 1. ALWAYS AUDIT MULTI-ITEM RESPONSES
         # -------------------------------------------------------------
-        # Parse inputs into dictionary maps using generic parser (supports JSON or 'A: val\nB: val')
         student_dict = parse_student_response_to_dict(payload.student_response)
         admin_dict = parse_student_response_to_dict(payload.ai_answer_key)
 
         system_eval_prompt = ""
         locked_score = None
 
-        # Execute programmatic audit whenever the key contains multiple items (e.g., A, B, C)
         if len(admin_dict) > 1 and len(student_dict) > 0:
             calculated_score, correct_count, total_items, mismatches = compute_strict_score(student_dict, admin_dict)
             locked_score = calculated_score
@@ -764,26 +796,26 @@ Write the clinical feedback for the student.
 """
 
         # -------------------------------------------------------------
-        # 2. CONSTRUCT PROMPTS & FORCE LIST ROUTE IF APPLICABLE
+        # 2. CONSTRUCT PROMPTS
         # -------------------------------------------------------------
         q_type = payload.question_type.upper() if payload.question_type else "RECALL"
         if len(admin_dict) > 1:
             q_type = "LIST"
 
         if is_scenario:
-            base_instruction = SCENARIO_PROMPTS.get(q_type, SCENARIO_PROMPTS["RECALL"])
+            base_instruction = SCENARIO_PROMPTS.get(q_type, SCENARIO_PROMPTS.get("RECALL", ""))
             text_prompt = (
-                f"CASE VIGNETTE CONTEXT:\n{payload.vignette_context.strip()}\n\n"
-                f"SUB-QUESTION STEM: {payload.question_stem.strip()}\n\n"
-                f"ADMIN ANSWER KEY: {payload.ai_answer_key.strip()}\n\n"
-                f"STUDENT RESPONSE: {payload.student_response.strip()}"
+                f"CASE VIGNETTE CONTEXT:\n{vignette_str}\n\n"
+                f"SUB-QUESTION STEM: {stem_str}\n\n"
+                f"ADMIN ANSWER KEY: {key_raw_str}\n\n"
+                f"STUDENT RESPONSE: {student_raw_str}"
             )
         else:
-            base_instruction = PROMPTS.get(q_type, PROMPTS["RECALL"])
+            base_instruction = PROMPTS.get(q_type, PROMPTS.get("RECALL", ""))
             text_prompt = (
-                f"QUESTION STEM: {payload.question_stem.strip()}\n\n"
-                f"ADMIN ANSWER KEY: {payload.ai_answer_key.strip()}\n\n"
-                f"STUDENT RESPONSE: {payload.student_response.strip()}"
+                f"QUESTION STEM: {stem_str}\n\n"
+                f"ADMIN ANSWER KEY: {key_raw_str}\n\n"
+                f"STUDENT RESPONSE: {student_raw_str}"
             )
 
         if has_image:
@@ -805,7 +837,6 @@ Write the clinical feedback for the student.
         else:
             user_content = text_prompt
 
-        # Output format specification
         expected_score_repr = locked_score if locked_score is not None else 10
         format_directive = (
             "\n\nSYSTEM INSTRUCTION: You are a JSON-only API generator.\n"
@@ -829,7 +860,6 @@ Write the clinical feedback for the student.
 
         parsed_result = parse_ai_json(raw_text)
 
-        # Enforce hard-override ONLY if a deterministic audit was calculated
         if locked_score is not None:
             parsed_result = validate_output_score(parsed_result, locked_score)
 
