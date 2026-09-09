@@ -676,21 +676,49 @@ async def evaluate_student_long_answer(payload: GradeRequest):
         has_image = bool(raw_img and raw_img.lower() not in ["none", "null", "undefined"])
 
         # -------------------------------------------------------------
-        # 1. RUN DETERMINISTIC AUDIT FIRST
+        # 1. CONDITIONAL DETERMINISTIC AUDIT (ONLY FOR STRUCTURED LISTS)
         # -------------------------------------------------------------
-        # Try parsing structured inputs if JSON string format is used
-        try:
-            student_dict = json.loads(payload.student_response) if payload.student_response.strip().startswith("{") else {"item_1": payload.student_response}
-            admin_dict = json.loads(payload.ai_answer_key) if payload.ai_answer_key.strip().startswith("{") else {"item_1": payload.ai_answer_key}
-        except Exception:
-            student_dict = {"response": payload.student_response}
-            admin_dict = {"response": payload.ai_answer_key}
+        student_raw = payload.student_response.strip()
+        key_raw = payload.ai_answer_key.strip()
+        
+        # Check if inputs are explicitly structured JSON dictionaries (e.g., {"A": "val", "B": "val"})
+        is_structured_list = (
+            payload.question_type == "LIST" and 
+            student_raw.startswith("{") and 
+            key_raw.startswith("{")
+        )
 
-        # Programmatically calculate exact math match
-        calculated_score, correct_count, total_items, mismatches = compute_strict_score(student_dict, admin_dict)
+        system_eval_prompt = ""
+        locked_score = None
+
+        if is_structured_list:
+            try:
+                student_dict = json.loads(student_raw)
+                admin_dict = json.loads(key_raw)
+                
+                # Programmatically calculate exact math match
+                calculated_score, correct_count, total_items, mismatches = compute_strict_score(student_dict, admin_dict)
+                locked_score = calculated_score
+
+                system_eval_prompt = f"""\n\nSYSTEM OVERRIDE - SCORE IS LOCKED:
+The deterministic grading engine has audited the student response against the database.
+- MANDATORY SCORE: {calculated_score} / 10
+- TOTAL ITEMS (N): {total_items}
+- CORRECT MATCHES (C): {correct_count}
+- MISMATCHED ITEMS: {mismatches}
+
+YOUR TASK:
+Write the clinical feedback for the student. 
+1. State the score as EXACTLY {calculated_score} / 10.
+2. Acknowledge the correct items.
+3. Explicitly penalize the mismatched items listed above. Explain why the submitted term fails exact medical standardization compared to the target term.
+4. DO NOT change the score. DO NOT justify or forgive any mismatched items.
+"""
+            except Exception as audit_err:
+                print(f"⚠️ Structured audit parsing skipped: {audit_err}")
 
         # -------------------------------------------------------------
-        # 2. CONSTRUCT PROMPTS WITH COMPUTED VALUES
+        # 2. CONSTRUCT PROMPTS
         # -------------------------------------------------------------
         if is_scenario:
             base_instruction = SCENARIO_PROMPTS.get(payload.question_type, SCENARIO_PROMPTS["RECALL"])
@@ -727,33 +755,19 @@ async def evaluate_student_long_answer(payload: GradeRequest):
         else:
             user_content = text_prompt
 
-        # Inject computed score variables into locked prompt
-        system_eval_prompt = f"""SYSTEM OVERRIDE - SCORE IS LOCKED:
-The deterministic grading engine has audited the student response against the database.
-- MANDATORY SCORE: {calculated_score} / 10
-- TOTAL ITEMS (N): {total_items}
-- CORRECT MATCHES (C): {correct_count}
-- MISMATCHED ITEMS: {mismatches}
-
-YOUR TASK:
-Write the clinical feedback for the student. 
-1. State the score as EXACTLY {calculated_score} / 10.
-2. Acknowledge the correct items.
-3. Explicitly penalize the mismatched items listed above. Explain why the submitted term fails exact medical standardization compared to the target term.
-4. DO NOT change the score. DO NOT justify or forgive any mismatched items.
-"""
-
+        # Output format specification
+        expected_score_repr = locked_score if locked_score is not None else 10
         format_directive = (
             "\n\nSYSTEM INSTRUCTION: You are a JSON-only API generator.\n"
             "Output MUST be valid JSON formatted exactly like this:\n"
-            f'{{"score": {calculated_score}, "reasoning": "Detailed feedback addressing the user as You."}}\n'
+            f'{{"score": {expected_score_repr}, "reasoning": "Detailed feedback addressing the user as You."}}\n'
             "CRITICAL RULES:\n"
             "1. Start response immediately with '{{' and end with '}}'.\n"
             "2. DO NOT write scratchpads or markdown formatting outside the JSON."
         )
 
         messages = [
-            {"role": "system", "content": base_instruction + "\n\n" + system_eval_prompt + format_directive},
+            {"role": "system", "content": base_instruction + system_eval_prompt + format_directive},
             {"role": "user", "content": user_content}
         ]
 
@@ -765,9 +779,10 @@ Write the clinical feedback for the student.
 
         parsed_result = parse_ai_json(raw_text)
 
-        # Enforce exact match override on JSON result
-        parsed_result = validate_output_score(parsed_result, calculated_score)
-        
+        # Enforce hard-override ONLY if a deterministic audit was calculated
+        if locked_score is not None:
+            parsed_result = validate_output_score(parsed_result, locked_score)
+
         print(f"✨ Groq Evaluation ({target_model}) [{payload.question_type}] [Image Attached: {has_image}]: {parsed_result['score']}/10")
 
         return parsed_result
