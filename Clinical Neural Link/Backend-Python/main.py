@@ -780,6 +780,7 @@ async def evaluate_student_long_answer(payload: GradeRequest):
             calculated_score, correct_count, total_items, mismatches = compute_strict_score(student_dict, admin_dict)
             locked_score = calculated_score
 
+            # Change this section in your system_eval_prompt string:
             system_eval_prompt = f"""\n\nSYSTEM OVERRIDE - SCORE IS LOCKED AT {calculated_score} / 10:
 The deterministic grading engine has audited the student response against the database.
 - MANDATORY SCORE: {calculated_score} / 10
@@ -789,10 +790,10 @@ The deterministic grading engine has audited the student response against the da
 
 YOUR TASK:
 Write the clinical feedback for the student.
-1. State the score as EXACTLY {calculated_score} / 10.
-2. Explicitly acknowledge and praise the correct items. DO NOT mark them as incorrect or invent false errors.
-3. Restrict all negative feedback ONLY to the mismatched items listed above ({mismatches}). Explain why the submitted term fails exact medical standardization compared to the target term.
-4. DO NOT change the score. DO NOT give a 0/10 score when C > 0.
+1. Output "score": {calculated_score} in your JSON response. DO NOT output 0.
+2. Explicitly acknowledge and praise the correct items ({correct_count}/{total_items}).
+3. Restrict all negative feedback ONLY to the mismatched items listed above ({mismatches}).
+4. NEVER override or reduce the calculated score under any circumstances.
 """
 
         # -------------------------------------------------------------
