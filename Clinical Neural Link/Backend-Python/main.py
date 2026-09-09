@@ -235,27 +235,46 @@ SCENARIO_PROMPTS = {
 3. STRICT FACTUAL & SAFETY PENALTY: If the user states a major physiological impossibility, dangerous procedural error, or substitutes a key target entity with a precursor/informal term, you MUST NOT exceed 3 / 10.
 4. STRICT FEEDBACK RULE: Address the user directly as "You". Explicitly highlight the exact points where your submission contained factual errors or improper terminology. NEVER write "the student", "the response", "provided context", "answer key", "admin key", "key", or "rubric"."""
 }
+
+
 def parse_ai_json(raw_text: str) -> dict:
     """Extracts score and reasoning from LLM output while stripping scratchpads, markdown blocks, and thinking tags."""
     if not raw_text or not raw_text.strip():
         return {"score": 0, "reasoning": "AI evaluation engine returned an empty response."}
 
+    # 1. Clean scratchpads, thinking blocks, and markdown code fencing
     cleaned = re.sub(r'<think>.*?</think>', '', raw_text, flags=re.DOTALL)
     cleaned = re.sub(r'```(?:json)?', '', cleaned, flags=re.IGNORECASE)
     cleaned = cleaned.replace('```', '').strip()
 
     def extract_fields(data_dict: dict) -> dict:
-        score_val = max(0, min(10, int(data_dict.get("score", 0))))
+        """Safely parses score (supports int/float/numeric string) and cleans reasoning."""
+        raw_score = data_dict.get("score", 0)
+        
+        try:
+            # Safely cast numeric strings or floats (e.g., "3", 3.33) without throwing ValueError
+            numeric_score = round(float(raw_score))
+        except (ValueError, TypeError):
+            numeric_score = 0
+
+        score_val = max(0, min(10, numeric_score))
+        
         reasoning_val = str(
             data_dict.get("reasoning") or 
             data_dict.get("assessment") or 
             data_dict.get("feedback") or 
             ""
         ).strip()
+
+        # Unescape escaped JSON quotes or newlines if raw regex was used
+        reasoning_val = reasoning_val.encode().decode('unicode_escape', errors='ignore') if '\\' in reasoning_val else reasoning_val
+
         if not reasoning_val:
             reasoning_val = "You provided a complete and correct response."
+
         return {"score": score_val, "reasoning": reasoning_val}
 
+    # 2. Try direct JSON parsing
     try:
         data = json.loads(cleaned)
         if isinstance(data, dict):
@@ -263,6 +282,7 @@ def parse_ai_json(raw_text: str) -> dict:
     except Exception:
         pass
 
+    # 3. Fallback: Extract outermost JSON object via Greedy Match
     json_match = re.search(r'\{[\s\S]*\}', cleaned)
     if json_match:
         try:
@@ -272,15 +292,31 @@ def parse_ai_json(raw_text: str) -> dict:
         except Exception:
             pass
 
-    score_match = re.search(r'"score"\s*:\s*(\d+)', cleaned)
-    score = int(score_match.group(1)) if score_match else 0
+    # 4. Fallback: Direct Regex Field Extraction (handles truncated or malformed JSON output)
+    score_match = re.search(r'"score"\s*:\s*([0-9]+(?:\.[0-9]+)?)', cleaned)
+    score_raw = score_match.group(1) if score_match else "0"
+    
+    try:
+        score_num = round(float(score_raw))
+    except ValueError:
+        score_num = 0
 
     reasoning_match = re.search(r'"(?:reasoning|assessment|feedback)"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"', cleaned, re.DOTALL)
-    reasoning = reasoning_match.group(1) if reasoning_match else "Evaluation completed successfully."
+    
+    if reasoning_match:
+        raw_reasoning = reasoning_match.group(1)
+        # Process backslash escapes from regex capture
+        try:
+            reasoning = raw_reasoning.encode('utf-8').decode('unicode_escape')
+        except Exception:
+            reasoning = raw_reasoning
+    else:
+        # Ultimate fallback if reasoning key quotes were cut off mid-stream
+        reasoning = "Evaluation completed successfully."
 
     return {
-        "score": max(0, min(10, score)),
-        "reasoning": reasoning
+        "score": max(0, min(10, score_num)),
+        "reasoning": reasoning.strip()
     }
 
 async def call_groq_with_retry(messages: list, target_model: str, max_retries: int = 4):
