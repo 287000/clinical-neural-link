@@ -675,18 +675,26 @@ async def evaluate_student_long_answer(payload: GradeRequest):
         raw_img = (payload.image_url or "").strip()
         has_image = bool(raw_img and raw_img.lower() not in ["none", "null", "undefined"])
 
-        admin_key_rule = (
-            "CRITICAL GRADING DIRECTIVE — ADMIN ANSWER KEY IS ABSOLUTE GROUND TRUTH:\n"
-            "1. The provided ADMIN ANSWER KEY is supreme and non-negotiable.\n"
-            "2. If the STUDENT RESPONSE matches or is semantically equivalent to the ADMIN ANSWER KEY, "
-            "you MUST award FULL MARKS (10/10), even if your own visual OCR or internal reasoning disagrees.\n"
-            "3. Use the attached image ONLY to understand the context, NOT to override or contradict the ADMIN ANSWER KEY.\n\n"
-        )
+        # -------------------------------------------------------------
+        # 1. RUN DETERMINISTIC AUDIT FIRST
+        # -------------------------------------------------------------
+        # Try parsing structured inputs if JSON string format is used
+        try:
+            student_dict = json.loads(payload.student_response) if payload.student_response.strip().startswith("{") else {"item_1": payload.student_response}
+            admin_dict = json.loads(payload.ai_answer_key) if payload.ai_answer_key.strip().startswith("{") else {"item_1": payload.ai_answer_key}
+        except Exception:
+            student_dict = {"response": payload.student_response}
+            admin_dict = {"response": payload.ai_answer_key}
 
+        # Programmatically calculate exact math match
+        calculated_score, correct_count, total_items, mismatches = compute_strict_score(student_dict, admin_dict)
+
+        # -------------------------------------------------------------
+        # 2. CONSTRUCT PROMPTS WITH COMPUTED VALUES
+        # -------------------------------------------------------------
         if is_scenario:
             base_instruction = SCENARIO_PROMPTS.get(payload.question_type, SCENARIO_PROMPTS["RECALL"])
             text_prompt = (
-                f"{admin_key_rule}"
                 f"CASE VIGNETTE CONTEXT:\n{payload.vignette_context.strip()}\n\n"
                 f"SUB-QUESTION STEM: {payload.question_stem.strip()}\n\n"
                 f"ADMIN ANSWER KEY: {payload.ai_answer_key.strip()}\n\n"
@@ -695,7 +703,6 @@ async def evaluate_student_long_answer(payload: GradeRequest):
         else:
             base_instruction = PROMPTS.get(payload.question_type, PROMPTS["RECALL"])
             text_prompt = (
-                f"{admin_key_rule}"
                 f"QUESTION STEM: {payload.question_stem.strip()}\n\n"
                 f"ADMIN ANSWER KEY: {payload.ai_answer_key.strip()}\n\n"
                 f"STUDENT RESPONSE: {payload.student_response.strip()}"
@@ -713,7 +720,6 @@ async def evaluate_student_long_answer(payload: GradeRequest):
 
         if has_image:
             image_url_str = await prepare_image_for_groq(raw_img)
-            
             user_content = [
                 {"type": "text", "text": text_prompt},
                 {"type": "image_url", "image_url": {"url": image_url_str}}
@@ -721,16 +727,8 @@ async def evaluate_student_long_answer(payload: GradeRequest):
         else:
             user_content = text_prompt
 
-        format_directive = (
-            "\n\nSYSTEM INSTRUCTION: You are a JSON-only API generator.\n"
-            "Output MUST be valid JSON formatted exactly like this:\n"
-            '{"score": 10, "reasoning": "Detailed feedback addressing the user as You."}\n'
-            "CRITICAL RULES:\n"
-            "1. Start response immediately with '{' and end with '}'.\n"
-            "2. DO NOT write scratchpads or markdown formatting outside the JSON."
-        )
-        system_eval_prompt = f"""
-SYSTEM OVERRIDE - SCORE IS LOCKED:
+        # Inject computed score variables into locked prompt
+        system_eval_prompt = f"""SYSTEM OVERRIDE - SCORE IS LOCKED:
 The deterministic grading engine has audited the student response against the database.
 - MANDATORY SCORE: {calculated_score} / 10
 - TOTAL ITEMS (N): {total_items}
@@ -745,8 +743,17 @@ Write the clinical feedback for the student.
 4. DO NOT change the score. DO NOT justify or forgive any mismatched items.
 """
 
+        format_directive = (
+            "\n\nSYSTEM INSTRUCTION: You are a JSON-only API generator.\n"
+            "Output MUST be valid JSON formatted exactly like this:\n"
+            f'{{"score": {calculated_score}, "reasoning": "Detailed feedback addressing the user as You."}}\n'
+            "CRITICAL RULES:\n"
+            "1. Start response immediately with '{{' and end with '}}'.\n"
+            "2. DO NOT write scratchpads or markdown formatting outside the JSON."
+        )
+
         messages = [
-            {"role": "system", "content": base_instruction + format_directive},
+            {"role": "system", "content": base_instruction + "\n\n" + system_eval_prompt + format_directive},
             {"role": "user", "content": user_content}
         ]
 
@@ -757,6 +764,9 @@ Write the clinical feedback for the student.
         raw_text = response.choices[0].message.content or ""
 
         parsed_result = parse_ai_json(raw_text)
+
+        # Enforce exact match override on JSON result
+        parsed_result = validate_output_score(parsed_result, calculated_score)
         
         print(f"✨ Groq Evaluation ({target_model}) [{payload.question_type}] [Image Attached: {has_image}]: {parsed_result['score']}/10")
 
