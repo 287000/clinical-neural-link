@@ -819,13 +819,16 @@ Write the clinical feedback for the student.
                 f"STUDENT RESPONSE: {student_raw_str}"
             )
 
-        if has_image:
-            spatial_instruction = (
-                "VISUAL DIAGRAM GROUNDING DIRECTIVE:\n"
-                "1. Explicitly trace x-axis intervals and label markers (e.g., Box A = Days 0-4, Box B = Days 4-14, Box C = Days 14-28).\n"
-                "2. ALWAYS anchor your visual reading to the ADMIN ANSWER KEY to avoid spatial or letter-shift inversions.\n\n"
-            )
-            text_prompt = spatial_instruction + text_prompt
+       # Add an absolute grounding directive to your prompt construction
+if has_image:
+    spatial_instruction = (
+        "STRICT GROUNDING & TRUTH DIRECTIVE:\n"
+        "1. THE ADMIN ANSWER KEY IS THE SINGLE SOURCE OF TRUTH. DO NOT RE-INTERPRET THE DIAGRAM OR POINTER LOCATIONS.\n"
+        "2. Assume the Admin Answer Key correctly maps the visual labels (e.g., D, E, F) to their anatomical definitions.\n"
+        "3. Grade the Student Response STRICTLY by comparing it against the text in the ADMIN ANSWER KEY.\n"
+        "4. DO NOT invent visual errors or claims that pointer positions are inverted. If the student matched the Admin Key, award full credit for that component.\n\n"
+    )
+    text_prompt = spatial_instruction + text_prompt
 
         target_model = "qwen/Qwen3.8-27B"
 
