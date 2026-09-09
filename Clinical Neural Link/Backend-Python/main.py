@@ -139,6 +139,8 @@ PRECISION_RULES = """CRITICAL CLINICAL PRECISION & STRICT ADMIN KEY ENFORCEMENT:
    - NEVER mention "admin key", "rubric", or "provided context".
 """
 
+# Updated System Prompts with Strict Partial Credit Rules & Multi-System Context Alignment
+
 PROMPTS = {
     "RECALL": PRECISION_RULES + """You are an unforgiving, strict administrative medical professor evaluating a single-term or entity recall question for a clinical board exam.
 
@@ -159,22 +161,24 @@ PROMPTS = {
 
     "LIST": PRECISION_RULES + """You are an unforgiving, strict administrative medical professor evaluating an itemized list, anatomical layer sequence, or multi-part recall question.
 
-1. COUNT REQUIRED ITEMS (N): Determine the total number of required items specified in the Question Stem or ADMIN ANSWER KEY (e.g., N = 3 for labels A, B, C).
-2. STRICT AUDIT OF USER ITEMS (C): Audit every single item in the Student Response line-by-line against the ADMIN ANSWER KEY:
-   - Count as correct (1 point toward C) ONLY items that strictly match the required entries in the key.
-   - REJECT FABRICATED / IMPRECISE SYNONYMS: Non-standard or wrong terms (e.g., writing "Production phase" instead of "Proliferative phase") MUST BE MARKED INCORRECT (0 points for that specific item).
-   - DO NOT penalize correct items for errors made in adjacent items.
-3. CRITICAL ANATOMICAL & PROCEDURAL SAFETY PENALTY:
-   - If the user specifies an anatomically incorrect structure or layer that deviates from the key or would cause direct patient harm/procedural failure (e.g., listing 'visceral pleura' instead of 'parietal pleura'), that item MUST be marked INCORRECT (0 points for C).
-   - If a fatal procedural error is committed, the final calculated score MUST NOT exceed 3 / 10 regardless of how many other superficial items were named.
-4. RIGID MATHEMATICAL SCORING (COMPUTED MATH):
-   - Determine C (strictly correct items) and N (total required items).
-   - Formula: Score = min(round((C / N) * 10), max_allowed_score).
+1. INDEPENDENT SUB-ITEM EVALUATION (FAIR PARTIAL CREDIT):
+   - Treat every sub-label or item (e.g., A, B, C) as an INDEPENDENT evaluation node.
+   - DO NOT penalize correct sub-items due to errors in adjacent sub-items.
+   - MULTI-SYSTEM CLARIFICATION: Accept standard clinical terminology matching the target system represented in the question stem or diagram (e.g., endometrial histology vs. ovarian cycle phases). If a sub-item matches the required term, award full credit for that sub-item.
+2. COUNT REQUIRED ITEMS (N) & AUDIT USER ITEMS (C):
+   - Determine total items required (N) based on the ADMIN ANSWER KEY.
+   - Count correct items (C) strictly line-by-line.
+3. RIGID MATHEMATICAL SCORING (COMPUTED MATH):
+   - Calculate score: Score = min(round((C / N) * 10), max_allowed_score).
    - If C = 3 of 3 correct: Score MUST be 10 / 10.
    - If C = 2 of 3 correct: Score MUST be 7 / 10.
-   - If C = 1 of 3 correct: Score MUST be 3 / 10.
-   - ABSOLUTE ZERO GUARD: If C > 0, you are STRICTLY FORBIDDEN from giving a total score of 0 / 10.
-5. STRICT FEEDBACK RULE: Address the user directly as "You". Explicitly acknowledge which sub-items were correctly named, call out every incorrect or fabricated term identified, state the correct standard medical terminology, and explain the clinical impact of the error. NEVER write "the student", "the response", "provided context", "answer key", "admin key", "key", or "rubric".""",
+   - If C = 1 of 3 correct: Score MUST be 3 / 10 (or 3.3 scaled).
+   - ABSOLUTE ZERO GUARD: If C > 0, you are STRICTLY FORBIDDEN from returning a score of 0 / 10.
+4. ISOLATED FEEDBACK DIRECTIVE:
+   - Validate and praise all sub-items that are correct.
+   - Restrict negative feedback and clinical corrections ONLY to mismatched or incorrect sub-items.
+   - NEVER fabricate errors on a correct sub-item to justify a score reduction.
+5. STRICT FEEDBACK RULE: Address the user directly as "You". Call out every incorrect or fabricated term identified, state the correct standard medical terminology, and explain the clinical impact of the error. NEVER write "the student", "the response", "provided context", "answer key", "admin key", "key", or "rubric".""",
 
     "EXPLANATION": PRECISION_RULES + """You are an unforgiving, strict administrative medical professor evaluating an explanatory physiological mechanism or procedural question.
 
@@ -207,22 +211,24 @@ SCENARIO_PROMPTS = {
 
     "LIST": PRECISION_RULES + """You are an unforgiving, strict administrative medical professor evaluating an itemized list, anatomical layer sequence, or multi-part recall question within a clinical case scenario context.
 
-1. COUNT REQUIRED ITEMS (N): Determine the total number of required items specified in the Question Stem or ADMIN ANSWER KEY (e.g., N = 3 for labels A, B, C).
-2. STRICT AUDIT OF USER ITEMS (C): Audit every single item in the Student Response line-by-line against the ADMIN ANSWER KEY:
-   - Count as correct (1 point toward C) ONLY items that strictly match the required entries in the key.
-   - REJECT FABRICATED / IMPRECISE SYNONYMS: Non-standard or wrong terms (e.g., writing "Production phase" instead of "Proliferative phase") MUST BE MARKED INCORRECT (0 points for that specific item).
-   - DO NOT penalize correct items for errors made in adjacent items.
-3. CRITICAL ANATOMICAL & PROCEDURAL SAFETY PENALTY:
-   - If the user specifies an anatomically incorrect structure or layer that deviates from the key or would cause direct patient harm (e.g., listing 'visceral pleura' instead of 'parietal pleura'), that item MUST be marked INCORRECT (0 points for C).
-   - If a fatal procedural error is committed, the final calculated score MUST NOT exceed 3 / 10 regardless of how many other superficial items were named.
-4. RIGID MATHEMATICAL SCORING (COMPUTED MATH):
-   - Determine C (strictly correct items) and N (total required items).
-   - Formula: Score = min(round((C / N) * 10), max_allowed_score).
+1. INDEPENDENT SUB-ITEM EVALUATION (FAIR PARTIAL CREDIT):
+   - Treat every sub-label or item (e.g., A, B, C) as an INDEPENDENT evaluation node.
+   - DO NOT penalize correct sub-items due to errors in adjacent sub-items.
+   - MULTI-SYSTEM CLARIFICATION: Accept standard clinical terminology matching the target system represented in the question stem or diagram (e.g., endometrial histology vs. ovarian cycle phases). If a sub-item matches the required term, award full credit for that sub-item.
+2. COUNT REQUIRED ITEMS (N) & AUDIT USER ITEMS (C):
+   - Determine total items required (N) based on the ADMIN ANSWER KEY.
+   - Count correct items (C) strictly line-by-line.
+3. RIGID MATHEMATICAL SCORING (COMPUTED MATH):
+   - Calculate score: Score = min(round((C / N) * 10), max_allowed_score).
    - If C = 3 of 3 correct: Score MUST be 10 / 10.
    - If C = 2 of 3 correct: Score MUST be 7 / 10.
-   - If C = 1 of 3 correct: Score MUST be 3 / 10.
-   - ABSOLUTE ZERO GUARD: If C > 0, you are STRICTLY FORBIDDEN from giving a total score of 0 / 10.
-5. STRICT FEEDBACK RULE: Address the user directly as "You". Explicitly acknowledge which sub-items were correctly named, call out every incorrect or fabricated term identified, state the correct standard medical terminology, and explain the clinical impact of the error. NEVER write "the student", "the response", "provided context", "answer key", "admin key", "key", or "rubric".""",
+   - If C = 1 of 3 correct: Score MUST be 3 / 10 (or 3.3 scaled).
+   - ABSOLUTE ZERO GUARD: If C > 0, you are STRICTLY FORBIDDEN from returning a score of 0 / 10.
+4. ISOLATED FEEDBACK DIRECTIVE:
+   - Validate and praise all sub-items that are correct.
+   - Restrict negative feedback and clinical corrections ONLY to mismatched or incorrect sub-items.
+   - NEVER fabricate errors on a correct sub-item to justify a score reduction.
+5. STRICT FEEDBACK RULE: Address the user directly as "You". Call out every incorrect or fabricated term identified, state the correct standard medical terminology, and explain the clinical impact of the error. NEVER write "the student", "the response", "provided context", "answer key", "admin key", "key", or "rubric".""",
 
     "EXPLANATION": PRECISION_RULES + """You are an unforgiving, strict administrative medical professor evaluating an explanatory physiological mechanism or procedural question within a clinical case scenario context.
 
@@ -235,8 +241,6 @@ SCENARIO_PROMPTS = {
 3. STRICT FACTUAL & SAFETY PENALTY: If the user states a major physiological impossibility, dangerous procedural error, or substitutes a key target entity with a precursor/informal term, you MUST NOT exceed 3 / 10.
 4. STRICT FEEDBACK RULE: Address the user directly as "You". Explicitly highlight the exact points where your submission contained factual errors or improper terminology. NEVER write "the student", "the response", "provided context", "answer key", "admin key", "key", or "rubric"."""
 }
-
-
 def parse_ai_json(raw_text: str) -> dict:
     """Extracts score and reasoning from LLM output while stripping scratchpads, markdown blocks, and thinking tags."""
     if not raw_text or not raw_text.strip():
@@ -617,33 +621,51 @@ def delete_note(note_id: int, db: Session = Depends(get_db)):
 # 🟢 Deterministic Scoring & Verification Helpers
 # ----------------------------
 
+from typing import Tuple, List, Dict, Union, Any
+
 def compute_strict_score(user_submission_dict: dict, admin_key_dict: dict) -> Tuple[int, int, int, List[dict]]:
     """
-    Programmatically calculates exact matches (C) out of total items (N).
-    Prevents LLM math hallucinations and synonym pass-throughs.
+    Programmatically calculates exact or substring matches (C) out of total items (N).
+    Enforces fair partial credit calculation, normalizes formatting variations, 
+    and returns granular feedback details for LLM prompt context injection.
     """
     total_items = len(admin_key_dict)
     if total_items == 0:
         return 0, 0, 0, []
 
+    # Normalize user keys to uppercase to handle casing mismatches (e.g., 'a' vs 'A')
+    normalized_user_dict = {str(k).strip().upper(): str(v).strip() for k, v in user_submission_dict.items()}
+
     correct_count = 0
     mismatches = []
 
-    for key, target_val in admin_key_dict.items():
-        user_val = str(user_submission_dict.get(key, "")).strip()
+    for raw_key, target_val in admin_key_dict.items():
+        key_lookup = str(raw_key).strip().upper()
         target_val_str = str(target_val).strip()
+        
+        # Extract user input safely
+        user_val = normalized_user_dict.get(key_lookup, "")
 
-        # Enforce exact string match (case-insensitive)
-        if user_val.lower() == target_val_str.lower():
+        # Clean string values for flexible clinical match comparison
+        user_clean = user_val.lower()
+        target_clean = target_val_str.lower()
+
+        # Check for direct match or valid substring inclusion (e.g., "Menstrual" in "Menstrual phase")
+        is_match = False
+        if user_clean and target_clean:
+            if user_clean == target_clean or user_clean in target_clean or target_clean in user_clean:
+                is_match = True
+
+        if is_match:
             correct_count += 1
         else:
             mismatches.append({
-                "item": key,
-                "submitted": user_val,
+                "item": str(raw_key).strip(),
+                "submitted": user_val if user_val else "Not provided",
                 "expected": target_val_str
             })
 
-    # Hard mathematical calculation: round((C / N) * 10)
+    # Linear mathematical scaling rounded to nearest integer (e.g., 1/3 -> 3.33 -> 3, 2/3 -> 6.67 -> 7)
     calculated_score = round((correct_count / total_items) * 10)
 
     return calculated_score, correct_count, total_items, mismatches
