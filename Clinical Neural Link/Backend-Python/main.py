@@ -734,31 +734,21 @@ async def evaluate_student_long_answer(payload: GradeRequest):
         has_image = bool(raw_img and raw_img.lower() not in ["none", "null", "undefined"])
 
         # -------------------------------------------------------------
-        # 1. CONDITIONAL DETERMINISTIC AUDIT (ONLY FOR STRUCTURED LISTS)
+        # 1. ALWAYS AUDIT MULTI-ITEM RESPONSES (HANDLES STRINGS + JSON)
         # -------------------------------------------------------------
-        student_raw = payload.student_response.strip()
-        key_raw = payload.ai_answer_key.strip()
-        
-        # Check if inputs are explicitly structured JSON dictionaries (e.g., {"A": "val", "B": "val"})
-        is_structured_list = (
-            payload.question_type == "LIST" and 
-            student_raw.startswith("{") and 
-            key_raw.startswith("{")
-        )
+        # Parse inputs into dictionary maps using generic parser (supports JSON or 'A: val\nB: val')
+        student_dict = parse_student_response_to_dict(payload.student_response)
+        admin_dict = parse_student_response_to_dict(payload.ai_answer_key)
 
         system_eval_prompt = ""
         locked_score = None
 
-        if is_structured_list:
-            try:
-                student_dict = json.loads(student_raw)
-                admin_dict = json.loads(key_raw)
-                
-                # Programmatically calculate exact math match
-                calculated_score, correct_count, total_items, mismatches = compute_strict_score(student_dict, admin_dict)
-                locked_score = calculated_score
+        # Execute programmatic audit whenever the key contains multiple items (e.g., A, B, C)
+        if len(admin_dict) > 1 and len(student_dict) > 0:
+            calculated_score, correct_count, total_items, mismatches = compute_strict_score(student_dict, admin_dict)
+            locked_score = calculated_score
 
-                system_eval_prompt = f"""\n\nSYSTEM OVERRIDE - SCORE IS LOCKED:
+            system_eval_prompt = f"""\n\nSYSTEM OVERRIDE - SCORE IS LOCKED AT {calculated_score} / 10:
 The deterministic grading engine has audited the student response against the database.
 - MANDATORY SCORE: {calculated_score} / 10
 - TOTAL ITEMS (N): {total_items}
@@ -766,20 +756,22 @@ The deterministic grading engine has audited the student response against the da
 - MISMATCHED ITEMS: {mismatches}
 
 YOUR TASK:
-Write the clinical feedback for the student. 
+Write the clinical feedback for the student.
 1. State the score as EXACTLY {calculated_score} / 10.
-2. Acknowledge the correct items.
-3. Explicitly penalize the mismatched items listed above. Explain why the submitted term fails exact medical standardization compared to the target term.
-4. DO NOT change the score. DO NOT justify or forgive any mismatched items.
+2. Explicitly acknowledge and praise the correct items. DO NOT mark them as incorrect or invent false errors.
+3. Restrict all negative feedback ONLY to the mismatched items listed above ({mismatches}). Explain why the submitted term fails exact medical standardization compared to the target term.
+4. DO NOT change the score. DO NOT give a 0/10 score when C > 0.
 """
-            except Exception as audit_err:
-                print(f"⚠️ Structured audit parsing skipped: {audit_err}")
 
         # -------------------------------------------------------------
-        # 2. CONSTRUCT PROMPTS
+        # 2. CONSTRUCT PROMPTS & FORCE LIST ROUTE IF APPLICABLE
         # -------------------------------------------------------------
+        q_type = payload.question_type.upper() if payload.question_type else "RECALL"
+        if len(admin_dict) > 1:
+            q_type = "LIST"
+
         if is_scenario:
-            base_instruction = SCENARIO_PROMPTS.get(payload.question_type, SCENARIO_PROMPTS["RECALL"])
+            base_instruction = SCENARIO_PROMPTS.get(q_type, SCENARIO_PROMPTS["RECALL"])
             text_prompt = (
                 f"CASE VIGNETTE CONTEXT:\n{payload.vignette_context.strip()}\n\n"
                 f"SUB-QUESTION STEM: {payload.question_stem.strip()}\n\n"
@@ -787,7 +779,7 @@ Write the clinical feedback for the student.
                 f"STUDENT RESPONSE: {payload.student_response.strip()}"
             )
         else:
-            base_instruction = PROMPTS.get(payload.question_type, PROMPTS["RECALL"])
+            base_instruction = PROMPTS.get(q_type, PROMPTS["RECALL"])
             text_prompt = (
                 f"QUESTION STEM: {payload.question_stem.strip()}\n\n"
                 f"ADMIN ANSWER KEY: {payload.ai_answer_key.strip()}\n\n"
@@ -841,7 +833,7 @@ Write the clinical feedback for the student.
         if locked_score is not None:
             parsed_result = validate_output_score(parsed_result, locked_score)
 
-        print(f"✨ Groq Evaluation ({target_model}) [{payload.question_type}] [Image Attached: {has_image}]: {parsed_result['score']}/10")
+        print(f"✨ Groq Evaluation ({target_model}) [{q_type}] [Image Attached: {has_image}]: {parsed_result['score']}/10")
 
         return parsed_result
 
