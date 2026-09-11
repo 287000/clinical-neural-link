@@ -692,54 +692,60 @@ def parse_student_response_to_dict(response_str: Any) -> dict:
 import re
 from typing import Tuple, List
 
+def normalize_text(text: str) -> str:
+    """Removes punctuation, extra spaces, and converts to lowercase."""
+    text = str(text or "").strip().lower()
+    text = re.sub(r'[^\w\s]', ' ', text)
+    return " ".join(text.split())
+
 def compute_strict_score(user_submission_dict: dict, admin_key_dict: dict) -> Tuple[int, int, int, List[dict]]:
     """
-    Programmatically calculates exact or clinical synonym matches (C) out of total items (N).
-    Enforces strict item-to-item mapping and deterministic 10-point scaling.
+    Dynamically evaluates user responses against the admin answer key without hardcoded concepts.
+    Supports slash-separated acceptable options in the answer key (e.g. 'Proliferative / Follicular').
     """
     total_items = len(admin_key_dict)
     if total_items == 0:
         return 0, 0, 0, []
 
-    # Normalize user keys to uppercase
+    # Normalize user dictionary keys to uppercase for deterministic lookup
     normalized_user_dict = {str(k).strip().upper(): str(v).strip() for k, v in user_submission_dict.items()}
 
     correct_count = 0
     mismatches = []
 
-    # Map clinical equivalences strictly per concept domain
-    synonym_groups = [
-        {"menstrual", "menses"},
-        {"proliferative", "follicular"},
-        {"secretory", "luteal"}
-    ]
-
     for raw_key, target_val in admin_key_dict.items():
         key_lookup = str(raw_key).strip().upper()
-        target_val_str = str(target_val).strip()
+        target_val_raw = str(target_val).strip()
+        user_val_raw = normalized_user_dict.get(key_lookup, "")
+
+        user_clean = normalize_text(user_val_raw)
         
-        user_val = normalized_user_dict.get(key_lookup, "")
-
-        user_clean = user_val.lower()
-        target_clean = target_val_str.lower()
-
-        # Core term extraction (stripping structural filler words)
-        user_core = re.sub(r'\b(phase|layer|level|stage)\b', '', user_clean).strip()
-        target_core = re.sub(r'\b(phase|layer|level|stage)\b', '', target_clean).strip()
+        # Split admin target into acceptable options if slash-separated in the database key
+        # e.g., "Proliferative phase / Follicular phase" -> ["proliferative phase", "follicular phase"]
+        acceptable_targets = [normalize_text(opt) for opt in target_val_raw.split('/') if opt.strip()]
 
         is_match = False
 
-        if user_clean and target_clean:
-            # 1. Exact match
-            if user_clean == target_clean or (user_core and user_core == target_core):
-                is_match = True
-            
-            # 2. Strict synonym lookup (prevents partial string collisions)
-            else:
-                for group in synonym_groups:
-                    user_has_syn = any(syn in user_clean for syn in group)
-                    target_has_syn = any(syn in target_clean for syn in group)
-                    if user_has_syn and target_has_syn:
+        if user_clean and acceptable_targets:
+            user_tokens = set(user_clean.split())
+
+            for target_option in acceptable_targets:
+                target_tokens = set(target_option.split())
+
+                # 1. Exact string match
+                if user_clean == target_option:
+                    is_match = True
+                    break
+
+                # 2. Key-term token overlap (handles added filler words like "phase" or "stage")
+                # Matches if the primary content word is present (e.g., "proliferative" in "proliferative phase")
+                if user_tokens and target_tokens:
+                    # Strip standard structural non-keywords across all medical subjects
+                    filler_words = {"phase", "layer", "level", "stage", "type", "zone", "region", "area"}
+                    core_user = user_tokens - filler_words
+                    core_target = target_tokens - filler_words
+
+                    if core_user and core_target and core_user == core_target:
                         is_match = True
                         break
 
@@ -748,11 +754,11 @@ def compute_strict_score(user_submission_dict: dict, admin_key_dict: dict) -> Tu
         else:
             mismatches.append({
                 "item": str(raw_key).strip(),
-                "submitted": user_val if user_val else "Not provided",
-                "expected": target_val_str
+                "submitted": user_val_raw if user_val_raw else "Not provided",
+                "expected": target_val_raw
             })
 
-    # Linear scaling: 1/3 -> 3, 2/3 -> 7, 3/3 -> 10
+    # Linear scaling to 10 points
     calculated_score = int(round((correct_count / total_items) * 10))
 
     return calculated_score, correct_count, total_items, mismatches
