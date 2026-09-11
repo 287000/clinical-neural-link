@@ -636,7 +636,10 @@ import re
 from typing import Tuple, List, Dict, Union, Any
 
 def parse_student_response_to_dict(response_str: Any) -> dict:
-    """Safely parses JSON strings, structured key-value lines, or item lists into a dictionary."""
+    """
+    Safely parses JSON strings, structured key-value lines, inline comma-separated items,
+    or unstructured lists into a clean dictionary.
+    """
     if not response_str:
         return {}
 
@@ -654,20 +657,29 @@ def parse_student_response_to_dict(response_str: Any) -> dict:
         pass
 
     result = {}
-    lines = text.splitlines()
 
+    # 1. First, attempt to parse inline comma or semicolon separated keys 
+    # e.g., "A: Menstrual phase, B: Proliferative phase, C: Secretory phase"
+    inline_matches = re.findall(r'(?:Box\s+)?([A-Za-z0-9]+)[\.\:\-\)]\s*([^,;\n]+)', text, re.IGNORECASE)
+    if len(inline_matches) > 1:
+        for k, v in inline_matches:
+            result[k.strip().upper()] = v.strip()
+        return result
+
+    # 2. Line-by-line parsing for multiline formatted submissions
+    lines = text.splitlines()
     for line in lines:
         line = line.strip()
         if not line:
             continue
 
-        # Flexible Regex: Matches "A:", "A.", "1.", "1.)", "Box A:", "A - "
+        # Matches "A:", "A.", "1.", "1.)", "Box A:", "A - "
         match = re.match(r'^(?:Box\s+)?([A-Za-z0-9]+)[\.\:\-\)\s]+(.+)$', line, re.IGNORECASE)
         if match:
             k, v = match.groups()
             result[k.strip().upper()] = v.strip()
 
-    # Fallback: if regex missed and text contains raw multiline text, chunk line by line
+    # 3. Fallback: Chunk unkeyed line-by-line text into numeric keys
     if not result and len(lines) > 0:
         for idx, line in enumerate(lines):
             line_str = line.strip()
@@ -687,7 +699,7 @@ def compute_strict_score(user_submission_dict: dict, admin_key_dict: dict) -> Tu
     if total_items == 0:
         return 0, 0, 0, []
 
-    # Normalize user keys to uppercase to handle casing mismatches (e.g., 'a' vs 'A')
+    # Normalize user keys to uppercase
     normalized_user_dict = {str(k).strip().upper(): str(v).strip() for k, v in user_submission_dict.items()}
 
     correct_count = 0
@@ -697,18 +709,16 @@ def compute_strict_score(user_submission_dict: dict, admin_key_dict: dict) -> Tu
         key_lookup = str(raw_key).strip().upper()
         target_val_str = str(target_val).strip()
         
-        # Extract user input safely
         user_val = normalized_user_dict.get(key_lookup, "")
 
-        # Clean string values for flexible clinical match comparison
+        # String cleaning for flexible clinical comparison
         user_clean = user_val.lower()
         target_clean = target_val_str.lower()
 
-        # Strip common anatomical filler words (e.g., "phase", "layer") for normalized token checks
-        user_core = re.sub(r'\b(phase|layer|level)\b', '', user_clean).strip()
-        target_core = re.sub(r'\b(phase|layer|level)\b', '', target_clean).strip()
+        # Strip anatomical filler words (e.g., "phase", "layer") for normalized token checks
+        user_core = re.sub(r'\b(phase|layer|level|stage)\b', '', user_clean).strip()
+        target_core = re.sub(r'\b(phase|layer|level|stage)\b', '', target_clean).strip()
 
-        # Flexible Match Checks: Exact, Core Token, Substring, or Common Medical Equivalents
         is_match = False
         if user_clean and target_clean:
             if user_clean == target_clean:
@@ -717,8 +727,11 @@ def compute_strict_score(user_submission_dict: dict, admin_key_dict: dict) -> Tu
                 is_match = True
             elif user_clean in target_clean or target_clean in user_clean:
                 is_match = True
-            # Specific Clinical Synonym Normalization
             elif "menses" in user_clean and "menstrual" in target_clean:
+                is_match = True
+            elif "follicular" in user_clean and "proliferative" in target_clean:
+                is_match = True
+            elif "luteal" in user_clean and "secretory" in target_clean:
                 is_match = True
 
         if is_match:
@@ -730,7 +743,7 @@ def compute_strict_score(user_submission_dict: dict, admin_key_dict: dict) -> Tu
                 "expected": target_val_str
             })
 
-    # Linear mathematical scaling rounded to nearest integer (e.g., 1/3 -> 3.33 -> 3, 2/3 -> 6.67 -> 7)
+    # Linear mathematical scaling rounded to nearest integer (1/3 -> 3/10, 2/3 -> 7/10)
     calculated_score = round((correct_count / total_items) * 10)
 
     return calculated_score, correct_count, total_items, mismatches
@@ -738,24 +751,35 @@ def compute_strict_score(user_submission_dict: dict, admin_key_dict: dict) -> Tu
 
 def validate_output_score(parsed_result: dict, expected_score: int) -> dict:
     """
-    Hard-overrides the returned JSON score to match the programmatically calculated score.
-    Also cleans any score mismatch inside the reasoning text.
+    Hard-overrides the returned JSON score and replaces hallucinated negative wording 
+    if the LLM attempts to claim the entire response is incorrect.
     """
     parsed_result["score"] = expected_score
 
-    # Fix score text inside reasoning if the LLM outputted a conflicting score string
     reasoning_text = parsed_result.get("reasoning", "")
-    score_match = re.search(r'(\d+)\s*/\s*10', reasoning_text)
 
+    # Overwrite score ratios inside reasoning text (e.g. replacing "0/10" with "3/10")
+    score_match = re.search(r'(\d+)\s*/\s*10', reasoning_text)
     if score_match:
         found_score = int(score_match.group(1))
         if found_score != expected_score:
             reasoning_text = reasoning_text.replace(f"{found_score}/10", f"{expected_score}/10")
             reasoning_text = reasoning_text.replace(f"{found_score} / 10", f"{expected_score} / 10")
-            parsed_result["reasoning"] = reasoning_text
 
+    # If partial credit was awarded (score > 0), strip harsh phrases generated by LLM hallucinations
+    if expected_score > 0:
+        harsh_phrases = [
+            "Your submission is entirely incorrect.",
+            "entirely incorrect",
+            "zero credit",
+            "failed to identify"
+        ]
+        for phrase in harsh_phrases:
+            if phrase in reasoning_text:
+                reasoning_text = reasoning_text.replace(phrase, f"You earned partial credit ({expected_score}/10).")
+
+    parsed_result["reasoning"] = reasoning_text
     return parsed_result
-
 
 async def prepare_image_for_groq(image_url: Optional[str] = None) -> Optional[str]:
     """
