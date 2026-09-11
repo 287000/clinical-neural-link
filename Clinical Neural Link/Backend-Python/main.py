@@ -816,18 +816,28 @@ async def evaluate_student_long_answer(payload: GradeRequest):
             calculated_score, correct_count, total_items, mismatches = compute_strict_score(student_dict, admin_dict)
             locked_score = calculated_score
 
+            # Build readable itemized breakdown for the LLM prompt
+            mismatch_details = ""
+            if mismatches:
+                for m in mismatches:
+                    mismatch_details += f"  - Item '{m['item']}': Student submitted '{m['submitted']}', but expected key answer is '{m['expected']}'.\n"
+            else:
+                mismatch_details = "  None. All submitted items matched correctly.\n"
+
             system_eval_prompt = f"""\n\nSYSTEM OVERRIDE - SCORE IS STRICTLY LOCKED AT {calculated_score} / 10:
 The deterministic grading engine has audited the student response against the database key.
 - MANDATORY LOCKED SCORE: {calculated_score} / 10
 - TOTAL ITEMS (N): {total_items}
 - CORRECT MATCHES (C): {correct_count}
-- MISMATCHED ITEMS: {mismatches}
 
+ITEM-BY-ITEM AUDIT BREAKDOWN:
+{mismatch_details}
 CRITICAL DIRECTIVES FOR FEEDBACK GENERATION:
 1. Output "score": {calculated_score} in your JSON. Under NO CIRCUMSTANCES output 10 or 0.
 2. Explicitly acknowledge and praise the correct items ({correct_count}/{total_items}).
-3. Restrict negative feedback STRICTLY to the mismatched items listed above ({mismatches}).
-4. DO NOT write that the response is fully correct, and DO NOT contradict the locked score in your written feedback.
+3. Address each mismatched item directly based on the audit above. If terms are swapped across labels (e.g., student placed 'Secretory' for label B instead of label C), explain that the terms were misplaced/swapped under the wrong labels.
+4. DO NOT claim valid standard terms (like 'Proliferative phase' or 'Secretory phase') are incorrect clinical nomenclature; clarify that they belong to a different item label in the sequence.
+5. DO NOT contradict the locked score of {calculated_score}/10 in your written reasoning.
 """
 
         # -------------------------------------------------------------
