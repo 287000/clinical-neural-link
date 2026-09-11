@@ -1394,13 +1394,6 @@ window.submitClinicalLongAnswerSubmission = async function(currentResponseKey) {
     // Safe fallback key resolution
     const responseKey = String(currentResponseKey ?? session.currentQuestionIndex);
 
-    // Optimized DOM Image Scraper Fallback
-    const getDomImageSrc = () => {
-        const imgElement = document.querySelector('.quiz-image-container img, .vignette-image img, #quiz-diagram-img, img[src*="http"], img[src*="data:image"]');
-        const src = imgElement?.src || "";
-        return (src && !src.includes("null") && !src.includes("undefined")) ? src : "";
-    };
-
     // Optimized Deep DOM Vignette Text Scraper
     const getDomVignetteText = () => {
         const vignetteEl = document.querySelector('.vignette-container, .vignette-card, [class*="vignette"], [id*="vignette"], [class*="case-context"]');
@@ -1438,10 +1431,9 @@ window.submitClinicalLongAnswerSubmission = async function(currentResponseKey) {
         targetBadge.style.opacity = "0.7";
     }
 
-    // Safely extract question context, case vignette, & image URL
+    // Safely extract question context and case vignette
     let targetQuestion = null;
     let vignetteContext = "";
-    let imageUrl = "";
 
     if (responseKey.includes("_sub_")) {
         const [parentIdx, subIdx] = responseKey.split("_sub_").map(Number);
@@ -1463,19 +1455,6 @@ window.submitClinicalLongAnswerSubmission = async function(currentResponseKey) {
             targetQuestion = parentQ.subQuestions[subIdx];
         }
 
-        imageUrl = 
-            targetQuestion?.imageUrl || 
-            targetQuestion?.image_url || 
-            targetQuestion?.image || 
-            targetQuestion?.diagramUrl ||
-            targetQuestion?.mediaUrl ||
-            parentQ?.imageUrl || 
-            parentQ?.image_url || 
-            parentQ?.image || 
-            parentQ?.diagramUrl ||
-            parentQ?.mediaUrl ||
-            getDomImageSrc();
-
     } else {
         targetQuestion = session.flatQuestionsList?.[Number(responseKey)];
         
@@ -1490,14 +1469,6 @@ window.submitClinicalLongAnswerSubmission = async function(currentResponseKey) {
             targetQuestion?.passage || 
             targetQuestion?.description || 
             getDomVignetteText();
-        
-        imageUrl = 
-            targetQuestion?.imageUrl || 
-            targetQuestion?.image_url || 
-            targetQuestion?.image || 
-            targetQuestion?.diagramUrl ||
-            targetQuestion?.mediaUrl ||
-            getDomImageSrc();
     }
 
     const questionStem = String(
@@ -1546,7 +1517,7 @@ window.submitClinicalLongAnswerSubmission = async function(currentResponseKey) {
     let requestSuccessful = false;
 
     try {
-        console.log(`📡 Sending [${responseKey}] (${questionType}) [Image Attached: ${!!imageUrl}] written analysis to FastAPI endpoint...`);
+        console.log(`📡 Sending [${responseKey}] (${questionType}) [Image Omitted for Pure Text Grading] written analysis to FastAPI endpoint...`);
         
         const response = await fetch(`${apiBaseUrl}/assessments/evaluate`, {
             method: "POST",
@@ -1559,7 +1530,7 @@ window.submitClinicalLongAnswerSubmission = async function(currentResponseKey) {
                 ai_answer_key: rawAnswerKey,
                 question_type: questionType,
                 vignette_context: vignetteContext && vignetteContext.trim() ? vignetteContext.trim() : null,
-                image_url: imageUrl && imageUrl.trim() && imageUrl !== "null" ? imageUrl.trim() : null
+                image_url: null // HARD-LOCKED: Image URL omitted to enforce strict admin key/text adherence
             })
         });
 
@@ -1627,7 +1598,6 @@ window.submitClinicalLongAnswerSubmission = async function(currentResponseKey) {
         }
     }
 };
-
 // =========================================================================
 // NAVIGATION ENGINE: FORWARD STEPPING THROUGH PARTS, SUBS, & PARENTS
 // =========================================================================
@@ -1977,7 +1947,7 @@ window.evaluateLongAnswerWithAI = async function(
     }
 
     try {
-        console.log(`📡 Sending [${responseKey}] | Type: ${resolvedType} | Scenario: ${!!vignetteContext} | Image Attached: ${!!imageUrl} to AI Evaluator...`);
+        console.log(`📡 Sending [${responseKey}] | Type: ${resolvedType} | Scenario: ${!!vignetteContext} | Image Omitted for Pure Text Grading to AI Evaluator...`);
 
         const response = await fetch(`${apiBaseUrl}/assessments/evaluate`, {
             method: "POST",
@@ -1990,7 +1960,7 @@ window.evaluateLongAnswerWithAI = async function(
                 ai_answer_key: sanitizedKey, // <-- Uses sanitized answer key payload
                 question_type: resolvedType,
                 vignette_context: vignetteContext && vignetteContext.trim() ? vignetteContext.trim() : null,
-                image_url: imageUrl && imageUrl.trim() && imageUrl !== "null" ? imageUrl.trim() : null
+                image_url: null // HARD-LOCKED: Stripped image URL to force pure text/admin-key evaluation
             })
         });
 
