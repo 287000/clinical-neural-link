@@ -100,13 +100,24 @@ class AssessmentResponse(AssessmentBase):
     class Config:
         from_attributes = True
 
+from typing import Optional, Literal
+from pydantic import BaseModel, Field
+
 class GradeRequest(BaseModel):
     question_stem: str
     ai_answer_key: str
     student_response: str
     question_type: Literal["RECALL", "DIRECTIONAL", "LIST", "EXPLANATION"] = "RECALL"
     vignette_context: Optional[str] = None
-    image_url: Optional[str] = None
+    image_url: Optional[str] = Field(
+        default=None, 
+        description="Hard-locked to None to enforce pure-text adherence to the Admin Answer Key."
+    )
+
+    def __init__(self, **data):
+        # Force image_url to None regardless of payload input
+        data["image_url"] = None
+        super().__init__(**data)
 
 class EvaluationResult(BaseModel):
     reasoning: str = Field(..., description="A brief evaluation analyzing the response.")
@@ -746,35 +757,12 @@ def validate_output_score(parsed_result: dict, expected_score: int) -> dict:
     return parsed_result
 
 
-async def prepare_image_for_groq(image_url: str) -> Optional[str]:
-    """Passes direct public Supabase URLs or converts legacy local disk images into Base64 format."""
-    if not image_url:
-        return None
-
-    if image_url.startswith(("http://", "https://", "data:image")):
-        return image_url
-
-    def _sync_read():
-        filename = os.path.basename(image_url.split("?")[0])
-        possible_paths = [
-            os.path.join("static", "diagrams", filename),
-            os.path.join("static", filename),
-            image_url.lstrip("/")
-        ]
-
-        for local_path in possible_paths:
-            if os.path.exists(local_path) and os.path.isfile(local_path):
-                try:
-                    with open(local_path, "rb") as file:
-                        encoded_string = base64.b64encode(file.read()).decode("utf-8")
-                        ext = os.path.splitext(local_path)[1].lower().lstrip(".")
-                        mime = "png" if ext in ["png", ""] else ("jpeg" if ext in ["jpg", "jpeg"] else ext)
-                        return f"data:image/{mime};base64,{encoded_string}"
-                except Exception as e:
-                    print(f"⚠️ Failed to read local image file {local_path}: {e}")
-        return image_url
-
-    return await asyncio.to_thread(_sync_read)
+async def prepare_image_for_groq(image_url: Optional[str] = None) -> Optional[str]:
+    """
+    Image payload preparation disabled.
+    Hard-locked to return None to enforce pure-text adherence to the Admin Answer Key.
+    """
+    return None
 
 # ----------------------------
 # 🟢 Groq AI Evaluation Endpoint
@@ -788,10 +776,8 @@ async def evaluate_student_long_answer(payload: GradeRequest):
         stem_str = str(payload.question_stem or "").strip()
         key_raw_str = str(payload.ai_answer_key or "").strip()
         student_raw_str = str(payload.student_response or "").strip()
-        raw_img = str(payload.image_url or "").strip()
 
         is_scenario = bool(vignette_str)
-        has_image = bool(raw_img and raw_img.lower() not in ["none", "null", "undefined"])
 
         # -------------------------------------------------------------
         # 1. ALWAYS AUDIT MULTI-ITEM RESPONSES
@@ -821,7 +807,7 @@ CRITICAL DIRECTIVES FOR FEEDBACK GENERATION:
 """
 
         # -------------------------------------------------------------
-        # 2. CONSTRUCT PROMPTS
+        # 2. CONSTRUCT PROMPTS (PURE TEXT EVALUATION)
         # -------------------------------------------------------------
         q_type = payload.question_type.upper() if payload.question_type else "RECALL"
         if len(admin_dict) > 1:
@@ -843,26 +829,8 @@ CRITICAL DIRECTIVES FOR FEEDBACK GENERATION:
                 f"STUDENT RESPONSE: {student_raw_str}"
             )
 
-        if has_image:
-            spatial_instruction = (
-                "STRICT GROUNDING & TRUTH DIRECTIVE:\n"
-                "1. THE ADMIN ANSWER KEY IS THE SINGLE SOURCE OF TRUTH. DO NOT RE-INTERPRET THE DIAGRAM OR POINTER LOCATIONS.\n"
-                "2. Assume the Admin Answer Key correctly maps visual labels to their clinical definitions.\n"
-                "3. Grade the Student Response STRICTLY by comparing it against the text in the ADMIN ANSWER KEY.\n"
-                "4. DO NOT validate terms in the student response that conflict with the Admin Answer Key simply because they appear visually on the diagram.\n\n"
-            )
-            text_prompt = spatial_instruction + text_prompt
-
         target_model = "qwen/Qwen3.8-27B"
-
-        if has_image:
-            image_url_str = await prepare_image_for_groq(raw_img)
-            user_content = [
-                {"type": "text", "text": text_prompt},
-                {"type": "image_url", "image_url": {"url": image_url_str}}
-            ]
-        else:
-            user_content = text_prompt
+        user_content = text_prompt
 
         # Hard-code integer expectation into template if locked score is present
         expected_score_repr = locked_score if locked_score is not None else 10
@@ -896,7 +864,7 @@ CRITICAL DIRECTIVES FOR FEEDBACK GENERATION:
             parsed_result["score"] = locked_score
             parsed_result = validate_output_score(parsed_result, locked_score)
 
-        print(f"✨ Groq Evaluation ({target_model}) [{q_type}] [Image Attached: {has_image}]: {parsed_result['score']}/10")
+        print(f"✨ Groq Evaluation ({target_model}) [{q_type}] [Pure Text Evaluation]: {parsed_result['score']}/10")
 
         return parsed_result
 
