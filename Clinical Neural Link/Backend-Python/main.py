@@ -689,11 +689,13 @@ def parse_student_response_to_dict(response_str: Any) -> dict:
     return result
 
 
+import re
+from typing import Tuple, List
+
 def compute_strict_score(user_submission_dict: dict, admin_key_dict: dict) -> Tuple[int, int, int, List[dict]]:
     """
-    Programmatically calculates exact or substring matches (C) out of total items (N).
-    Enforces fair partial credit calculation, normalizes formatting/synonym variations, 
-    and returns granular feedback details for LLM prompt context injection.
+    Programmatically calculates exact or clinical synonym matches (C) out of total items (N).
+    Enforces strict item-to-item mapping and deterministic 10-point scaling.
     """
     total_items = len(admin_key_dict)
     if total_items == 0:
@@ -705,34 +707,41 @@ def compute_strict_score(user_submission_dict: dict, admin_key_dict: dict) -> Tu
     correct_count = 0
     mismatches = []
 
+    # Map clinical equivalences strictly per concept domain
+    synonym_groups = [
+        {"menstrual", "menses"},
+        {"proliferative", "follicular"},
+        {"secretory", "luteal"}
+    ]
+
     for raw_key, target_val in admin_key_dict.items():
         key_lookup = str(raw_key).strip().upper()
         target_val_str = str(target_val).strip()
         
         user_val = normalized_user_dict.get(key_lookup, "")
 
-        # String cleaning for flexible clinical comparison
         user_clean = user_val.lower()
         target_clean = target_val_str.lower()
 
-        # Strip anatomical filler words (e.g., "phase", "layer") for normalized token checks
+        # Core term extraction (stripping structural filler words)
         user_core = re.sub(r'\b(phase|layer|level|stage)\b', '', user_clean).strip()
         target_core = re.sub(r'\b(phase|layer|level|stage)\b', '', target_clean).strip()
 
         is_match = False
+
         if user_clean and target_clean:
-            if user_clean == target_clean:
+            # 1. Exact match
+            if user_clean == target_clean or (user_core and user_core == target_core):
                 is_match = True
-            elif user_core and target_core and (user_core in target_core or target_core in user_core):
-                is_match = True
-            elif user_clean in target_clean or target_clean in user_clean:
-                is_match = True
-            elif "menses" in user_clean and "menstrual" in target_clean:
-                is_match = True
-            elif "follicular" in user_clean and "proliferative" in target_clean:
-                is_match = True
-            elif "luteal" in user_clean and "secretory" in target_clean:
-                is_match = True
+            
+            # 2. Strict synonym lookup (prevents partial string collisions)
+            else:
+                for group in synonym_groups:
+                    user_has_syn = any(syn in user_clean for syn in group)
+                    target_has_syn = any(syn in target_clean for syn in group)
+                    if user_has_syn and target_has_syn:
+                        is_match = True
+                        break
 
         if is_match:
             correct_count += 1
@@ -743,8 +752,8 @@ def compute_strict_score(user_submission_dict: dict, admin_key_dict: dict) -> Tu
                 "expected": target_val_str
             })
 
-    # Linear mathematical scaling rounded to nearest integer (1/3 -> 3/10, 2/3 -> 7/10)
-    calculated_score = round((correct_count / total_items) * 10)
+    # Linear scaling: 1/3 -> 3, 2/3 -> 7, 3/3 -> 10
+    calculated_score = int(round((correct_count / total_items) * 10))
 
     return calculated_score, correct_count, total_items, mismatches
 
