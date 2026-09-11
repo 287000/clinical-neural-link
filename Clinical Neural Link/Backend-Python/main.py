@@ -620,8 +620,12 @@ def delete_note(note_id: int, db: Session = Depends(get_db)):
 # ----------------------------
 # 🟢 Deterministic Scoring & Verification Helpers
 # ----------------------------
-def parse_student_response_to_dict(response_str) -> dict:
-    """Safely parses JSON strings or key-value structures into a dictionary."""
+import json
+import re
+from typing import Tuple, List, Dict, Union, Any
+
+def parse_student_response_to_dict(response_str: Any) -> dict:
+    """Safely parses JSON strings, structured key-value lines, or item lists into a dictionary."""
     if not response_str:
         return {}
 
@@ -630,7 +634,7 @@ def parse_student_response_to_dict(response_str) -> dict:
 
     text = str(response_str).strip()
 
-    # Attempt direct JSON parsing
+    # Attempt direct JSON parsing first
     try:
         parsed = json.loads(text)
         if isinstance(parsed, dict):
@@ -638,23 +642,34 @@ def parse_student_response_to_dict(response_str) -> dict:
     except Exception:
         pass
 
-    # Fallback key-value parser (e.g. "A: Answer\nB: Answer")
     result = {}
-    for line in text.splitlines():
+    lines = text.splitlines()
+
+    for line in lines:
         line = line.strip()
-        match = re.match(r"^([A-Za-z0-9\-_]+)[\s:]+(.+)$", line)
+        if not line:
+            continue
+
+        # Flexible Regex: Matches "A:", "A.", "1.", "1.)", "Box A:", "A - "
+        match = re.match(r'^(?:Box\s+)?([A-Za-z0-9]+)[\.\:\-\)\s]+(.+)$', line, re.IGNORECASE)
         if match:
             k, v = match.groups()
             result[k.strip().upper()] = v.strip()
 
+    # Fallback: if regex missed and text contains raw multiline text, chunk line by line
+    if not result and len(lines) > 0:
+        for idx, line in enumerate(lines):
+            line_str = line.strip()
+            if line_str:
+                result[str(idx + 1)] = line_str
+
     return result
 
-from typing import Tuple, List, Dict, Union, Any
 
 def compute_strict_score(user_submission_dict: dict, admin_key_dict: dict) -> Tuple[int, int, int, List[dict]]:
     """
     Programmatically calculates exact or substring matches (C) out of total items (N).
-    Enforces fair partial credit calculation, normalizes formatting variations, 
+    Enforces fair partial credit calculation, normalizes formatting/synonym variations, 
     and returns granular feedback details for LLM prompt context injection.
     """
     total_items = len(admin_key_dict)
@@ -678,10 +693,21 @@ def compute_strict_score(user_submission_dict: dict, admin_key_dict: dict) -> Tu
         user_clean = user_val.lower()
         target_clean = target_val_str.lower()
 
-        # Check for direct match or valid substring inclusion (e.g., "Menstrual" in "Menstrual phase")
+        # Strip common anatomical filler words (e.g., "phase", "layer") for normalized token checks
+        user_core = re.sub(r'\b(phase|layer|level)\b', '', user_clean).strip()
+        target_core = re.sub(r'\b(phase|layer|level)\b', '', target_clean).strip()
+
+        # Flexible Match Checks: Exact, Core Token, Substring, or Common Medical Equivalents
         is_match = False
         if user_clean and target_clean:
-            if user_clean == target_clean or user_clean in target_clean or target_clean in user_clean:
+            if user_clean == target_clean:
+                is_match = True
+            elif user_core and target_core and (user_core in target_core or target_core in user_core):
+                is_match = True
+            elif user_clean in target_clean or target_clean in user_clean:
+                is_match = True
+            # Specific Clinical Synonym Normalization
+            elif "menses" in user_clean and "menstrual" in target_clean:
                 is_match = True
 
         if is_match:
@@ -780,7 +806,6 @@ async def evaluate_student_long_answer(payload: GradeRequest):
             calculated_score, correct_count, total_items, mismatches = compute_strict_score(student_dict, admin_dict)
             locked_score = calculated_score
 
-            # Change this section in your system_eval_prompt string:
             system_eval_prompt = f"""\n\nSYSTEM OVERRIDE - SCORE IS LOCKED AT {calculated_score} / 10:
 The deterministic grading engine has audited the student response against the database.
 - MANDATORY SCORE: {calculated_score} / 10
@@ -819,16 +844,15 @@ Write the clinical feedback for the student.
                 f"STUDENT RESPONSE: {student_raw_str}"
             )
 
-       # Add an absolute grounding directive to your prompt construction
-if has_image:
-    spatial_instruction = (
-        "STRICT GROUNDING & TRUTH DIRECTIVE:\n"
-        "1. THE ADMIN ANSWER KEY IS THE SINGLE SOURCE OF TRUTH. DO NOT RE-INTERPRET THE DIAGRAM OR POINTER LOCATIONS.\n"
-        "2. Assume the Admin Answer Key correctly maps the visual labels (e.g., D, E, F) to their anatomical definitions.\n"
-        "3. Grade the Student Response STRICTLY by comparing it against the text in the ADMIN ANSWER KEY.\n"
-        "4. DO NOT invent visual errors or claims that pointer positions are inverted. If the student matched the Admin Key, award full credit for that component.\n\n"
-    )
-    text_prompt = spatial_instruction + text_prompt
+        if has_image:
+            spatial_instruction = (
+                "STRICT GROUNDING & TRUTH DIRECTIVE:\n"
+                "1. THE ADMIN ANSWER KEY IS THE SINGLE SOURCE OF TRUTH. DO NOT RE-INTERPRET THE DIAGRAM OR POINTER LOCATIONS.\n"
+                "2. Assume the Admin Answer Key correctly maps the visual labels (e.g., D, E, F) to their anatomical definitions.\n"
+                "3. Grade the Student Response STRICTLY by comparing it against the text in the ADMIN ANSWER KEY.\n"
+                "4. DO NOT invent visual errors or claims that pointer positions are inverted. If the student matched the Admin Key, award full credit for that component.\n\n"
+            )
+            text_prompt = spatial_instruction + text_prompt
 
         target_model = "qwen/Qwen3.8-27B"
 
@@ -841,6 +865,7 @@ if has_image:
         else:
             user_content = text_prompt
 
+        # Hard-code integer expectation into template if locked score is present
         expected_score_repr = locked_score if locked_score is not None else 10
         format_directive = (
             "\n\nSYSTEM INSTRUCTION: You are a JSON-only API generator.\n"
@@ -864,6 +889,7 @@ if has_image:
 
         parsed_result = parse_ai_json(raw_text)
 
+        # Enforce hard score override fallback if LLM returns 0 despite locked score
         if locked_score is not None:
             parsed_result = validate_output_score(parsed_result, locked_score)
 
