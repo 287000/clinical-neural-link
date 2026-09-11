@@ -806,19 +806,18 @@ async def evaluate_student_long_answer(payload: GradeRequest):
             calculated_score, correct_count, total_items, mismatches = compute_strict_score(student_dict, admin_dict)
             locked_score = calculated_score
 
-            system_eval_prompt = f"""\n\nSYSTEM OVERRIDE - SCORE IS LOCKED AT {calculated_score} / 10:
-The deterministic grading engine has audited the student response against the database.
-- MANDATORY SCORE: {calculated_score} / 10
+            system_eval_prompt = f"""\n\nSYSTEM OVERRIDE - SCORE IS STRICTLY LOCKED AT {calculated_score} / 10:
+The deterministic grading engine has audited the student response against the database key.
+- MANDATORY LOCKED SCORE: {calculated_score} / 10
 - TOTAL ITEMS (N): {total_items}
 - CORRECT MATCHES (C): {correct_count}
 - MISMATCHED ITEMS: {mismatches}
 
-YOUR TASK:
-Write the clinical feedback for the student.
-1. Output "score": {calculated_score} in your JSON response. DO NOT output 0.
+CRITICAL DIRECTIVES FOR FEEDBACK GENERATION:
+1. Output "score": {calculated_score} in your JSON. Under NO CIRCUMSTANCES output 10 or 0.
 2. Explicitly acknowledge and praise the correct items ({correct_count}/{total_items}).
-3. Restrict all negative feedback ONLY to the mismatched items listed above ({mismatches}).
-4. NEVER override or reduce the calculated score under any circumstances.
+3. Restrict negative feedback STRICTLY to the mismatched items listed above ({mismatches}).
+4. DO NOT write that the response is fully correct, and DO NOT contradict the locked score in your written feedback.
 """
 
         # -------------------------------------------------------------
@@ -848,9 +847,9 @@ Write the clinical feedback for the student.
             spatial_instruction = (
                 "STRICT GROUNDING & TRUTH DIRECTIVE:\n"
                 "1. THE ADMIN ANSWER KEY IS THE SINGLE SOURCE OF TRUTH. DO NOT RE-INTERPRET THE DIAGRAM OR POINTER LOCATIONS.\n"
-                "2. Assume the Admin Answer Key correctly maps the visual labels (e.g., D, E, F) to their anatomical definitions.\n"
+                "2. Assume the Admin Answer Key correctly maps visual labels to their clinical definitions.\n"
                 "3. Grade the Student Response STRICTLY by comparing it against the text in the ADMIN ANSWER KEY.\n"
-                "4. DO NOT invent visual errors or claims that pointer positions are inverted. If the student matched the Admin Key, award full credit for that component.\n\n"
+                "4. DO NOT validate terms in the student response that conflict with the Admin Answer Key simply because they appear visually on the diagram.\n\n"
             )
             text_prompt = spatial_instruction + text_prompt
 
@@ -889,8 +888,12 @@ Write the clinical feedback for the student.
 
         parsed_result = parse_ai_json(raw_text)
 
-        # Enforce hard score override fallback if LLM returns 0 despite locked score
+        # -------------------------------------------------------------
+        # 3. ABSOLUTE HARD-LOCK OVERRIDE
+        # -------------------------------------------------------------
         if locked_score is not None:
+            # Overwrite any LLM score hallucination directly
+            parsed_result["score"] = locked_score
             parsed_result = validate_output_score(parsed_result, locked_score)
 
         print(f"✨ Groq Evaluation ({target_model}) [{q_type}] [Image Attached: {has_image}]: {parsed_result['score']}/10")
