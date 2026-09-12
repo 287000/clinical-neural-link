@@ -100,8 +100,6 @@ class AssessmentResponse(AssessmentBase):
     class Config:
         from_attributes = True
 
-from typing import Optional, Literal
-from pydantic import BaseModel, Field
 
 from typing import Literal, Optional, List, Dict, Any
 from pydantic import BaseModel, Field
@@ -775,6 +773,30 @@ async def prepare_image_for_groq(image_url: Optional[str] = None) -> Optional[st
     Hard-locked to return None to enforce pure-text adherence to the Admin Answer Key.
     """
     return None
+    import json
+import re
+
+def safe_parse_ai_json(raw_text: str) -> dict:
+    """Safely extracts and parses JSON content from LLM response strings."""
+    try:
+        # Try direct JSON parsing
+        return json.loads(raw_text)
+    except Exception:
+        pass
+
+    try:
+        # Match pattern inside markdown codeblocks or curly braces
+        match = re.search(r'\{.*\}', raw_text, re.DOTALL)
+        if match:
+            return json.loads(match.group(0))
+    except Exception:
+        pass
+
+    # Fallback structure if LLM outputs dirty string
+    return {
+        "score": 0,
+        "reasoning": raw_text or "Unable to parse AI structured response."
+    }
 
 # ----------------------------
 # 🟢 Groq AI Evaluation Endpoint
