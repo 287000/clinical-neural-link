@@ -625,44 +625,45 @@ def parse_student_response_to_dict(response_str: Any) -> dict:
     return result
 
 
+import re
+from typing import Union, Any, List, Dict, Optional
+
 def compute_strict_score(
     user_submission: Union[str, dict], 
-    admin_key_obj: Any,  # AdminAnswerKey Pydantic model or dict
+    admin_key_obj: Any, 
     question_type: str = "RECALL"
 ) -> PythonAuditResult:
     """
     Programmatically calculates exact or synonym matches (C) out of total items (N).
-    Enforces absolute adherence to Admin Answer Key ground truth and returns a PythonAuditResult object.
+    Supports position-agnostic list matching to guarantee partial credit (e.g., 2/3 -> 7/10).
     """
     # 1. Normalize Admin Key Target & Accepted Synonyms
+    accepted_synonyms = []
     if hasattr(admin_key_obj, "raw_key"):
         raw_key_str = admin_key_obj.raw_key
-        accepted_synonyms = getattr(admin_key_obj, "accepted_synonyms", [])
+        accepted_synonyms = getattr(admin_key_obj, "accepted_synonyms", []) or []
     elif isinstance(admin_key_obj, dict):
         raw_key_str = admin_key_obj.get("raw_key", "")
-        accepted_synonyms = admin_key_obj.get("accepted_synonyms", [])
+        accepted_synonyms = admin_key_obj.get("accepted_synonyms", []) or []
     else:
         raw_key_str = str(admin_key_obj)
-        accepted_synonyms = []
 
-    # Automatically extract slash-separated synonyms from raw_key if present (e.g. "Term A / Term B")
-    if "/" in raw_key_str:
-        split_keys = [k.strip() for k in raw_key_str.split("/") if k.strip()]
-        target_options = list(set(split_keys + accepted_synonyms))
+    # 2. Extract Admin Items Structure
+    if isinstance(admin_key_obj, dict) and "items" in admin_key_obj and isinstance(admin_key_obj["items"], dict):
+        admin_dict = admin_key_obj["items"]
     else:
-        target_options = list(set([raw_key_str] + accepted_synonyms))
-
-    # 2. Parse User Input
-    if question_type == "LIST":
-        user_dict = parse_student_response_to_dict(user_submission)
-        # Handle dict-based admin key for multi-part LIST questions
-        if isinstance(admin_key_obj, dict) and "items" in admin_key_obj:
-            admin_dict = admin_key_obj["items"]
+        # Fallback split for delimited strings (e.g., comma, slash, newline)
+        if "/" in raw_key_str and question_type != "LIST":
+            split_keys = [k.strip() for k in raw_key_str.split("/") if k.strip()]
+            admin_dict = {"1": list(set(split_keys + accepted_synonyms))}
         else:
             admin_dict = {"1": raw_key_str}
+
+    # 3. Extract User Submission Structure
+    if isinstance(user_submission, dict):
+        user_dict = user_submission
     else:
-        user_dict = {"1": str(user_submission).strip()}
-        admin_dict = {"1": target_options}
+        user_dict = parse_student_response_to_dict(str(user_submission))
 
     total_items = len(admin_dict)
     if total_items == 0:
@@ -670,59 +671,79 @@ def compute_strict_score(
             score=0, correct_count=0, total_items=0, matches=[], mismatches=[], is_perfect=False
         )
 
-    normalized_user_dict = {str(k).strip().upper(): str(v).strip() for k, v in user_dict.items()}
+    # Helper function for text normalization
+    def normalize_text(text: str) -> str:
+        clean = str(text).lower().strip()
+        # Remove common superficial prefixes/suffixes
+        clean = re.sub(r'^\d+[\.\)\-]\s*', '', clean)
+        clean = re.sub(r'\b(phase|layer|level|syndrome|disease|function|core)\b', '', clean).strip()
+        return clean
 
     correct_count = 0
     matches = []
     mismatches = []
 
-    # 3. Deterministic Matching Engine
-    for raw_key, target_val in admin_dict.items():
-        key_lookup = str(raw_key).strip().upper()
+    # 4. Order-Agnostic Matching Engine for LISTs
+    if question_type == "LIST" or total_items > 1:
+        unmatched_user_items = [str(v).strip() for v in user_dict.values() if str(v).strip()]
         
-        if isinstance(target_val, list):
-            valid_targets = [str(t).strip() for t in target_val]
-        else:
-            valid_targets = [str(target_val).strip()]
-
-        user_val = normalized_user_dict.get(key_lookup, "")
-        user_clean = user_val.lower().strip()
-
-        is_match = False
-        matched_target = valid_targets[0]
-
-        for target in valid_targets:
-            target_clean = target.lower().strip()
+        for key_label, target_val in admin_dict.items():
+            valid_targets = [target_val] if isinstance(target_val, str) else target_val
+            valid_targets_clean = [normalize_text(t) for t in valid_targets]
             
-            # Normalization clean checks
-            user_core = re.sub(r'\b(phase|layer|level|syndrome|disease)\b', '', user_clean).strip()
-            target_core = re.sub(r'\b(phase|layer|level|syndrome|disease)\b', '', target_clean).strip()
+            matched_user_val = None
+            matched_target_name = valid_targets[0]
 
-            if user_clean and target_clean:
-                if user_clean == target_clean:
-                    is_match = True
-                    matched_target = target
-                    break
-                elif user_core and target_core and user_core == target_core:
-                    is_match = True
-                    matched_target = target
+            for u_val in list(unmatched_user_items):
+                u_clean = normalize_text(u_val)
+                if not u_clean:
+                    continue
+
+                # Direct match, core match, or substring inclusion
+                if any(u_clean == t_clean or u_clean in t_clean or t_clean in u_clean for t_clean in valid_targets_clean):
+                    matched_user_val = u_val
+                    unmatched_user_items.remove(u_val)
                     break
 
-        if is_match:
-            correct_count += 1
+            if matched_user_val is not None:
+                correct_count += 1
+                matches.append({
+                    "item": str(key_label).strip(),
+                    "submitted": matched_user_val,
+                    "matched_key": matched_target_name
+                })
+            else:
+                mismatches.append({
+                    "item": str(key_label).strip(),
+                    "submitted": "Missing or Incorrect",
+                    "expected": " / ".join(valid_targets)
+                })
+
+    # 5. Strict Sequential Matching Engine for Single RECALL/Concepts
+    else:
+        target_val = list(admin_dict.values())[0]
+        valid_targets = [target_val] if isinstance(target_val, str) else target_val
+        valid_targets = list(set(valid_targets + accepted_synonyms))
+        valid_targets_clean = [normalize_text(t) for t in valid_targets]
+
+        user_val = next(iter(user_dict.values()), "") if user_dict else str(user_submission)
+        u_clean = normalize_text(user_val)
+
+        if u_clean and any(u_clean == t_clean or u_clean in t_clean or t_clean in u_clean for t_clean in valid_targets_clean):
+            correct_count = 1
             matches.append({
-                "item": str(raw_key).strip(),
+                "item": "1",
                 "submitted": user_val,
-                "matched_key": matched_target
+                "matched_key": valid_targets[0]
             })
         else:
             mismatches.append({
-                "item": str(raw_key).strip(),
+                "item": "1",
                 "submitted": user_val if user_val else "Not provided",
                 "expected": " / ".join(valid_targets)
             })
 
-    # 4. Math Scaling to 10-Point System
+    # 6. Proportional Math Scaling (e.g., 2/3 = 6.67 -> 7/10)
     calculated_score = round((correct_count / total_items) * 10) if total_items > 0 else 0
     calculated_score = max(0, min(10, calculated_score))
 
@@ -738,13 +759,13 @@ def compute_strict_score(
 
 def validate_output_score(parsed_result: dict, expected_score: int) -> dict:
     """
-    Hard-overrides the returned JSON score and sanitizes reasoning text
-    to eliminate LLM hallucinations or negative wording contradictions.
+    Hard-overrides the returned JSON score and cleans reasoning text
+    to align feedback tone with awarded score.
     """
     parsed_result["score"] = expected_score
     reasoning_text = parsed_result.get("reasoning", "")
 
-    # Overwrite score ratio hallucinations inside reasoning text (e.g. replacing "0/10" with "7/10")
+    # Overwrite conflicting numerical fraction representations in reasoning text
     score_match = re.search(r'(\d+)\s*/\s*10', reasoning_text)
     if score_match:
         found_score = int(score_match.group(1))
@@ -752,21 +773,24 @@ def validate_output_score(parsed_result: dict, expected_score: int) -> dict:
             reasoning_text = reasoning_text.replace(f"{found_score}/10", f"{expected_score}/10")
             reasoning_text = reasoning_text.replace(f"{found_score} / 10", f"{expected_score} / 10")
 
-    # Clean up harsh phrases if partial credit was awarded
+    # Correct harsh phrases when partial credit is earned
     if expected_score > 0:
         harsh_phrases = [
             "Your submission is entirely incorrect.",
             "entirely incorrect",
             "zero credit",
-            "failed to identify"
+            "failed to identify any",
+            "contains a significant conceptual error regarding"
         ]
         for phrase in harsh_phrases:
             if phrase in reasoning_text:
-                reasoning_text = reasoning_text.replace(phrase, f"You earned partial credit ({expected_score}/10).")
+                reasoning_text = reasoning_text.replace(
+                    phrase, 
+                    f"earned partial credit ({expected_score}/10) for your correct selections"
+                )
 
     parsed_result["reasoning"] = reasoning_text
     return parsed_result
-
 async def prepare_image_for_groq(image_url: Optional[str] = None) -> Optional[str]:
     """
     Image payload preparation disabled.
