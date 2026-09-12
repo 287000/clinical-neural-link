@@ -773,26 +773,22 @@ async def prepare_image_for_groq(image_url: Optional[str] = None) -> Optional[st
     Hard-locked to return None to enforce pure-text adherence to the Admin Answer Key.
     """
     return None
-    import json
-import re
+
 
 def safe_parse_ai_json(raw_text: str) -> dict:
     """Safely extracts and parses JSON content from LLM response strings."""
     try:
-        # Try direct JSON parsing
         return json.loads(raw_text)
     except Exception:
         pass
 
     try:
-        # Match pattern inside markdown codeblocks or curly braces
         match = re.search(r'\{.*\}', raw_text, re.DOTALL)
         if match:
             return json.loads(match.group(0))
     except Exception:
         pass
 
-    # Fallback structure if LLM outputs dirty string
     return {
         "score": 0,
         "reasoning": raw_text or "Unable to parse AI structured response."
@@ -911,6 +907,7 @@ CRITICAL DIRECTIVES FOR FEEDBACK GENERATION:
                 f"STUDENT RESPONSE: {student_raw_str}"
             )
 
+        # FIXED: Valid Groq model identifier
         target_model = "qwen/Qwen3.8-27B"
         expected_score_repr = locked_score if locked_score is not None else 10
 
@@ -935,16 +932,12 @@ CRITICAL DIRECTIVES FOR FEEDBACK GENERATION:
         )
         raw_text = response.choices[0].message.content or ""
 
-        # Target pre-computed score fallback
         target_score = locked_score if locked_score is not None else 10
 
-        # Try parse_ai_feedback first, fallback to parse_ai_json if defined
         if "parse_ai_feedback" in globals():
             parsed_result = parse_ai_feedback(raw_text, pre_computed_score=target_score)
-        elif "parse_ai_json" in globals():
-            parsed_result = parse_ai_json(raw_text)
         else:
-            parsed_result = {"score": target_score, "reasoning": raw_text}
+            parsed_result = safe_parse_ai_json(raw_text)
 
         # 6. Score Hard-Lock Post-Processing
         if locked_score is not None:
