@@ -783,23 +783,44 @@ async def prepare_image_for_groq(image_url: Optional[str] = None) -> Optional[st
 @app.post("/assessments/evaluate", response_model=EvaluationResult)
 async def evaluate_student_long_answer(payload: GradeRequest):
     try:
-        # 1. Sanitized inputs to prevent unexpected None type errors
+        # 1. Safe extraction logic to pull key content regardless of incoming attribute format
+        extracted_key = ""
+        
+        # Check ai_answer_key attribute
+        if hasattr(payload, "ai_answer_key") and payload.ai_answer_key:
+            extracted_key = payload.ai_answer_key
+            
+        # Fallback to admin_answer_key attribute (string or dict/object)
+        elif hasattr(payload, "admin_answer_key") and payload.admin_answer_key:
+            admin_val = payload.admin_answer_key
+            if isinstance(admin_val, dict):
+                extracted_key = admin_val.get("raw_key", "") or admin_val.get("answer_key", "")
+            elif hasattr(admin_val, "raw_key"):
+                extracted_key = admin_val.raw_key
+            else:
+                extracted_key = str(admin_val)
+
+        # Final fallback to question stem if key resolution remains empty
+        if not str(extracted_key).strip():
+            extracted_key = payload.question_stem or ""
+
+        # 2. Sanitized inputs to prevent unexpected None type errors
         vignette_str = str(payload.vignette_context or "").strip()
         stem_str = str(payload.question_stem or "").strip()
-        key_raw_str = str(payload.ai_answer_key or "").strip()
+        key_raw_str = str(extracted_key).strip()
         student_raw_str = str(payload.student_response or "").strip()
 
         is_scenario = bool(vignette_str)
         q_type = (payload.question_type or "RECALL").upper()
 
         # Parse structural data for list evaluation check
-        student_dict = parse_student_response_to_dict(payload.student_response)
-        admin_dict = parse_student_response_to_dict(payload.ai_answer_key)
+        student_dict = parse_student_response_to_dict(student_raw_str)
+        admin_dict = parse_student_response_to_dict(key_raw_str)
 
         if len(admin_dict) > 1:
             q_type = "LIST"
 
-        # 2. Deterministic Audit via Python Engine
+        # 3. Deterministic Audit via Python Engine
         system_eval_prompt = ""
         locked_score: Optional[int] = None
 
@@ -807,7 +828,7 @@ async def evaluate_student_long_answer(payload: GradeRequest):
             # Construct AdminAnswerKey container or dictionary for audit
             admin_key_payload = {
                 "raw_key": key_raw_str,
-                "accepted_synonyms": getattr(payload, "accepted_synonyms", []),
+                "accepted_synonyms": getattr(payload, "accepted_synonyms", []) or [],
                 "items": admin_dict
             }
             
@@ -843,7 +864,7 @@ CRITICAL DIRECTIVES FOR FEEDBACK GENERATION:
 5. DO NOT contradict the locked score of {audit_result.score}/10 in your written reasoning.
 """
 
-        # 3. Base Instruction and Prompt Composition
+        # 4. Base Instruction and Prompt Composition
         if is_scenario:
             base_instruction = SCENARIO_PROMPTS.get(q_type, SCENARIO_PROMPTS.get("RECALL", ""))
             text_prompt = (
@@ -877,7 +898,7 @@ CRITICAL DIRECTIVES FOR FEEDBACK GENERATION:
             {"role": "user", "content": text_prompt}
         ]
 
-        # 4. LLM Execution
+        # 5. LLM Execution
         response = await call_groq_with_retry(
             messages=messages, 
             target_model=target_model
@@ -885,7 +906,7 @@ CRITICAL DIRECTIVES FOR FEEDBACK GENERATION:
         raw_text = response.choices[0].message.content or ""
         parsed_result = parse_ai_json(raw_text)
 
-        # 5. Score Hard-Lock Post-Processing
+        # 6. Score Hard-Lock Post-Processing
         if locked_score is not None:
             parsed_result = validate_output_score(parsed_result, locked_score)
 
