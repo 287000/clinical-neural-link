@@ -838,7 +838,7 @@ async def evaluate_student_long_answer(payload: GradeRequest):
         if len(admin_dict) > 1:
             q_type = "LIST"
 
-        # 3. Deterministic Audit via Python Engine (Runs for all responses with active keys)
+        # 3. Deterministic Audit via Python Engine (Triggers for all active keys)
         system_eval_prompt = ""
         locked_score: Optional[int] = None
 
@@ -907,6 +907,7 @@ CRITICAL DIRECTIVES FOR FEEDBACK GENERATION:
                 f"STUDENT RESPONSE: {student_raw_str}"
             )
 
+        # Retained target model string
         target_model = "qwen/Qwen3.8-27B"
         target_score = locked_score if locked_score is not None else 0
 
