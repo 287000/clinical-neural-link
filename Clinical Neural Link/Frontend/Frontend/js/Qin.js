@@ -1533,11 +1533,13 @@ window.submitClinicalLongAnswerSubmission = async function(currentResponseKey) {
                 question_stem: questionStem,
                 student_response: writtenText,
                 ai_answer_key: rawAnswerKey,
-                admin_answer_key: rawAnswerKey, // Dual key mapping for direct FastAPI Pydantic schema alignment
+                admin_answer_key: {
+                    raw_key: rawAnswerKey
+                },
                 accepted_synonyms: acceptedSynonyms,
                 question_type: questionType,
                 vignette_context: vignetteContext && vignetteContext.trim() ? vignetteContext.trim() : null,
-                image_url: null // Enforce text/admin key evaluation criteria
+                image_url: null
             })
         });
 
