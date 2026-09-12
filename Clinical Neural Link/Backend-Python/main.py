@@ -838,11 +838,11 @@ async def evaluate_student_long_answer(payload: GradeRequest):
         if len(admin_dict) > 1:
             q_type = "LIST"
 
-        # 3. Deterministic Audit via Python Engine
+        # 3. Deterministic Audit via Python Engine (Runs for all responses with active keys)
         system_eval_prompt = ""
         locked_score: Optional[int] = None
 
-        if len(admin_dict) > 1 and len(student_dict) > 0:
+        if admin_dict and student_dict:
             # Construct AdminAnswerKey container or dictionary for audit
             admin_key_payload = {
                 "raw_key": key_raw_str,
@@ -907,14 +907,13 @@ CRITICAL DIRECTIVES FOR FEEDBACK GENERATION:
                 f"STUDENT RESPONSE: {student_raw_str}"
             )
 
-        # FIXED: Valid Groq model identifier
-        target_model = "qwen/Qwen3.8-27B"
-        expected_score_repr = locked_score if locked_score is not None else 10
+        target_model = "llama-3.3-70b-versatile"
+        target_score = locked_score if locked_score is not None else 0
 
         format_directive = (
             "\n\nSYSTEM INSTRUCTION: You are a JSON-only API generator.\n"
             "Output MUST be valid JSON formatted exactly like this:\n"
-            f'{{"score": {expected_score_repr}, "reasoning": "Detailed feedback addressing the user as You."}}\n'
+            f'{{"score": {target_score}, "reasoning": "Detailed feedback addressing the user as You."}}\n'
             "CRITICAL RULES:\n"
             "1. Start response immediately with '{{' and end with '}}'.\n"
             "2. DO NOT write scratchpads or markdown formatting outside the JSON."
@@ -931,8 +930,6 @@ CRITICAL DIRECTIVES FOR FEEDBACK GENERATION:
             target_model=target_model
         )
         raw_text = response.choices[0].message.content or ""
-
-        target_score = locked_score if locked_score is not None else 10
 
         if "parse_ai_feedback" in globals():
             parsed_result = parse_ai_feedback(raw_text, pre_computed_score=target_score)
