@@ -575,10 +575,7 @@ import json
 from typing import Union, Any, List, Dict, Optional
 
 def parse_any_to_list_items(raw_input: Union[str, dict, list]) -> List[str]:
-    """
-    Dynamically converts dicts, numbered strings, comma-separated, 
-    or newline-separated lists into a clean list of individual strings.
-    """
+    """Dynamically converts dicts, strings, or lists into clean list items."""
     if isinstance(raw_input, dict):
         return [str(v).strip() for v in raw_input.values() if str(v).strip()]
     if isinstance(raw_input, list):
@@ -588,7 +585,6 @@ def parse_any_to_list_items(raw_input: Union[str, dict, list]) -> List[str]:
     if not text:
         return []
 
-    # 1. Try JSON parsing first
     try:
         parsed = json.loads(text)
         if isinstance(parsed, dict):
@@ -598,11 +594,11 @@ def parse_any_to_list_items(raw_input: Union[str, dict, list]) -> List[str]:
     except Exception:
         pass
 
-    # 2. Split by numbered/bullet prefixes (e.g. "1.", "2)", "A:")
+    # Split by numbered/bullet prefixes (e.g., "1.", "2)", "A:")
     items = re.split(r'(?:\r?\n|\b)\d+[\.\)\:]\s*|(?:\r?\n|\b)[A-Za-z][\.\)\:]\s*', text)
     items = [i.strip() for i in items if i.strip()]
 
-    # 3. Fallback: Split by newlines, semicolons, or commas if no numbered items were extracted
+    # Fallback: Split by newlines, semicolons, or commas
     if len(items) <= 1:
         items = re.split(r'[\n;,]+|(?<=\s)/(?=\s)', text)
         items = [i.strip() for i in items if i.strip()]
@@ -615,21 +611,15 @@ def compute_strict_score(
     admin_key_obj: Any, 
     question_type: str = "RECALL"
 ) -> PythonAuditResult:
-    """
-    Programmatically calculates position-agnostic partial credit (C/N) out of 10.
-    """
-    # 1. Extract Raw Key & Synonyms
+    """Calculates position-agnostic partial credit out of 10."""
     accepted_synonyms = []
     if hasattr(admin_key_obj, "raw_key"):
         raw_key_str = admin_key_obj.raw_key
-        accepted_synonyms = getattr(admin_key_obj, "accepted_synonyms", []) or []
     elif isinstance(admin_key_obj, dict):
         raw_key_str = admin_key_obj.get("raw_key", "") or admin_key_obj.get("items", "")
-        accepted_synonyms = admin_key_obj.get("accepted_synonyms", []) or []
     else:
         raw_key_str = str(admin_key_obj)
 
-    # 2. Convert Inputs into Standard Clean Lists
     admin_items = parse_any_to_list_items(raw_key_str)
     student_items = parse_any_to_list_items(user_submission)
 
@@ -650,7 +640,6 @@ def compute_strict_score(
     mismatches = []
     unmatched_student_items = list(student_items)
 
-    # 3. Flexible Position-Agnostic Matching Engine
     for idx, expected_target in enumerate(admin_items, start=1):
         target_clean = normalize_text(expected_target)
         matched_val = None
@@ -660,7 +649,6 @@ def compute_strict_score(
             if not student_clean:
                 continue
 
-            # Check direct match or substring inclusion
             if student_clean == target_clean or student_clean in target_clean or target_clean in student_clean:
                 matched_val = student_val
                 unmatched_student_items.remove(student_val)
@@ -680,7 +668,6 @@ def compute_strict_score(
                 "expected": expected_target
             })
 
-    # 4. Proportional Math Scaling (e.g. 2/3 * 10 = 6.67 -> 7/10)
     calculated_score = round((correct_count / total_items) * 10) if total_items > 0 else 0
     calculated_score = max(0, min(10, calculated_score))
 
@@ -790,7 +777,7 @@ async def evaluate_student_long_answer(payload: GradeRequest):
         is_scenario = bool(vignette_str)
         q_type = (payload.question_type or "RECALL").upper()
 
-        # Parse raw inputs into robust item lists using parse_any_to_list_items
+       # 2. Parse items directly into lists (fixes dictionary parsing failures)
         student_items = parse_any_to_list_items(student_raw_str)
         admin_items = parse_any_to_list_items(key_raw_str)
 
@@ -801,7 +788,8 @@ async def evaluate_student_long_answer(payload: GradeRequest):
         system_eval_prompt = ""
         locked_score: Optional[int] = None
 
-        if admin_items and student_items:
+        # Change condition: check if admin_items exists (don't rely on admin_dict)
+        if admin_items:
             audit_result: PythonAuditResult = compute_strict_score(
                 user_submission=student_items,
                 admin_key_obj=key_raw_str,
