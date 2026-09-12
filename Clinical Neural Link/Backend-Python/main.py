@@ -864,9 +864,16 @@ CRITICAL DIRECTIVES FOR FEEDBACK GENERATION:
 5. DO NOT contradict the locked score of {audit_result.score}/10 in your written reasoning.
 """
 
-        # 4. Base Instruction and Prompt Composition
+        # 4. Base Instruction and Prompt Composition with Prompt Dictionary Safeguards
+        default_eval_prompt = (
+            "You are an expert medical educator and evaluator. "
+            "Compare the student response directly against the answer key and provide objective, "
+            "constructive clinical evaluation."
+        )
+
         if is_scenario:
-            base_instruction = SCENARIO_PROMPTS.get(q_type, SCENARIO_PROMPTS.get("RECALL", ""))
+            scenario_dict = globals().get("SCENARIO_PROMPTS", {})
+            base_instruction = scenario_dict.get(q_type, scenario_dict.get("RECALL", default_eval_prompt))
             text_prompt = (
                 f"CASE VIGNETTE CONTEXT:\n{vignette_str}\n\n"
                 f"SUB-QUESTION STEM: {stem_str}\n\n"
@@ -874,7 +881,8 @@ CRITICAL DIRECTIVES FOR FEEDBACK GENERATION:
                 f"STUDENT RESPONSE: {student_raw_str}"
             )
         else:
-            base_instruction = PROMPTS.get(q_type, PROMPTS.get("RECALL", ""))
+            prompts_dict = globals().get("PROMPTS", globals().get("SCENARIO_PROMPTS", {}))
+            base_instruction = prompts_dict.get(q_type, prompts_dict.get("RECALL", default_eval_prompt))
             text_prompt = (
                 f"QUESTION STEM: {stem_str}\n\n"
                 f"ADMIN ANSWER KEY: {key_raw_str}\n\n"
