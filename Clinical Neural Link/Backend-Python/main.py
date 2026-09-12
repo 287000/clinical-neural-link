@@ -928,13 +928,23 @@ CRITICAL DIRECTIVES FOR FEEDBACK GENERATION:
             {"role": "user", "content": text_prompt}
         ]
 
-        # 5. LLM Execution
+        # 5. LLM Execution & Safe Response Parsing
         response = await call_groq_with_retry(
             messages=messages, 
             target_model=target_model
         )
         raw_text = response.choices[0].message.content or ""
-        parsed_result = parse_ai_json(raw_text)
+
+        # Target pre-computed score fallback
+        target_score = locked_score if locked_score is not None else 10
+
+        # Try parse_ai_feedback first, fallback to parse_ai_json if defined
+        if "parse_ai_feedback" in globals():
+            parsed_result = parse_ai_feedback(raw_text, pre_computed_score=target_score)
+        elif "parse_ai_json" in globals():
+            parsed_result = parse_ai_json(raw_text)
+        else:
+            parsed_result = {"score": target_score, "reasoning": raw_text}
 
         # 6. Score Hard-Lock Post-Processing
         if locked_score is not None:
