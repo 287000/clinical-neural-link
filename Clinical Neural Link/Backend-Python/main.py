@@ -602,9 +602,9 @@ def parse_any_to_list_items(raw_input: Union[str, dict, list]) -> List[str]:
     items = re.split(r'(?:\r?\n|\b)\d+[\.\)\:]\s*|(?:\r?\n|\b)[A-Za-z][\.\)\:]\s*', text)
     items = [i.strip() for i in items if i.strip()]
 
-    # 3. Fallback: Split by newlines, semicolons, or slashes if no numbered items were extracted
+    # 3. Fallback: Split by newlines, semicolons, or commas if no numbered items were extracted
     if len(items) <= 1:
-        items = re.split(r'[\n;]+|(?<=\s)/(?=\s)', text)
+        items = re.split(r'[\n;,]+|(?<=\s)/(?=\s)', text)
         items = [i.strip() for i in items if i.strip()]
 
     return items
@@ -629,7 +629,7 @@ def compute_strict_score(
     else:
         raw_key_str = str(admin_key_obj)
 
-    # 2. Convert Raw Inputs into Standard Lists
+    # 2. Convert Inputs into Standard Clean Lists
     admin_items = parse_any_to_list_items(raw_key_str)
     student_items = parse_any_to_list_items(user_submission)
 
@@ -660,7 +660,7 @@ def compute_strict_score(
             if not student_clean:
                 continue
 
-            # Core text comparison (Direct equality, substring match)
+            # Check direct match or substring inclusion
             if student_clean == target_clean or student_clean in target_clean or target_clean in student_clean:
                 matched_val = student_val
                 unmatched_student_items.remove(student_val)
@@ -680,7 +680,7 @@ def compute_strict_score(
                 "expected": expected_target
             })
 
-    # 4. Math Scaling to 10-Point Scale (e.g. 2/3 * 10 = 6.67 -> 7/10)
+    # 4. Proportional Math Scaling (e.g. 2/3 * 10 = 6.67 -> 7/10)
     calculated_score = round((correct_count / total_items) * 10) if total_items > 0 else 0
     calculated_score = max(0, min(10, calculated_score))
 
@@ -692,7 +692,6 @@ def compute_strict_score(
         mismatches=mismatches,
         is_perfect=(correct_count == total_items)
     )
-
 def validate_output_score(parsed_result: dict, expected_score: int) -> dict:
     """
     Hard-overrides the returned JSON score and cleans reasoning text
