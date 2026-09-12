@@ -907,7 +907,7 @@ CRITICAL DIRECTIVES FOR FEEDBACK GENERATION:
                 f"STUDENT RESPONSE: {student_raw_str}"
             )
 
-        target_model = "llama-3.3-70b-versatile"
+        target_model = "qwen/Qwen3.8-27B"
         target_score = locked_score if locked_score is not None else 0
 
         format_directive = (
