@@ -1480,32 +1480,34 @@ window.submitClinicalLongAnswerSubmission = async function(currentResponseKey) {
         "Evaluate the clinical scenario."
     ).trim();
 
-    // UPDATED: Primary target is aiEvaluationCriteria (as structured in DB JSON schema)
-    let resolvedKey = 
+    // Primary extraction for rubric and criteria
+    let primaryKey = 
         targetQuestion?.aiEvaluationCriteria || 
         targetQuestion?.ai_evaluation_criteria || 
         targetQuestion?.ai_answer_key || 
         targetQuestion?.aiAnswerKey || 
         targetQuestion?.answerKey || 
         targetQuestion?.answer_key || 
-        targetQuestion?.explanation || 
-        targetQuestion?.rationale || 
         "";
 
-    resolvedKey = String(resolvedKey).trim();
+    primaryKey = String(primaryKey).trim();
 
-    // Safeguard against placeholders or missing criteria
-    if (
-        !resolvedKey || 
-        resolvedKey.toLowerCase().includes("written submission evaluation slot") || 
-        resolvedKey === "No reference criteria defined."
-    ) {
-        // Use rationale if primary keys held placeholder text, otherwise log warning
-        resolvedKey = targetQuestion?.rationale && !targetQuestion.rationale.toLowerCase().includes("written submission evaluation slot")
-            ? targetQuestion.rationale 
-            : "NO_ANSWER_KEY_PROVIDED";
+    const isPlaceholder = (val) => {
+        if (!val) return true;
+        const lower = val.toLowerCase();
+        return lower.includes("written submission evaluation slot") || 
+               lower === "no reference criteria defined.";
+    };
 
-        if (resolvedKey === "NO_ANSWER_KEY_PROVIDED") {
+    let resolvedKey = primaryKey;
+
+    // Fallback to rationale or explanation if primary key is missing or contains placeholder text
+    if (isPlaceholder(resolvedKey)) {
+        const fallbackExplanation = String(targetQuestion?.rationale || targetQuestion?.explanation || "").trim();
+        if (!isPlaceholder(fallbackExplanation)) {
+            resolvedKey = fallbackExplanation;
+        } else {
+            resolvedKey = "NO_ANSWER_KEY_PROVIDED";
             console.warn(`⚠️ Warning: No valid Admin Answer Key or Rationale found for question [${responseKey}].`);
         }
     }
@@ -1518,7 +1520,9 @@ window.submitClinicalLongAnswerSubmission = async function(currentResponseKey) {
         targetQuestion?.type || 
         targetQuestion?.category;
 
-    const questionType = resolveQuestionType(explicitType, questionStem);
+    const questionType = typeof resolveQuestionType === 'function' 
+        ? resolveQuestionType(explicitType, questionStem) 
+        : (explicitType || "longanswer");
 
     let aiEvaluatedScore = 0;
     let aiReasoningText = "";
@@ -1538,7 +1542,7 @@ window.submitClinicalLongAnswerSubmission = async function(currentResponseKey) {
                 ai_answer_key: rawAnswerKey,
                 question_type: questionType,
                 vignette_context: vignetteContext && vignetteContext.trim() ? vignetteContext.trim() : null,
-                image_url: null // HARD-LOCKED: Image URL omitted to enforce strict admin key/text adherence
+                image_url: null
             })
         });
 
@@ -1588,7 +1592,6 @@ window.submitClinicalLongAnswerSubmission = async function(currentResponseKey) {
     if (requestSuccessful) {
         session.studentResponses = session.studentResponses || {};
         
-        // Preserve pre-existing session attributes while appending evaluation data
         const existingRecord = session.studentResponses[responseKey] || {};
         session.studentResponses[responseKey] = {
             ...existingRecord,
@@ -1933,7 +1936,9 @@ window.evaluateLongAnswerWithAI = async function(
     }
 
     // Determine target prompt strategy for the AI evaluator
-    const resolvedType = resolveQuestionType(questionType, questionStem);
+    const resolvedType = typeof resolveQuestionType === 'function'
+        ? resolveQuestionType(questionType, questionStem)
+        : (questionType || "longanswer");
 
     // Dynamic API host resolution mapped to central deployment configuration
     const apiBaseUrl = API_BASE_URL;
@@ -1944,14 +1949,49 @@ window.evaluateLongAnswerWithAI = async function(
         scoreBadgeElement.style.opacity = "0.7";
     }
 
-    // UPDATED: Answer Key Sanitizer & Fallback Guard
+    // Helper to identify empty or placeholder key values
+    const isPlaceholder = (val) => {
+        if (!val) return true;
+        const lower = String(val).trim().toLowerCase();
+        return lower.includes("written submission evaluation slot") || 
+               lower === "no reference criteria defined.";
+    };
+
     let sanitizedKey = String(aiAnswerKey || "").trim();
-    if (
-        !sanitizedKey || 
-        sanitizedKey.toLowerCase().includes("written submission evaluation slot") || 
-        sanitizedKey === "No reference criteria defined."
-    ) {
-        sanitizedKey = questionStem; // Fallback to question stem as reference baseline
+
+    // UPDATED: Primary fix to stop falling back to questionStem
+    if (isPlaceholder(sanitizedKey)) {
+        let sessionQuestion = null;
+        const session = window.activeQuizSession;
+
+        if (session && responseKey !== null && responseKey !== undefined) {
+            const keyStr = String(responseKey);
+            if (keyStr.includes("_sub_")) {
+                const [parentIdx, subIdx] = keyStr.split("_sub_").map(Number);
+                const parentQ = session.flatQuestionsList?.[parentIdx];
+                if (parentQ && Array.isArray(parentQ.subQuestions)) {
+                    sessionQuestion = parentQ.subQuestions[subIdx];
+                }
+            } else {
+                sessionQuestion = session.flatQuestionsList?.[Number(keyStr)];
+            }
+        }
+
+        const fallbackKey = 
+            sessionQuestion?.aiEvaluationCriteria || 
+            sessionQuestion?.ai_evaluation_criteria || 
+            sessionQuestion?.ai_answer_key || 
+            sessionQuestion?.aiAnswerKey || 
+            sessionQuestion?.rationale || 
+            sessionQuestion?.explanation || 
+            "";
+
+        if (!isPlaceholder(fallbackKey)) {
+            sanitizedKey = String(fallbackKey).trim();
+        } else {
+            sanitizedKey = "NO_REFERENCE_ANSWER_PROVIDED";
+            console.warn(`⚠️ Warning: evaluateLongAnswerWithAI could not resolve a valid rubric or rationale for question [${responseKey}]. Sent explicit fallback state to backend.`);
+        }
     }
 
     try {
@@ -1965,7 +2005,7 @@ window.evaluateLongAnswerWithAI = async function(
             body: JSON.stringify({
                 question_stem: questionStem,
                 student_response: studentResponse,
-                ai_answer_key: sanitizedKey, // <-- Uses sanitized answer key payload
+                ai_answer_key: sanitizedKey, // Explicitly sends aiEvaluationCriteria or fallback, NEVER questionStem
                 question_type: resolvedType,
                 vignette_context: vignetteContext && vignetteContext.trim() ? vignetteContext.trim() : null,
                 image_url: null // HARD-LOCKED: Stripped image URL to force pure text/admin-key evaluation
