@@ -1480,39 +1480,29 @@ window.submitClinicalLongAnswerSubmission = async function(currentResponseKey) {
         "Evaluate the clinical scenario."
     ).trim();
 
-    // Resolve key from target question fields
-let resolvedKey = 
-    targetQuestion?.ai_answer_key || 
-    targetQuestion?.aiAnswerKey || 
-    targetQuestion?.correctAnswer || 
-    targetQuestion?.answerKey || 
-    targetQuestion?.answer_key || 
-    targetQuestion?.answer || 
-    targetQuestion?.explanation;
+    // UPDATED: Comprehensive AI Answer Key Resolution with Fallback Guards
+    let resolvedKey = 
+        targetQuestion?.ai_answer_key || 
+        targetQuestion?.aiAnswerKey || 
+        targetQuestion?.correctAnswer || 
+        targetQuestion?.answerKey || 
+        targetQuestion?.answer_key || 
+        targetQuestion?.answer || 
+        targetQuestion?.explanation || 
+        "";
 
-// If targetQuestion has nested acceptable options/items, join them as the key
-if (!resolvedKey && Array.isArray(targetQuestion?.options)) {
-    resolvedKey = targetQuestion.options.map(o => o.text || o).join(", ");
-}
+    resolvedKey = String(resolvedKey).trim();
 
-resolvedKey = String(resolvedKey || "").trim();
+    // Safeguard against empty or hardcoded placeholder strings
+    if (
+        !resolvedKey || 
+        resolvedKey.toLowerCase().includes("written submission evaluation slot") || 
+        resolvedKey === "No reference criteria defined."
+    ) {
+        resolvedKey = questionStem;
+    }
 
-// Safeguard against empty or placeholder strings without defaulting to questionStem
-if (
-    !resolvedKey || 
-    resolvedKey.toLowerCase().includes("written submission evaluation slot") || 
-    resolvedKey === "No reference criteria defined."
-) {
-    console.warn(`⚠️ Warning: No valid answer key found for question key [${responseKey}].`);
-    resolvedKey = ""; 
-}
-
-const rawAnswerKey = resolvedKey;
-
-    // Optional Accepted Synonyms Extraction
-    const acceptedSynonyms = Array.isArray(targetQuestion?.accepted_synonyms) 
-        ? targetQuestion.accepted_synonyms 
-        : (Array.isArray(targetQuestion?.acceptedSynonyms) ? targetQuestion.acceptedSynonyms : []);
+    const rawAnswerKey = resolvedKey;
 
     const explicitType = 
         targetQuestion?.questionType || 
@@ -1527,7 +1517,7 @@ const rawAnswerKey = resolvedKey;
     let requestSuccessful = false;
 
     try {
-        console.log(`📡 Sending [${responseKey}] (${questionType}) written analysis to FastAPI endpoint...`);
+        console.log(`📡 Sending [${responseKey}] (${questionType}) [Image Omitted for Pure Text Grading] written analysis to FastAPI endpoint...`);
         
         const response = await fetch(`${apiBaseUrl}/assessments/evaluate`, {
             method: "POST",
@@ -1538,19 +1528,13 @@ const rawAnswerKey = resolvedKey;
                 question_stem: questionStem,
                 student_response: writtenText,
                 ai_answer_key: rawAnswerKey,
-                admin_answer_key: {
-                    raw_key: rawAnswerKey
-                },
-                accepted_synonyms: acceptedSynonyms,
                 question_type: questionType,
                 vignette_context: vignetteContext && vignetteContext.trim() ? vignetteContext.trim() : null,
-                image_url: null
+                image_url: null // HARD-LOCKED: Image URL omitted to enforce strict admin key/text adherence
             })
         });
 
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            console.error("❌ FastAPI 422 Validation Error Details:", errorData);
             throw new Error(`AI Engine HTTP failure status: ${response.status}`);
         }
 
@@ -1929,8 +1913,7 @@ window.evaluateLongAnswerWithAI = async function(
     questionType = null,
     reasoningTextElement = null,
     vignetteContext = null,
-    imageUrl = null,
-    acceptedSynonyms = []
+    imageUrl = null
 ) {
     if (!studentResponse || studentResponse.trim() === "") {
         if (typeof window.showToast === 'function') {
@@ -1953,27 +1936,18 @@ window.evaluateLongAnswerWithAI = async function(
         scoreBadgeElement.style.opacity = "0.7";
     }
 
-  // Extract answer key from session memory if aiAnswerKey parameter is empty/invalid
-let rawKey = aiAnswerKey;
-
-if (
-    !rawKey || 
-    String(rawKey).toLowerCase().includes("written submission evaluation slot") || 
-    rawKey === "No reference criteria defined."
-) {
-    const questionObj = window.activeQuizSession?.flatQuestionsList?.[responseKey];
-    rawKey = questionObj?.answer_key || questionObj?.correct_answer || questionObj?.ai_answer_key || "";
-}
-
-let sanitizedKey = String(rawKey || "").trim();
-
-    // Extract accepted synonyms if passed or nested within window session object
-    const resolvedSynonyms = Array.isArray(acceptedSynonyms) && acceptedSynonyms.length > 0
-        ? acceptedSynonyms
-        : (window.activeQuizSession?.flatQuestionsList?.[responseKey]?.accepted_synonyms || []);
+    // UPDATED: Answer Key Sanitizer & Fallback Guard
+    let sanitizedKey = String(aiAnswerKey || "").trim();
+    if (
+        !sanitizedKey || 
+        sanitizedKey.toLowerCase().includes("written submission evaluation slot") || 
+        sanitizedKey === "No reference criteria defined."
+    ) {
+        sanitizedKey = questionStem; // Fallback to question stem as reference baseline
+    }
 
     try {
-        console.log(`📡 Sending [${responseKey}] | Type: ${resolvedType} | Scenario: ${!!vignetteContext} to AI Evaluator...`);
+        console.log(`📡 Sending [${responseKey}] | Type: ${resolvedType} | Scenario: ${!!vignetteContext} | Image Omitted for Pure Text Grading to AI Evaluator...`);
 
         const response = await fetch(`${apiBaseUrl}/assessments/evaluate`, {
             method: "POST",
@@ -1983,9 +1957,7 @@ let sanitizedKey = String(rawKey || "").trim();
             body: JSON.stringify({
                 question_stem: questionStem,
                 student_response: studentResponse,
-                ai_answer_key: sanitizedKey,
-                admin_answer_key: sanitizedKey, // Dual key mapping for direct FastAPI Pydantic schema alignment
-                accepted_synonyms: resolvedSynonyms,
+                ai_answer_key: sanitizedKey, // <-- Uses sanitized answer key payload
                 question_type: resolvedType,
                 vignette_context: vignetteContext && vignetteContext.trim() ? vignetteContext.trim() : null,
                 image_url: null // HARD-LOCKED: Stripped image URL to force pure text/admin-key evaluation
@@ -1993,8 +1965,6 @@ let sanitizedKey = String(rawKey || "").trim();
         });
 
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            console.error("❌ FastAPI 422 Validation Error Details:", errorData);
             throw new Error(`AI Engine rejected grading query. Status: ${response.status}`);
         }
 
@@ -2230,3 +2200,5 @@ window.compileQuizFinalDiagnosticsPerformance = function() {
 
     if (window.lucide) window.lucide.createIcons();
 };
+
+
