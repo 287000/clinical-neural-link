@@ -1480,28 +1480,35 @@ window.submitClinicalLongAnswerSubmission = async function(currentResponseKey) {
         "Evaluate the clinical scenario."
     ).trim();
 
-    // UPDATED: Comprehensive AI Answer Key Resolution with Fallback Guards
+    // UPDATED: Primary target is aiEvaluationCriteria (as structured in DB JSON schema)
     let resolvedKey = 
+        targetQuestion?.aiEvaluationCriteria || 
+        targetQuestion?.ai_evaluation_criteria || 
         targetQuestion?.ai_answer_key || 
         targetQuestion?.aiAnswerKey || 
-        targetQuestion?.correctAnswer || 
         targetQuestion?.answerKey || 
         targetQuestion?.answer_key || 
-        targetQuestion?.answer || 
         targetQuestion?.explanation || 
+        targetQuestion?.rationale || 
         "";
 
     resolvedKey = String(resolvedKey).trim();
 
-    // Safeguard against empty or hardcoded placeholder strings
-  if (
-    !resolvedKey || 
-    resolvedKey.toLowerCase().includes("written submission evaluation slot") || 
-    resolvedKey === "No reference criteria defined."
-) {
-    console.warn(`⚠️ Warning: No valid Admin Answer Key found for question [${responseKey}].`);
-    resolvedKey = "NO_ANSWER_KEY_PROVIDED"; 
-}
+    // Safeguard against placeholders or missing criteria
+    if (
+        !resolvedKey || 
+        resolvedKey.toLowerCase().includes("written submission evaluation slot") || 
+        resolvedKey === "No reference criteria defined."
+    ) {
+        // Use rationale if primary keys held placeholder text, otherwise log warning
+        resolvedKey = targetQuestion?.rationale && !targetQuestion.rationale.toLowerCase().includes("written submission evaluation slot")
+            ? targetQuestion.rationale 
+            : "NO_ANSWER_KEY_PROVIDED";
+
+        if (resolvedKey === "NO_ANSWER_KEY_PROVIDED") {
+            console.warn(`⚠️ Warning: No valid Admin Answer Key or Rationale found for question [${responseKey}].`);
+        }
+    }
 
     const rawAnswerKey = resolvedKey;
 
@@ -1518,7 +1525,7 @@ window.submitClinicalLongAnswerSubmission = async function(currentResponseKey) {
     let requestSuccessful = false;
 
     try {
-        console.log(`📡 Sending [${responseKey}] (${questionType}) [Image Omitted for Pure Text Grading] written analysis to FastAPI endpoint...`);
+        console.log(`📡 Sending [${responseKey}] (${questionType}) written analysis to FastAPI endpoint...`);
         
         const response = await fetch(`${apiBaseUrl}/assessments/evaluate`, {
             method: "POST",
