@@ -777,9 +777,21 @@ async def evaluate_student_long_answer(payload: GradeRequest):
         is_scenario = bool(vignette_str)
         q_type = (payload.question_type or "RECALL").upper()
 
-       # 2. Parse items directly into lists (fixes dictionary parsing failures)
+        # Parse items directly into lists (fixes dictionary parsing failures)
         student_items = parse_any_to_list_items(student_raw_str)
         admin_items = parse_any_to_list_items(key_raw_str)
+
+        # =========================================================
+        # 🔍 DIAGNOSTIC LOGS - PHASE 1: PARSING & INPUT INSPECTION
+        # =========================================================
+        print("\n" + "="*50)
+        print("🔍 [DEBUG TRACE] EVALUATION REQUEST RECEIVED")
+        print("="*50)
+        print(f"1. RAW EXTRACTED KEY  : '{key_raw_str}'")
+        print(f"2. RAW STUDENT INPUT  : '{student_raw_str}'")
+        print(f"3. PARSED ADMIN ITEMS : {admin_items}")
+        print(f"4. PARSED STUDENT ITEMS: {student_items}")
+        print("="*50)
 
         if len(admin_items) > 1:
             q_type = "LIST"
@@ -788,7 +800,6 @@ async def evaluate_student_long_answer(payload: GradeRequest):
         system_eval_prompt = ""
         locked_score: Optional[int] = None
 
-        # Change condition: check if admin_items exists (don't rely on admin_dict)
         if admin_items:
             audit_result: PythonAuditResult = compute_strict_score(
                 user_submission=student_items,
@@ -797,6 +808,17 @@ async def evaluate_student_long_answer(payload: GradeRequest):
             )
 
             locked_score = audit_result.score
+
+            # =========================================================
+            # 🔍 DIAGNOSTIC LOGS - PHASE 2: PYTHON CALCULATED MATH
+            # =========================================================
+            print(f"5. AUDIT EXECUTED     : YES")
+            print(f"   -> TOTAL ITEMS (N) : {audit_result.total_items}")
+            print(f"   -> MATCHES (C)     : {audit_result.correct_count}")
+            print(f"   -> CALCULATED SCORE: {audit_result.score} / 10")
+            print(f"   -> MATCH DETAILS   : {audit_result.matches}")
+            print(f"   -> MISMATCHES      : {audit_result.mismatches}")
+            print("="*50)
 
             # Build mismatch item breakdown for LLM context injection
             mismatch_details = ""
@@ -821,10 +843,13 @@ CRITICAL DIRECTIVES FOR FEEDBACK GENERATION:
 4. DO NOT mark valid standard terms as invalid medical nomenclature if they simply belong to a different key position.
 5. DO NOT contradict the locked score of {audit_result.score}/10 in your written reasoning.
 """
+        else:
+            print("5. AUDIT EXECUTED     : NO (admin_items was empty, audit bypassed)")
+            print("="*50)
 
         # 4. Base Instruction and Prompt Composition with Prompt Dictionary Safeguards
         default_eval_prompt = (
-            "You are an expert medical educator and evaluator. "
+            "You are an expert medical evaluator. "
             "Compare the student response directly against the answer key and provide objective, "
             "constructive clinical evaluation."
         )
@@ -877,11 +902,18 @@ CRITICAL DIRECTIVES FOR FEEDBACK GENERATION:
         else:
             parsed_result = safe_parse_ai_json(raw_text)
 
+        # =========================================================
+        # 🔍 DIAGNOSTIC LOGS - PHASE 3: RAW AI OUTPUT
+        # =========================================================
+        print(f"6. RAW LLM OUTPUT SCORE: {parsed_result.get('score')}")
+        print(f"   LOCKED SCORE PASSED : {locked_score}")
+
         # 6. Score Hard-Lock Post-Processing
         if locked_score is not None:
             parsed_result = validate_output_score(parsed_result, locked_score)
 
-        print(f"✨ Groq Evaluation ({target_model}) [{q_type}]: {parsed_result['score']}/10")
+        print(f"7. FINAL RETURNED SCORE : {parsed_result.get('score')} / 10")
+        print("="*50 + "\n")
 
         return EvaluationResult(**parsed_result)
 
