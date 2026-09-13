@@ -1494,13 +1494,14 @@ window.submitClinicalLongAnswerSubmission = async function(currentResponseKey) {
     resolvedKey = String(resolvedKey).trim();
 
     // Safeguard against empty or hardcoded placeholder strings
-    if (
-        !resolvedKey || 
-        resolvedKey.toLowerCase().includes("written submission evaluation slot") || 
-        resolvedKey === "No reference criteria defined."
-    ) {
-        resolvedKey = questionStem;
-    }
+  if (
+    !resolvedKey || 
+    resolvedKey.toLowerCase().includes("written submission evaluation slot") || 
+    resolvedKey === "No reference criteria defined."
+) {
+    console.warn(`⚠️ Warning: No valid Admin Answer Key found for question [${responseKey}].`);
+    resolvedKey = "NO_ANSWER_KEY_PROVIDED"; 
+}
 
     const rawAnswerKey = resolvedKey;
 
