@@ -340,6 +340,14 @@ async def call_groq_with_retry(messages: list, target_model: str, max_retries: i
                     raise api_err
                 print(f"⚠️ Groq API Error on attempt {attempt}/{max_retries}: {api_err}. Retrying in {delay}s...")
                 await asyncio.sleep(delay)
+ @app.get("/debug/check-keys")
+async def check_keys():
+    # Replace 'questions' or ORM models with your actual table/query logic
+    # Example using raw SQL / AsyncEngine:
+    async with db.connect() if hasattr(db, 'connect') else ...:
+        # If using SQLAlchemy / SQLModel / psycopg:
+        results = await db.fetch_all("SELECT id, question, ai_answer_key FROM questions LIMIT 5;")
+        return {"data": results}               
 
 # ==========================================
 # 3. ENDPOINTS
