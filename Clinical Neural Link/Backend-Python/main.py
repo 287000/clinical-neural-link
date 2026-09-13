@@ -139,8 +139,6 @@ PRECISION_RULES = """CRITICAL CLINICAL PRECISION & STRICT ADMIN KEY ENFORCEMENT:
    - NEVER mention "admin key", "rubric", or "provided context".
 """
 
-# Updated System Prompts with Strict Partial Credit Rules & Multi-System Context Alignment
-
 PROMPTS = {
     "RECALL": PRECISION_RULES + """You are an unforgiving, strict administrative medical professor evaluating a single-term or entity recall question for a clinical board exam.
 
@@ -241,28 +239,23 @@ SCENARIO_PROMPTS = {
 3. STRICT FACTUAL & SAFETY PENALTY: If the user states a major physiological impossibility, dangerous procedural error, or substitutes a key target entity with a precursor/informal term, you MUST NOT exceed 3 / 10.
 4. STRICT FEEDBACK RULE: Address the user directly as "You". Explicitly highlight the exact points where your submission contained factual errors or improper terminology. NEVER write "the student", "the response", "provided context", "answer key", "admin key", "key", or "rubric"."""
 }
+
 def parse_ai_json(raw_text: str) -> dict:
-    """Extracts score and reasoning from LLM output while stripping scratchpads, markdown blocks, and thinking tags."""
     if not raw_text or not raw_text.strip():
         return {"score": 0, "reasoning": "AI evaluation engine returned an empty response."}
 
-    # 1. Clean scratchpads, thinking blocks, and markdown code fencing
     cleaned = re.sub(r'<think>.*?</think>', '', raw_text, flags=re.DOTALL)
     cleaned = re.sub(r'```(?:json)?', '', cleaned, flags=re.IGNORECASE)
     cleaned = cleaned.replace('```', '').strip()
 
     def extract_fields(data_dict: dict) -> dict:
-        """Safely parses score (supports int/float/numeric string) and cleans reasoning."""
         raw_score = data_dict.get("score", 0)
-        
         try:
-            # Safely cast numeric strings or floats (e.g., "3", 3.33) without throwing ValueError
             numeric_score = round(float(raw_score))
         except (ValueError, TypeError):
             numeric_score = 0
 
         score_val = max(0, min(10, numeric_score))
-        
         reasoning_val = str(
             data_dict.get("reasoning") or 
             data_dict.get("assessment") or 
@@ -270,7 +263,6 @@ def parse_ai_json(raw_text: str) -> dict:
             ""
         ).strip()
 
-        # Unescape escaped JSON quotes or newlines if raw regex was used
         reasoning_val = reasoning_val.encode().decode('unicode_escape', errors='ignore') if '\\' in reasoning_val else reasoning_val
 
         if not reasoning_val:
@@ -278,7 +270,6 @@ def parse_ai_json(raw_text: str) -> dict:
 
         return {"score": score_val, "reasoning": reasoning_val}
 
-    # 2. Try direct JSON parsing
     try:
         data = json.loads(cleaned)
         if isinstance(data, dict):
@@ -286,7 +277,6 @@ def parse_ai_json(raw_text: str) -> dict:
     except Exception:
         pass
 
-    # 3. Fallback: Extract outermost JSON object via Greedy Match
     json_match = re.search(r'\{[\s\S]*\}', cleaned)
     if json_match:
         try:
@@ -296,7 +286,6 @@ def parse_ai_json(raw_text: str) -> dict:
         except Exception:
             pass
 
-    # 4. Fallback: Direct Regex Field Extraction (handles truncated or malformed JSON output)
     score_match = re.search(r'"score"\s*:\s*([0-9]+(?:\.[0-9]+)?)', cleaned)
     score_raw = score_match.group(1) if score_match else "0"
     
@@ -309,13 +298,11 @@ def parse_ai_json(raw_text: str) -> dict:
     
     if reasoning_match:
         raw_reasoning = reasoning_match.group(1)
-        # Process backslash escapes from regex capture
         try:
             reasoning = raw_reasoning.encode('utf-8').decode('unicode_escape')
         except Exception:
             reasoning = raw_reasoning
     else:
-        # Ultimate fallback if reasoning key quotes were cut off mid-stream
         reasoning = "Evaluation completed successfully."
 
     return {
@@ -324,7 +311,6 @@ def parse_ai_json(raw_text: str) -> dict:
     }
 
 async def call_groq_with_retry(messages: list, target_model: str, max_retries: int = 4):
-    """Executes non-blocking Groq API requests with an async concurrency queue and exponential backoff retry logic."""
     async with GROQ_CONCURRENCY_LIMITER:
         delay = 1.5
         for attempt in range(1, max_retries + 1):
@@ -386,13 +372,8 @@ def admin_login(credentials: AdminLoginRequest):
         detail="Invalid portal access credentials."
     )
 
-# ----------------------------
-# 🟢 Upload Diagram Endpoint (Supabase Storage Cloud Integration)
-# ----------------------------
-
 @app.post("/upload-diagram")
 async def upload_diagram(file: UploadFile = File(...)):
-    """Uploads question diagrams directly to Supabase Cloud Storage and returns a permanent public URL."""
     try:
         contents = await file.read()
         extension = os.path.splitext(file.filename)[1] or ".png"
@@ -400,20 +381,15 @@ async def upload_diagram(file: UploadFile = File(...)):
         storage_path = f"diagrams/{unique_filename}"
 
         if supabase_client:
-            # Upload directly to the 'question-diagrams' Supabase bucket
             res = supabase_client.storage.from_("question-diagrams").upload(
                 path=storage_path,
                 file=contents,
                 file_options={"content-type": file.content_type or "image/png"}
             )
-            
-            # Retrieve the permanent public URL
             public_url = supabase_client.storage.from_("question-diagrams").get_public_url(storage_path)
             print(f"☁️ Successfully uploaded diagram to Supabase Storage: {public_url}")
             return {"image_url": public_url}
-
         else:
-            # Fallback to local storage if Supabase credentials are missing locally
             os.makedirs(os.path.join("static", "diagrams"), exist_ok=True)
             local_path = os.path.join("static", "diagrams", unique_filename)
             with open(local_path, "wb") as buffer:
@@ -426,10 +402,6 @@ async def upload_diagram(file: UploadFile = File(...)):
             status_code=500,
             detail=f"Failed to upload diagram image to Supabase Cloud: {str(e)}"
         )
-
-# ----------------------------
-# 🟢 Course Notes Endpoints
-# ----------------------------
 
 @app.post("/notes", response_model=CourseNoteResponse)
 def create_note(note: CourseNoteCreate, db: Session = Depends(get_db)):
@@ -474,10 +446,6 @@ def get_notes(student_number: Optional[str] = Header(None), db: Session = Depend
             raise HTTPException(status_code=402, detail="Payment Required")
             
     return db.query(models.CourseNote).all()
-
-# ----------------------------
-# 🟢 Assessments Endpoints
-# ----------------------------
 
 @app.post("/assessments", response_model=AssessmentResponse)
 def create_assessment(
@@ -620,12 +588,8 @@ def delete_note(note_id: int, db: Session = Depends(get_db)):
 # ----------------------------
 # 🟢 Deterministic Scoring & Verification Helpers
 # ----------------------------
-import json
-import re
-from typing import Tuple, List, Dict, Union, Any
 
 def parse_student_response_to_dict(response_str: Any) -> dict:
-    """Safely parses JSON strings, structured key-value lines, or item lists into a dictionary."""
     if not response_str:
         return {}
 
@@ -634,7 +598,6 @@ def parse_student_response_to_dict(response_str: Any) -> dict:
 
     text = str(response_str).strip()
 
-    # Attempt direct JSON parsing first
     try:
         parsed = json.loads(text)
         if isinstance(parsed, dict):
@@ -650,13 +613,11 @@ def parse_student_response_to_dict(response_str: Any) -> dict:
         if not line:
             continue
 
-        # Flexible Regex: Matches "A:", "A.", "1.", "1.)", "Box A:", "A - "
         match = re.match(r'^(?:Box\s+)?([A-Za-z0-9]+)[\.\:\-\)\s]+(.+)$', line, re.IGNORECASE)
         if match:
             k, v = match.groups()
             result[k.strip().upper()] = v.strip()
 
-    # Fallback: if regex missed and text contains raw multiline text, chunk line by line
     if not result and len(lines) > 0:
         for idx, line in enumerate(lines):
             line_str = line.strip()
@@ -667,16 +628,10 @@ def parse_student_response_to_dict(response_str: Any) -> dict:
 
 
 def compute_strict_score(user_submission_dict: dict, admin_key_dict: dict) -> Tuple[int, int, int, List[dict]]:
-    """
-    Programmatically calculates exact or substring matches (C) out of total items (N).
-    Enforces fair partial credit calculation, normalizes formatting/synonym variations, 
-    and returns granular feedback details for LLM prompt context injection.
-    """
     total_items = len(admin_key_dict)
     if total_items == 0:
         return 0, 0, 0, []
 
-    # Normalize user keys to uppercase to handle casing mismatches (e.g., 'a' vs 'A')
     normalized_user_dict = {str(k).strip().upper(): str(v).strip() for k, v in user_submission_dict.items()}
 
     correct_count = 0
@@ -686,18 +641,14 @@ def compute_strict_score(user_submission_dict: dict, admin_key_dict: dict) -> Tu
         key_lookup = str(raw_key).strip().upper()
         target_val_str = str(target_val).strip()
         
-        # Extract user input safely
         user_val = normalized_user_dict.get(key_lookup, "")
 
-        # Clean string values for flexible clinical match comparison
         user_clean = user_val.lower()
         target_clean = target_val_str.lower()
 
-        # Strip common anatomical filler words (e.g., "phase", "layer") for normalized token checks
         user_core = re.sub(r'\b(phase|layer|level)\b', '', user_clean).strip()
         target_core = re.sub(r'\b(phase|layer|level)\b', '', target_clean).strip()
 
-        # Flexible Match Checks: Exact, Core Token, Substring, or Common Medical Equivalents
         is_match = False
         if user_clean and target_clean:
             if user_clean == target_clean:
@@ -706,7 +657,6 @@ def compute_strict_score(user_submission_dict: dict, admin_key_dict: dict) -> Tu
                 is_match = True
             elif user_clean in target_clean or target_clean in user_clean:
                 is_match = True
-            # Specific Clinical Synonym Normalization
             elif "menses" in user_clean and "menstrual" in target_clean:
                 is_match = True
 
@@ -719,20 +669,14 @@ def compute_strict_score(user_submission_dict: dict, admin_key_dict: dict) -> Tu
                 "expected": target_val_str
             })
 
-    # Linear mathematical scaling rounded to nearest integer (e.g., 1/3 -> 3.33 -> 3, 2/3 -> 6.67 -> 7)
     calculated_score = round((correct_count / total_items) * 10)
 
     return calculated_score, correct_count, total_items, mismatches
 
 
 def validate_output_score(parsed_result: dict, expected_score: int) -> dict:
-    """
-    Hard-overrides the returned JSON score to match the programmatically calculated score.
-    Also cleans any score mismatch inside the reasoning text.
-    """
     parsed_result["score"] = expected_score
 
-    # Fix score text inside reasoning if the LLM outputted a conflicting score string
     reasoning_text = parsed_result.get("reasoning", "")
     score_match = re.search(r'(\d+)\s*/\s*10', reasoning_text)
 
@@ -747,7 +691,6 @@ def validate_output_score(parsed_result: dict, expected_score: int) -> dict:
 
 
 async def prepare_image_for_groq(image_url: str) -> Optional[str]:
-    """Passes direct public Supabase URLs or converts legacy local disk images into Base64 format."""
     if not image_url:
         return None
 
@@ -758,7 +701,7 @@ async def prepare_image_for_groq(image_url: str) -> Optional[str]:
         filename = os.path.basename(image_url.split("?")[0])
         possible_paths = [
             os.path.join("static", "diagrams", filename),
-            os.path.join("static", filename),
+            os.path.join("static", "filename"),
             image_url.lstrip("/")
         ]
 
@@ -777,25 +720,36 @@ async def prepare_image_for_groq(image_url: str) -> Optional[str]:
     return await asyncio.to_thread(_sync_read)
 
 # ----------------------------
-# 🟢 Groq AI Evaluation Endpoint
+# 🟢 Groq AI Evaluation Endpoint (With Terminal Debugging Logs)
 # ----------------------------
 
 @app.post("/assessments/evaluate", response_model=EvaluationResult)
 async def evaluate_student_long_answer(payload: GradeRequest):
     try:
-        # Sanitized string extraction to prevent .strip() crashes on None values
         vignette_str = str(payload.vignette_context or "").strip()
         stem_str = str(payload.question_stem or "").strip()
         key_raw_str = str(payload.ai_answer_key or "").strip()
         student_raw_str = str(payload.student_response or "").strip()
         raw_img = str(payload.image_url or "").strip()
 
+        # =============================================================
+        # 🔍 LIVE TERMINAL DEBUGGING LOG
+        # =============================================================
+        print("\n" + "="*70)
+        print("🔍 [INCOMING EVALUATION REQUEST]")
+        print(f"📌 QUESTION STEM      : {stem_str}")
+        print(f"🔑 ADMIN ANSWER KEY   : '{key_raw_str}'")
+        print(f"✏️ STUDENT RESPONSE   : '{student_raw_str}'")
+        print(f"🏷️ QUESTION TYPE      : {payload.question_type}")
+        if vignette_str:
+            print(f"📖 VIGNETTE CONTEXT   : {vignette_str[:80]}...")
+        if raw_img:
+            print(f"🖼️ ATTACHED DIAGRAM   : {raw_img}")
+        print("="*70)
+
         is_scenario = bool(vignette_str)
         has_image = bool(raw_img and raw_img.lower() not in ["none", "null", "undefined"])
 
-        # -------------------------------------------------------------
-        # 1. ALWAYS AUDIT MULTI-ITEM RESPONSES
-        # -------------------------------------------------------------
         student_dict = parse_student_response_to_dict(payload.student_response)
         admin_dict = parse_student_response_to_dict(payload.ai_answer_key)
 
@@ -819,10 +773,8 @@ CRITICAL DIRECTIVES FOR FEEDBACK GENERATION:
 3. Restrict negative feedback STRICTLY to the mismatched items listed above ({mismatches}).
 4. DO NOT write that the response is fully correct, and DO NOT contradict the locked score in your written feedback.
 """
+            print(f"⚙️ Deterministic Auditor: Score locked at {locked_score}/10 ({correct_count}/{total_items} matches)")
 
-        # -------------------------------------------------------------
-        # 2. CONSTRUCT PROMPTS
-        # -------------------------------------------------------------
         q_type = payload.question_type.upper() if payload.question_type else "RECALL"
         if len(admin_dict) > 1:
             q_type = "LIST"
@@ -864,7 +816,6 @@ CRITICAL DIRECTIVES FOR FEEDBACK GENERATION:
         else:
             user_content = text_prompt
 
-        # Hard-code integer expectation into template if locked score is present
         expected_score_repr = locked_score if locked_score is not None else 10
         format_directive = (
             "\n\nSYSTEM INSTRUCTION: You are a JSON-only API generator.\n"
@@ -888,15 +839,16 @@ CRITICAL DIRECTIVES FOR FEEDBACK GENERATION:
 
         parsed_result = parse_ai_json(raw_text)
 
-        # -------------------------------------------------------------
-        # 3. ABSOLUTE HARD-LOCK OVERRIDE
-        # -------------------------------------------------------------
         if locked_score is not None:
-            # Overwrite any LLM score hallucination directly
             parsed_result["score"] = locked_score
             parsed_result = validate_output_score(parsed_result, locked_score)
 
-        print(f"✨ Groq Evaluation ({target_model}) [{q_type}] [Image Attached: {has_image}]: {parsed_result['score']}/10")
+        # =============================================================
+        # 🔍 OUTPUT RESULT LOG
+        # =============================================================
+        print(f"✨ [AI EVALUATION RESULT] Model: {target_model} | Score: {parsed_result['score']}/10")
+        print(f"📝 [REASONING]: {parsed_result['reasoning']}")
+        print("="*70 + "\n")
 
         return parsed_result
 
