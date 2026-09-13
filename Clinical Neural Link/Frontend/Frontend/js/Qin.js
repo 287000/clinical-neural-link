@@ -1480,29 +1480,34 @@ window.submitClinicalLongAnswerSubmission = async function(currentResponseKey) {
         "Evaluate the clinical scenario."
     ).trim();
 
-    // Comprehensive AI Answer Key Resolution with Fallback Guards
-    let resolvedKey = 
-        targetQuestion?.ai_answer_key || 
-        targetQuestion?.aiAnswerKey || 
-        targetQuestion?.correctAnswer || 
-        targetQuestion?.answerKey || 
-        targetQuestion?.answer_key || 
-        targetQuestion?.answer || 
-        targetQuestion?.explanation || 
-        "";
+    // Resolve key from target question fields
+let resolvedKey = 
+    targetQuestion?.ai_answer_key || 
+    targetQuestion?.aiAnswerKey || 
+    targetQuestion?.correctAnswer || 
+    targetQuestion?.answerKey || 
+    targetQuestion?.answer_key || 
+    targetQuestion?.answer || 
+    targetQuestion?.explanation;
 
-    resolvedKey = String(resolvedKey).trim();
+// If targetQuestion has nested acceptable options/items, join them as the key
+if (!resolvedKey && Array.isArray(targetQuestion?.options)) {
+    resolvedKey = targetQuestion.options.map(o => o.text || o).join(", ");
+}
 
-    // Safeguard against empty or hardcoded placeholder strings
-    if (
-        !resolvedKey || 
-        resolvedKey.toLowerCase().includes("written submission evaluation slot") || 
-        resolvedKey === "No reference criteria defined."
-    ) {
-        resolvedKey = questionStem;
-    }
+resolvedKey = String(resolvedKey || "").trim();
 
-    const rawAnswerKey = resolvedKey;
+// Safeguard against empty or placeholder strings without defaulting to questionStem
+if (
+    !resolvedKey || 
+    resolvedKey.toLowerCase().includes("written submission evaluation slot") || 
+    resolvedKey === "No reference criteria defined."
+) {
+    console.warn(`⚠️ Warning: No valid answer key found for question key [${responseKey}].`);
+    resolvedKey = ""; 
+}
+
+const rawAnswerKey = resolvedKey;
 
     // Optional Accepted Synonyms Extraction
     const acceptedSynonyms = Array.isArray(targetQuestion?.accepted_synonyms) 
@@ -1948,15 +1953,19 @@ window.evaluateLongAnswerWithAI = async function(
         scoreBadgeElement.style.opacity = "0.7";
     }
 
-    // Answer Key Sanitizer & Fallback Guard
-    let sanitizedKey = String(aiAnswerKey || "").trim();
-    if (
-        !sanitizedKey || 
-        sanitizedKey.toLowerCase().includes("written submission evaluation slot") || 
-        sanitizedKey === "No reference criteria defined."
-    ) {
-        sanitizedKey = questionStem; // Fallback to question stem as reference baseline
-    }
+  // Extract answer key from session memory if aiAnswerKey parameter is empty/invalid
+let rawKey = aiAnswerKey;
+
+if (
+    !rawKey || 
+    String(rawKey).toLowerCase().includes("written submission evaluation slot") || 
+    rawKey === "No reference criteria defined."
+) {
+    const questionObj = window.activeQuizSession?.flatQuestionsList?.[responseKey];
+    rawKey = questionObj?.answer_key || questionObj?.correct_answer || questionObj?.ai_answer_key || "";
+}
+
+let sanitizedKey = String(rawKey || "").trim();
 
     // Extract accepted synonyms if passed or nested within window session object
     const resolvedSynonyms = Array.isArray(acceptedSynonyms) && acceptedSynonyms.length > 0
