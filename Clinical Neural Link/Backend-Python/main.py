@@ -725,17 +725,8 @@ async def prepare_image_for_groq(image_url: str) -> Optional[str]:
 # 🟢 Groq AI Evaluation Endpoint (With Terminal Debugging Logs)
 # ----------------------------
 
-import logging
-import time
-from fastapi import HTTPException
-
-# Configure standard logger to output neutral INFO level logs
-logger = logging.getLogger("clinical_evaluator")
-logger.setLevel(logging.INFO)
-
 @app.post("/assessments/evaluate", response_model=EvaluationResult)
 async def evaluate_student_long_answer(payload: GradeRequest):
-    start_time = time.time()
     try:
         vignette_str = str(payload.vignette_context or "").strip()
         stem_str = str(payload.question_stem or "").strip()
@@ -743,17 +734,20 @@ async def evaluate_student_long_answer(payload: GradeRequest):
         student_raw_str = str(payload.student_response or "").strip()
         raw_img = str(payload.image_url or "").strip()
 
-        # Sanitize non-standard types safely
-        q_type_str = str(payload.question_type or "RECALL").strip()
-
         # =============================================================
-        # 📥 PRODUCTION INCOMING EVALUATION LOG (Clean INFO stream)
+        # 🔍 LIVE TERMINAL DEBUGGING LOG
         # =============================================================
-        logger.info("======================================================================")
-        logger.info(f"📥 [EVAL REQUEST] Type: {q_type_str} | Scenario: {bool(vignette_str)} | Image: {bool(raw_img)}")
-        logger.info(f"📌 STEM     : {stem_str[:90]}..." if len(stem_str) > 90 else f"📌 STEM     : {stem_str}")
-        logger.info(f"🔑 ADMIN KEY : {key_raw_str[:90]}..." if len(key_raw_str) > 90 else f"🔑 ADMIN KEY : {key_raw_str}")
-        logger.info(f"✏️ STUDENT   : {student_raw_str[:90]}..." if len(student_raw_str) > 90 else f"✏️ STUDENT   : {student_raw_str}")
+        print("\n" + "="*70)
+        print("🔍 [INCOMING EVALUATION REQUEST]")
+        print(f"📌 QUESTION STEM      : {stem_str}")
+        print(f"🔑 ADMIN ANSWER KEY   : '{key_raw_str}'")
+        print(f"✏️ STUDENT RESPONSE   : '{student_raw_str}'")
+        print(f"🏷️ QUESTION TYPE      : {payload.question_type}")
+        if vignette_str:
+            print(f"📖 VIGNETTE CONTEXT   : {vignette_str[:80]}...")
+        if raw_img:
+            print(f"🖼️ ATTACHED DIAGRAM   : {raw_img}")
+        print("="*70)
 
         is_scenario = bool(vignette_str)
         has_image = bool(raw_img and raw_img.lower() not in ["none", "null", "undefined"])
@@ -781,9 +775,9 @@ CRITICAL DIRECTIVES FOR FEEDBACK GENERATION:
 3. Restrict negative feedback STRICTLY to the mismatched items listed above ({mismatches}).
 4. DO NOT write that the response is fully correct, and DO NOT contradict the locked score in your written feedback.
 """
-            logger.info(f"⚙️ Auditor: Score locked at {locked_score}/10 ({correct_count}/{total_items} matches)")
+            print(f"⚙️ Deterministic Auditor: Score locked at {locked_score}/10 ({correct_count}/{total_items} matches)")
 
-        q_type = q_type_str.upper()
+        q_type = payload.question_type.upper() if payload.question_type else "RECALL"
         if len(admin_dict) > 1:
             q_type = "LIST"
 
@@ -851,19 +845,17 @@ CRITICAL DIRECTIVES FOR FEEDBACK GENERATION:
             parsed_result["score"] = locked_score
             parsed_result = validate_output_score(parsed_result, locked_score)
 
-        latency_ms = round((time.time() - start_time) * 1000, 2)
-
         # =============================================================
-        # 🎯 PRODUCTION EVALUATION RESULT LOG
+        # 🔍 OUTPUT RESULT LOG
         # =============================================================
-        logger.info(f"🎯 [EVAL RESULT] Score: {parsed_result['score']}/10 | Model: {target_model} | Latency: {latency_ms}ms")
-        logger.info(f"📝 [REASONING] : {parsed_result['reasoning']}")
-        logger.info("======================================================================")
+        print(f"✨ [AI EVALUATION RESULT] Model: {target_model} | Score: {parsed_result['score']}/10")
+        print(f"📝 [REASONING]: {parsed_result['reasoning']}")
+        print("="*70 + "\n")
 
         return parsed_result
 
     except Exception as e:
-        logger.error(f"❌ Groq AI Grading Error: {str(e)}")
+        print(f"❌ Groq AI Grading Error: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail=f"Failed to communicate with AI grading engine: {str(e)}"
