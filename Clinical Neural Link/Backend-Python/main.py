@@ -120,22 +120,19 @@ class AdminLoginRequest(BaseModel):
 # 2. HELPER FUNCTIONS & SYSTEM PROMPTS
 # ==========================================
 
-PRECISION_RULES = """CRITICAL CLINICAL PRECISION & FAIR EVALUATION DIRECTIVES:
-1. MEDICAL ACCURACY & SCIENTIFIC EQUIVALENCE:
-   - The ADMIN ANSWER KEY defines the reference solution, but you MUST recognize medically and biochemically valid equivalents, standard clinical synonyms, and order-independent matching.
-   - For itemized lists or multi-part questions, evaluate each item based on its scientific validity (e.g., Chondroitin sulfate is a valid galactose-derived GAG, equivalent in validity to Keratan sulfate).
-   - DO NOT fabricate incorrect medical reasoning or false scientific claims to penalize a valid alternative term simply because it differs verbatim from the ADMIN ANSWER KEY.
-2. SYNONYM AUDIT & CLINICAL STANDARDS:
-   - Accept standard clinical nomenclature, systemic anatomical terms, and established biochemical derivatives.
-   - Strictly penalize genuinely incorrect terms, physiological impossibilities, or vague layman phrasing (e.g., "Bleeding phase" instead of "Menstrual phase").
-3. MANDATORY ALGORITHMIC STEP-BY-STEP EVALUATION:
-   - Step 1: Break the user's submission and key into N discrete evaluation nodes.
-   - Step 2: Mark each item as MATCH (1) or MISMATCH (0) using medical accuracy and order independence.
-   - Step 3: Calculate score: Score = min(round((C / N) * 10), max_allowed_score).
-   - CONSTRAINT: If C = N, the score MUST BE 10 / 10. If C < N, giving 10 / 10 is forbidden.
-4. HIDDEN RUBRIC / NO META-REFERENCES:
-   - Evaluate using the key internally, but write feedback purely as a direct clinical assessment to "You".
-   - State clearly when a submitted term is clinically non-standard or incorrect, and provide the expected standard term.
+PRECISION_RULES = """CRITICAL CLINICAL EVALUATION DIRECTIVES:
+1. MEDICAL ACCURACY OVERRIDES VERBATIM KEY MATCHING:
+   - The ADMIN ANSWER KEY provides the expected standard answers. However, you MUST award full credit if the user provides a scientifically, anatomically, or biochemically valid alternative.
+   - Example: If the key expects "Keratan sulfate" as a galactose derivative, but the user provides "Chondroitin sulfate" (which also contains galactose/galactosamine), you MUST mark it as correct.
+   - DO NOT dock points or invent semantic justifications (e.g., "in this specific context") to penalize a medically accurate answer that differs from the key.
+2. ORDER INDEPENDENT LIST MATCHING:
+   - For multi-part lists, match the student's items to the key's underlying concepts, regardless of the order they are listed.
+3. SCORING MECHANICS:
+   - Calculate score: Score = min(round((C / N) * 10), max_allowed_score) where C is correct items and N is total required items.
+   - If a valid alternative is given, C increases. If C = N, the score MUST BE 10 / 10.
+4. FEEDBACK RULES:
+   - Write feedback as a direct clinical assessment to "You".
+   - If a valid alternative was provided, praise it. Do not tell the user they "should have" provided the key's term if their term is medically correct.
    - NEVER mention "admin key", "rubric", "provided context", or "database".
 """
 
