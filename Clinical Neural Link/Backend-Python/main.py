@@ -591,6 +591,10 @@ def delete_note(note_id: int, db: Session = Depends(get_db)):
 # 🟢 Deterministic Scoring & Verification Helpers
 # ----------------------------
 
+import json
+import re
+from typing import Any
+
 def parse_student_response_to_dict(response_str: Any) -> dict:
     if not response_str:
         return {}
@@ -600,6 +604,9 @@ def parse_student_response_to_dict(response_str: Any) -> dict:
 
     text = str(response_str).strip()
 
+    # 1. Strip top-level administrative metadata headers (e.g., "Answer:", "Key:")
+    text = re.sub(r'^(?:answer|key|rubric|solution):\s*', '', text, flags=re.IGNORECASE).strip()
+
     try:
         parsed = json.loads(text)
         if isinstance(parsed, dict):
@@ -608,30 +615,36 @@ def parse_student_response_to_dict(response_str: Any) -> dict:
         pass
 
     result = {}
-    lines = text.splitlines()
+    # Filter out empty lines or orphan metadata lines before splitting/parsing
+    lines = [
+        line.strip() 
+        for line in text.splitlines() 
+        if line.strip() and not re.match(r'^(?:answer|key|rubric|solution):?$', line.strip(), re.IGNORECASE)
+    ]
 
     for line in lines:
-        line = line.strip()
-        if not line:
-            continue
-
-        match = re.match(r'^(?:Box\s+)?([A-Za-z0-9]+)[\.\:\-\)\s]+(.+)$', line, re.IGNORECASE)
+        # Match explicit list indicators like "Layer A:", "D.", "1)", "Box E -"
+        # Excludes standalone words followed by colons unless they are single label tokens (A-Z, 0-9, Box X)
+        match = re.match(r'^(?:Box\s+|Layer\s+)?([A-Za-z0-9]{1,3})[\.\:\-\)\s]+(.+)$', line, re.IGNORECASE)
         if match:
             k, v = match.groups()
             result[k.strip().upper()] = v.strip()
 
-    if not result and len(lines) > 0:
+    # 2. ONLY fallback to index mapping if there are genuinely multiple distinct item lines (> 1)
+    # This prevents single-line answers like "Lactase" or "Answer: Lactase" from becoming {"1": "Lactase"}
+    if not result and len(lines) > 1:
         for idx, line in enumerate(lines):
-            line_str = line.strip()
-            if line_str:
-                result[str(idx + 1)] = line_str
+            result[str(idx + 1)] = line
 
     return result
 
+import re
+from typing import Tuple, List
 
 def compute_strict_score(user_submission_dict: dict, admin_key_dict: dict) -> Tuple[int, int, int, List[dict]]:
+    # Defensive check: single-item or empty keys should never run through multi-item lock
     total_items = len(admin_key_dict)
-    if total_items == 0:
+    if total_items <= 1:
         return 0, 0, 0, []
 
     normalized_user_dict = {str(k).strip().upper(): str(v).strip() for k, v in user_submission_dict.items()}
@@ -648,6 +661,7 @@ def compute_strict_score(user_submission_dict: dict, admin_key_dict: dict) -> Tu
         user_clean = user_val.lower()
         target_clean = target_val_str.lower()
 
+        # Remove fluff terms for core comparison
         user_core = re.sub(r'\b(phase|layer|level)\b', '', user_clean).strip()
         target_core = re.sub(r'\b(phase|layer|level)\b', '', target_clean).strip()
 
@@ -674,7 +688,6 @@ def compute_strict_score(user_submission_dict: dict, admin_key_dict: dict) -> Tu
     calculated_score = round((correct_count / total_items) * 10)
 
     return calculated_score, correct_count, total_items, mismatches
-
 
 def validate_output_score(parsed_result: dict, expected_score: int) -> dict:
     parsed_result["score"] = expected_score
