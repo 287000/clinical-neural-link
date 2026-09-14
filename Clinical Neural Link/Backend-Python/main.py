@@ -319,6 +319,7 @@ async def call_groq_with_retry(messages: list, target_model: str, max_retries: i
                     "model": target_model,
                     "messages": messages,
                     "temperature": 0.0,
+                    "max_tokens": 350,  # Strict limit to prevent OTPM rate-limit spikes on Groq
                 }
                 
                 if "qwen" in target_model.lower():
@@ -328,18 +329,19 @@ async def call_groq_with_retry(messages: list, target_model: str, max_retries: i
 
             except RateLimitError as rle:
                 if attempt == max_retries:
-                    print(f"❌ Rate Limit Exhausted on attempt {attempt}/{max_retries}.")
+                    logger.error(f"❌ Rate Limit Exhausted on attempt {attempt}/{max_retries}.")
                     raise rle
-                print(f"⚠️ Groq Rate Limit (429) hit on attempt {attempt}/{max_retries}. Retrying in {delay}s...")
+                logger.warning(f"⚠️ Groq Rate Limit (429) hit on attempt {attempt}/{max_retries}. Retrying in {delay}s...")
                 await asyncio.sleep(delay)
                 delay *= 2
 
             except APIError as api_err:
                 if attempt == max_retries:
-                    print(f"❌ Groq API Error on attempt {attempt}/{max_retries}: {api_err}")
+                    logger.error(f"❌ Groq API Error on attempt {attempt}/{max_retries}: {api_err}")
                     raise api_err
-                print(f"⚠️ Groq API Error on attempt {attempt}/{max_retries}: {api_err}. Retrying in {delay}s...")
-                await asyncio.sleep(delay)             
+                logger.warning(f"⚠️ Groq API Error on attempt {attempt}/{max_retries}: {api_err}. Retrying in {delay}s...")
+                await asyncio.sleep(delay)
+                delay *= 2          
 
 # ==========================================
 # 3. ENDPOINTS
