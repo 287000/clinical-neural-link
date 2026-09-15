@@ -1291,41 +1291,44 @@ window.renderLogin = function() {
     const viewport = document.getElementById('app-viewport');
     if (!viewport) return;
     
-    // Explicit flex reset centering container layout style
-    viewport.className = "w-full h-full flex items-center justify-center bg-[#050b18]";
+    // Explicit flex reset centering container layout style with responsive padding
+    viewport.className = "w-full h-full min-h-screen flex items-center justify-center bg-[#050b18] p-4 sm:p-6";
     
     viewport.innerHTML = `
         <div id="login-container" class="w-full flex justify-center animate-in fade-in zoom-in duration-700">
-            <div class="bg-slate-900 p-12 rounded-2xl shadow-2xl w-full max-w-md border border-slate-700">
+            <div class="bg-[#081026] p-6 sm:p-8 rounded-2xl shadow-2xl shadow-blue-950/20 w-full max-w-md border border-slate-800/80 space-y-6">
                 
-                <div class="flex justify-center mb-6">
-                    <div class="bg-blue-100 p-4 rounded-full">
-                        <i data-lucide="fingerprint" class="text-blue-900 w-12 h-12"></i>
+                <div class="flex flex-col items-center space-y-3">
+                    <div class="w-16 h-16 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shadow-inner">
+                        <i data-lucide="fingerprint" class="w-8 h-8"></i>
                     </div>
+                    <h1 class="text-white font-black text-xl sm:text-2xl tracking-wider uppercase text-center">
+                        Access Portal
+                    </h1>
                 </div>
-
-                <h1 class="text-3xl font-bold mb-8 text-center text-white tracking-tighter uppercase">Access Portal</h1>
                 
-                <form id="login-form" class="flex flex-col">
-                    <input type="text" id="login-full-name" placeholder="Full Name" required autocomplete="off"
-                        class="border p-4 rounded-lg mb-6 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-800 text-white border-slate-600 text-lg">
+                <form id="login-form" class="flex flex-col space-y-4">
+                    <div>
+                        <input type="text" id="login-full-name" placeholder="Full Name" required autocomplete="off"
+                            class="w-full bg-[#0d1730]/60 border border-blue-500/30 focus:border-blue-500 rounded-xl px-4 py-3.5 text-slate-200 text-sm placeholder:text-slate-500 outline-none transition-all shadow-inner">
+                    </div>
                     
                     <!-- Password-masked Student Number input with eye toggle button -->
-                    <div class="relative w-full mb-8">
+                    <div class="relative w-full">
                         <input type="password" id="login-student-number" placeholder="Student Number" required autocomplete="off"
-                            class="w-full border p-4 pr-12 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-800 text-white border-slate-600 text-lg">
+                            class="w-full bg-[#0d1730]/60 border border-slate-800 focus:border-blue-500 rounded-xl px-4 py-3.5 pr-11 text-slate-200 text-sm placeholder:text-slate-500 outline-none transition-all shadow-inner">
                         
                         <button type="button" onclick="window.toggleStudentNumberVisibility()" 
-                            class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white focus:outline-none p-1 transition"
+                            class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 focus:outline-none p-1 transition cursor-pointer"
                             aria-label="Toggle Student Number Visibility">
                             <span id="eye-icon-container">
-                                <i data-lucide="eye" class="w-6 h-6"></i>
+                                <i data-lucide="eye" class="w-4 h-4"></i>
                             </span>
                         </button>
                     </div>
                     
                     <button type="submit"
-                        class="bg-blue-700 text-white font-bold rounded-lg py-4 shadow-lg shadow-blue-500/20 hover:bg-blue-600 transition text-xl cursor-pointer">
+                        class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black text-xs uppercase tracking-widest py-3.5 rounded-xl transition-all shadow-lg shadow-blue-600/30 active:scale-[0.98] cursor-pointer">
                         Enter Portal
                     </button>
                 </form>
