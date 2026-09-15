@@ -1705,8 +1705,8 @@ window.showDashboard = async function() {
     const viewport = document.getElementById('app-viewport');
     if (!viewport) return;
     
-  // ✅ NEW RESPONSIVE CODE:
-viewport.className = "w-full h-full flex flex-col md:flex-row bg-[#050b18] relative pt-16 overflow-x-hidden overflow-y-auto md:overflow-hidden";
+ // Restore viewport back to original base flex container:
+viewport.className = "w-full h-full flex bg-[#050b18] relative pt-16 overflow-hidden";
 
     const isAdminHub = (window.currentUserSession && window.currentUserSession.accessMode === "ADMIN_HUB");
 
