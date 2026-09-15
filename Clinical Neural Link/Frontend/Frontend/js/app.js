@@ -1705,8 +1705,8 @@ window.showDashboard = async function() {
     const viewport = document.getElementById('app-viewport');
     if (!viewport) return;
     
- // Restore viewport back to original base flex container:
-viewport.className = "w-full h-full flex bg-[#050b18] relative pt-16 overflow-hidden";
+    // Restore viewport back to original base flex container:
+    viewport.className = "w-full h-full flex bg-[#050b18] relative pt-16 overflow-hidden";
 
     const isAdminHub = (window.currentUserSession && window.currentUserSession.accessMode === "ADMIN_HUB");
 
@@ -1878,10 +1878,11 @@ viewport.className = "w-full h-full flex bg-[#050b18] relative pt-16 overflow-hi
             </div>
         </aside>
 
-        <main id="dashboard-content" class="flex-1 h-full p-8 overflow-y-auto bg-[#050b18]">
-            <div class="w-full max-w-5xl mx-auto space-y-8">
+        <main id="dashboard-content" class="flex-1 h-full p-4 sm:p-8 overflow-y-auto bg-[#050b18]">
+            <div class="w-full max-w-5xl mx-auto space-y-6 sm:space-y-8">
                 
-                <div id="student-billboard" class="relative w-full h-[460px] sm:h-[520px] rounded-2xl overflow-hidden border border-slate-800/80 bg-slate-950 flex items-end p-10 sm:p-12 bg-cover bg-center transition-all duration-1000 ease-in-out shadow-2xl shadow-blue-950/20">
+                <!-- 🚀 BILLBOARD HIDDEN ON MOBILE (hidden md:flex) -->
+                <div id="student-billboard" class="hidden md:flex relative w-full h-[460px] sm:h-[520px] rounded-2xl overflow-hidden border border-slate-800/80 bg-slate-950 items-end p-10 sm:p-12 bg-cover bg-center transition-all duration-1000 ease-in-out shadow-2xl shadow-blue-950/20">
                     <div class="absolute inset-0 bg-gradient-to-t from-[#050b18] via-[#050b18]/60 to-transparent pointer-events-none z-10"></div>
                     
                     <div class="relative z-20 max-w-3xl transition-all duration-300" id="billboard-text-wrapper">
@@ -1892,13 +1893,13 @@ viewport.className = "w-full h-full flex bg-[#050b18] relative pt-16 overflow-hi
                     </div>
                 </div>
 
-                <div class="p-6 rounded-xl bg-[#070e1e]/40 border border-slate-800/40 flex items-center space-x-4">
-                    <div class="w-10 h-10 rounded-lg bg-blue-500/5 border border-blue-500/10 flex items-center justify-center text-blue-400">
+                <div class="p-4 sm:p-6 rounded-xl bg-[#070e1e]/40 border border-slate-800/40 flex items-center space-x-4">
+                    <div class="w-10 h-10 rounded-lg bg-blue-500/5 border border-blue-500/10 flex items-center justify-center text-blue-400 shrink-0">
                         <i data-lucide="terminal" class="w-4 h-4"></i>
                     </div>
                     <div>
                         <p class="text-[10px] text-slate-400 uppercase font-bold tracking-wider">System Operational</p>
-                        <p class="text-slate-500 text-[11px] mt-0.5">Select an academic program execution stack from the left terminal control unit.</p>
+                        <p class="text-slate-500 text-[11px] mt-0.5">Select an academic program execution stack to view available courses and practice modules.</p>
                     </div>
                 </div>
 
@@ -2003,7 +2004,6 @@ viewport.className = "w-full h-full flex bg-[#050b18] relative pt-16 overflow-hi
         window.subscribeToSystemSettingsChanges();
     }
 };
-
 // Initialize single listener
 window.subscribeToSystemSettingsChanges();
 
