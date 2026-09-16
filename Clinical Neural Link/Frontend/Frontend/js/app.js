@@ -158,9 +158,6 @@ window.activeQuizSession = {
 // 4. Temporary placeholder for the Dashboard
 
 async function selectProgram(programKey) {
-    // 🛡️ PHASE 1 DIAGNOSTIC HANDSHAKE
-    alert("🟢 TOUCH REGISTERED: " + programKey);
-
     console.log("Program chosen:", programKey);
 
     // ==========================================
@@ -174,7 +171,7 @@ async function selectProgram(programKey) {
         
         // Flexible validation: allows match if either string contains the other or they match directly
         const isProgramMatched = userProgram === targetProgram || 
-                                 (userProgram && targetProgram && (userProgram.includes(targetProgram) || targetProgram.includes(userProgram)));
+                                 (userProgram && targetProgram && (userProgram.includes(targetProgram) || targetProgram.includes(targetProgram)));
 
         if (userProgram && !isProgramMatched) {
             if (typeof window.showToast === 'function') {
@@ -2142,34 +2139,70 @@ window.showDashboard = async function() {
         </aside>
 
         <!-- MOBILE DRILL-DOWN CONTAINER (Visible only on mobile) -->
-        <div id="mobile-drilldown-container" class="md:hidden flex-1 p-4 overflow-y-auto bg-[#050b18] space-y-4">
-            <div class="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em] mb-2 px-1">
-                Academic PROGRAMS
+    <div id="mobile-drilldown-container" class="md:hidden flex-1 p-4 overflow-y-auto bg-[#050b18] space-y-4">
+        <div class="flex items-center justify-between mb-2 px-1">
+            <div class="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em]">
+                Select Academic Program
             </div>
-            
-            <nav class="flex flex-col space-y-2.5" id="mobile-program-nav">
-                <button onclick="selectProgram('mbchb')" class="w-full text-left bg-slate-800/30 active:bg-blue-600/20 text-slate-200 border border-slate-800 p-3.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-between">
-                    <span>MBCHB, BDS and CM</span>
-                    <i data-lucide="chevron-right" class="w-4 h-4 text-blue-400"></i>
-                </button>
-
-                <button onclick="selectProgram('biomedical')" class="w-full text-left bg-slate-800/30 active:bg-blue-600/20 text-slate-200 border border-slate-800 p-3.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-between">
-                    <span>Biomedical Science</span>
-                    <i data-lucide="chevron-right" class="w-4 h-4 text-blue-400"></i>
-                </button>
-
-                <button onclick="selectProgram('public_health')" class="w-full text-left bg-slate-800/30 active:bg-blue-600/20 text-slate-200 border border-slate-800 p-3.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-between">
-                    <span>Public Health</span>
-                    <i data-lucide="chevron-right" class="w-4 h-4 text-blue-400"></i>
-                </button>
-
-                <button onclick="selectProgram('environmental')" class="w-full text-left bg-slate-800/30 active:bg-blue-600/20 text-slate-200 border border-slate-800 p-3.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-between">
-                    <span>Environmental Health</span>
-                    <i data-lucide="chevron-right" class="w-4 h-4 text-blue-400"></i>
-                </button>
-            </nav>
+            <div class="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                Stage 01
+            </div>
         </div>
+        
+        <nav class="flex flex-col space-y-3" id="mobile-program-nav">
+            <button onclick="selectProgram('mbchb')" class="w-full text-left bg-[#081026]/80 active:bg-blue-600/20 text-slate-200 border border-slate-800/80 hover:border-blue-500/30 p-4 rounded-2xl transition-all flex items-center justify-between cursor-pointer shadow-lg">
+                <div class="flex items-center space-x-3.5">
+                    <div class="w-10 h-10 bg-blue-600/10 border border-blue-500/20 rounded-xl flex items-center justify-center text-blue-400">
+                        <i data-lucide="stethoscope" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs font-black text-white uppercase tracking-wider">MBCHB, BDS and CM</div>
+                        <div class="text-[10px] text-slate-400 mt-0.5">Medicine, Surgery & Dental Surgery</div>
+                    </div>
+                </div>
+                <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+            </button>
 
+            <button onclick="selectProgram('biomedical')" class="w-full text-left bg-[#081026]/80 active:bg-blue-600/20 text-slate-200 border border-slate-800/80 hover:border-blue-500/30 p-4 rounded-2xl transition-all flex items-center justify-between cursor-pointer shadow-lg">
+                <div class="flex items-center space-x-3.5">
+                    <div class="w-10 h-10 bg-blue-600/10 border border-blue-500/20 rounded-xl flex items-center justify-center text-blue-400">
+                        <i data-lucide="dna" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs font-black text-white uppercase tracking-wider">Biomedical Science</div>
+                        <div class="text-[10px] text-slate-400 mt-0.5">Laboratory & Clinical Diagnostics</div>
+                    </div>
+                </div>
+                <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+            </button>
+
+            <button onclick="selectProgram('public_health')" class="w-full text-left bg-[#081026]/80 active:bg-blue-600/20 text-slate-200 border border-slate-800/80 hover:border-blue-500/30 p-4 rounded-2xl transition-all flex items-center justify-between cursor-pointer shadow-lg">
+                <div class="flex items-center space-x-3.5">
+                    <div class="w-10 h-10 bg-blue-600/10 border border-blue-500/20 rounded-xl flex items-center justify-center text-blue-400">
+                        <i data-lucide="activity" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs font-black text-white uppercase tracking-wider">Public Health</div>
+                        <div class="text-[10px] text-slate-400 mt-0.5">Epidemiology & Health Systems</div>
+                    </div>
+                </div>
+                <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+            </button>
+
+            <button onclick="selectProgram('environmental')" class="w-full text-left bg-[#081026]/80 active:bg-blue-600/20 text-slate-200 border border-slate-800/80 hover:border-blue-500/30 p-4 rounded-2xl transition-all flex items-center justify-between cursor-pointer shadow-lg">
+                <div class="flex items-center space-x-3.5">
+                    <div class="w-10 h-10 bg-blue-600/10 border border-blue-500/20 rounded-xl flex items-center justify-center text-blue-400">
+                        <i data-lucide="shield" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs font-black text-white uppercase tracking-wider">Environmental Health</div>
+                        <div class="text-[10px] text-slate-400 mt-0.5">Occupational Safety & Sanitation</div>
+                    </div>
+                </div>
+                <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+            </button>
+        </nav>
+    </div>
         <!-- DESKTOP MAIN CONTENT (Hidden on mobile) -->
         <main id="dashboard-content" class="hidden md:flex flex-1 h-full p-8 overflow-y-auto bg-[#050b18] flex-col">
             <div class="w-full max-w-5xl mx-auto space-y-8">
