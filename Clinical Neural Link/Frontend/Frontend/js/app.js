@@ -157,7 +157,6 @@ window.activeQuizSession = {
 
 // 4. Temporary placeholder for the Dashboard
 
-
 async function selectProgram(programKey) {
     console.log("Program chosen:", programKey);
 
@@ -261,44 +260,27 @@ async function selectProgram(programKey) {
     const years = programYears[programKey] || [];
     const displayName = programNames[programKey] || programKey;
 
-    // 4. Inject the dynamic grid layout with mobile navigation control into the viewport
+    // 4. Inject the premium dynamic grid layout into the right panel canvas
     contentArea.innerHTML = `
-        <div class="w-full h-full max-w-5xl mx-auto flex flex-col animate-in fade-in duration-300 pt-2 sm:pt-4">
+        <div class="w-full h-full max-w-5xl mx-auto flex flex-col animate-in fade-in duration-300 pt-6">
             
-            <!-- BACK NAVIGATION HEADER BAR -->
-            <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-800/60">
-                <button onclick="window.showDashboard()" 
-                    class="bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center space-x-2 cursor-pointer shadow-md">
-                    <i data-lucide="arrow-left" class="w-3.5 h-3.5 text-blue-400"></i>
-                    <span>Return to Terminal</span>
-                </button>
-
-                <div class="hidden sm:flex items-center space-x-2 text-[10px] font-mono text-slate-500 uppercase tracking-widest">
-                    <span>Node Matrix</span>
-                    <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
-                    <span class="text-blue-400 font-bold">${displayName}</span>
-                </div>
+            <div class="mb-8 border-b border-slate-800/40 pb-4">
+                <h2 class="text-xl font-black text-white uppercase tracking-wider">${displayName}</h2>
+                <p class="text-[10px] text-blue-500 font-bold uppercase tracking-widest mt-1">Select Academic Year Portfolio</p>
             </div>
 
-            <!-- PROGRAM SECTION TITLE -->
-            <div class="mb-6 sm:mb-8">
-                <h2 class="text-lg sm:text-2xl font-black text-white uppercase tracking-wider">${displayName}</h2>
-                <p class="text-[9px] sm:text-[10px] text-blue-400 font-bold uppercase tracking-widest mt-1">Select Academic Year Portfolio</p>
-            </div>
-
-            <!-- ACADEMIC YEARS GRID -->
-            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3.5 sm:gap-5">
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 ${years.map(year => `
                     <button onclick="selectYear(${year})" 
-                        class="bg-[#070e1e] hover:bg-blue-600/10 border border-slate-800 hover:border-blue-500/40 rounded-2xl p-5 sm:p-8 text-center transition-all duration-300 group flex flex-col items-center justify-center space-y-3 sm:space-y-4 shadow-lg cursor-pointer">
+                        class="bg-slate-900/30 hover:bg-blue-600/10 border border-slate-800/80 hover:border-blue-500/30 rounded-2xl p-8 text-center transition-all duration-300 group flex flex-col items-center justify-center space-y-4 shadow-lg">
                         
-                        <div class="w-10 h-10 sm:w-12 sm:h-12 bg-slate-900/80 rounded-xl flex items-center justify-center text-slate-400 group-hover:text-blue-400 border border-slate-800 group-hover:border-blue-500/30 transition-all duration-300">
-                            <i data-lucide="layers" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+                        <div class="w-12 h-12 bg-slate-800/80 rounded-xl flex items-center justify-center text-slate-400 group-hover:text-blue-400 border border-slate-700/30 group-hover:border-blue-500/20 transition-all duration-300">
+                            <i data-lucide="layers" class="w-5 h-5"></i>
                         </div>
                         
                         <div class="flex flex-col space-y-1">
-                            <span class="text-xs sm:text-sm font-black text-white tracking-wide uppercase">Year 0${year}</span>
-                            <span class="text-[8px] sm:text-[9px] text-slate-500 font-black uppercase tracking-wider">Academic Level</span>
+                            <span class="text-sm font-black text-white tracking-wide uppercase">Year 0${year}</span>
+                            <span class="text-[9px] text-slate-500 font-black uppercase tracking-wider">Academic Level</span>
                         </div>
                     </button>
                 `).join('')}
@@ -306,7 +288,7 @@ async function selectProgram(programKey) {
         </div>
     `;
 
-    // 5. Instantly compile Lucide icons for the newly injected cards and header
+    // 5. Instantly compile Lucide icons for the newly injected cards
     if (window.lucide) lucide.createIcons();
 }
 function selectYear(yearNumber) {
@@ -347,19 +329,19 @@ function selectYear(yearNumber) {
         'mbchb_2': ['Anatomy', 'Physiology', 'Biochemistry', 'Pathology', 'Therapeutics', 'Clinical Science', 'Laboratory Science', 'Diagnostics', 'Society and Medicine', 'Public Health'],
         'mbchb_3': ['Anatomy-(iii)', 'Physiology-(iii)', 'Biochemistry-(iii)', 'Pathology-(iii)', 'Therapeutics-(iii)', 'Clinical Science-(iii)', 'Laboratory Science-(iii)', 'Diagnostics-(iii)', 'Society and Medicine-(iii)', 'Public Health-(iii)'],
         
-        // Biomedical Science Tracks
+        // Biomedical Science Tracks (✅ Fixed Keys)
         'biomedical_2': ['Introduction to Biomedical Science', 'Introduction to Human Anatomy', 'Introduction to Medical Physiology', 'Introduction to Medical Microbiology', 'General Biochemistry'],
         'biomedical_3': ['Society and Medicine-(ii)', 'Histology', 'Physiology-(ii)', 'Parasitology', 'Virology/Mycology', 'Biochemistry-(ii)', 'Molecular and Cell Biology', 'Bacteriology'],
         'biomedical_4': ['Public Health-(iv)', 'General and Systematic Pathology', 'Pharmacology, Therapeutics and Toxicology', 'Immunology', 'Medical Genetics', 'Biostatics', 'Haematology and Blood Transfusion', 'Research and Methodology'],
         'biomedical_5': ['Skills in Laboratory Management', 'Medical Teaching Methodology', 'Cellular Pathology', 'Clinical Biochemistry', 'Research Project'],
         
-        // Public Health Tracks
+        // Public Health Tracks (✅ Fixed Keys)
         'public_health_2': ['Primary Health Care-(ii)', 'Microbiology-(ii)', 'Health Promotion-(ii)', 'Human Anatomy-(ii) ', 'Human Physiology-(ii)', 'Environmental Health-(ii)'],
         'public_health_3': ['Psychology and Medicine', 'Epidemiology-(iii)', 'Food Technology and Hygiene-(iii)', 'Monitoring and Evaluation', 'Research and Biostatistics'],
         'public_health_4': ['Emerging Public Health Issues', 'Occupational Health and Ergonomics-(vi)', 'Food and Nutrition-(iv)', 'Research Project and Data Management-(iv)', 'Industrial Attachment'],
         'public_health_5': ['Global Health', 'Health Policies and Economics', 'Medical Parasitology-(v)', 'Health System, Management II and Health Promotion II', 'Basic Pharmacology and Toxicology-(v)'],
         
-        // Environmental Health Tracks
+        // Environmental Health Tracks (✅ Fixed Keys)
         'environmental_2': ['Principles of Building and Construction', 'Primary Health Care', 'Environmental Health', 'Microbiology', 'Human Anatomy', 'Human Physiology'],
         'environmental_3': ['Biostatistics and Research', 'Food Animal Anatomy and Slaughter Houses', 'Epidemiology', 'Food Technology and Hygiene', 'Building Development and Planning'],
         'environmental_4': ['Occupational Health and Ergonomics', 'Industrial Training', 'Food Animal Pathology and Meat Inspection', 'Food and Nutrition', 'Inspection of Premises and Reporting', 'Research Project and Data Management'],
@@ -371,29 +353,19 @@ function selectYear(yearNumber) {
     
     // Fetch courses, or default to an empty list if we haven't added data for that year yet
     const activeCourses = courseDatabase[searchKey] || [];
+
+    // Header layout configurations
     const displayYear = `Year 0${yearNumber}`;
 
     // If no courses are found for this specific year yet
     if (activeCourses.length === 0) {
         contentArea.innerHTML = `
-            <div class="w-full h-full max-w-5xl mx-auto flex flex-col animate-in fade-in duration-300 pt-2 sm:pt-4">
-                
-                <!-- BACK NAVIGATION HEADER BAR -->
-                <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-800/60">
-                    <button onclick="selectProgram('${currentSelection.program}')" 
-                        class="bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center space-x-2 cursor-pointer shadow-md">
-                        <i data-lucide="arrow-left" class="w-3.5 h-3.5 text-blue-400"></i>
-                        <span>Back to Program Years</span>
-                    </button>
-
-                    <div class="hidden sm:flex items-center space-x-2 text-[10px] font-mono text-slate-500 uppercase tracking-widest">
-                        <span>${currentSelection.program}</span>
-                        <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
-                        <span class="text-blue-400 font-bold">${displayYear}</span>
-                    </div>
+            <div class="w-full h-full max-w-5xl mx-auto flex flex-col animate-in fade-in duration-300 pt-6">
+                <div class="mb-8 flex items-center justify-between border-b border-slate-800/40 pb-4">
+                    <h2 class="text-xl font-black text-white uppercase tracking-wider">${displayYear} Modules</h2>
+                    <button onclick="selectProgram('${currentSelection.program}')" class="bg-slate-900/40 hover:bg-slate-800 text-slate-400 border border-slate-800/80 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors">← Back to Years</button>
                 </div>
-
-                <div class="flex-1 flex flex-col items-center justify-center p-8 sm:p-12 border border-dashed border-slate-800 rounded-2xl bg-slate-900/10">
+                <div class="flex-1 flex flex-col items-center justify-center p-12 border border-dashed border-slate-800 rounded-2xl bg-slate-900/10">
                     <i data-lucide="folder-open" class="w-8 h-8 text-slate-700 mb-3"></i>
                     <p class="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em]">Curriculum Database Empty</p>
                     <p class="text-slate-600 text-xs mt-1 text-center">No modules are currently mapped to this specific academic terminal.</p>
@@ -406,48 +378,39 @@ function selectYear(yearNumber) {
 
     // Render the completely customized curriculum course block
     contentArea.innerHTML = `
-        <div class="w-full h-full max-w-5xl mx-auto flex flex-col animate-in fade-in duration-300 pt-2 sm:pt-4">
+        <div class="w-full h-full max-w-5xl mx-auto flex flex-col animate-in fade-in duration-300 pt-6">
             
-            <!-- BACK NAVIGATION HEADER BAR -->
-            <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-800/60">
-                <button onclick="selectProgram('${currentSelection.program}')" 
-                    class="bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center space-x-2 cursor-pointer shadow-md">
-                    <i data-lucide="arrow-left" class="w-3.5 h-3.5 text-blue-400"></i>
-                    <span>Back to Program Years</span>
-                </button>
-
-                <div class="hidden sm:flex items-center space-x-2 text-[10px] font-mono text-slate-500 uppercase tracking-widest">
-                    <span>${currentSelection.program}</span>
-                    <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
-                    <span class="text-blue-400 font-bold">${displayYear}</span>
+            <div class="mb-8 border-b border-slate-800/40 pb-4 flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl font-black text-white uppercase tracking-wider">${displayYear} — Curriculum Modules</h2>
+                    <p class="text-[10px] text-blue-500 font-bold uppercase tracking-widest mt-1">Select standard module to launch active file banks</p>
                 </div>
+                <button onclick="selectProgram('${currentSelection.program}')" 
+                    class="bg-slate-900/40 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800/80 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors flex items-center space-x-2">
+                    <span>← Back to Years</span>
+                </button>
             </div>
 
-            <!-- SECTION HEADER -->
-            <div class="mb-6 sm:mb-8">
-                <h2 class="text-lg sm:text-2xl font-black text-white uppercase tracking-wider">${displayYear} — Curriculum Modules</h2>
-                <p class="text-[9px] sm:text-[10px] text-blue-400 font-bold uppercase tracking-widest mt-1">Select standard module to launch active file banks</p>
-            </div>
-
-            <!-- MODULES GRID -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 ${activeCourses.map((courseName, index) => {
                     const moduleCode = `${courseName.substring(0, 3).toUpperCase()}-0${index + 1}`;
                     return `
                         <button onclick="selectCourse('${courseName}', '${currentSelection.program}', ${yearNumber})" 
-                            class="bg-[#070e1e] hover:bg-blue-600/10 border border-slate-800 hover:border-blue-500/40 rounded-2xl p-4 sm:p-5 text-left transition-all duration-300 flex items-center justify-between group shadow-lg cursor-pointer">
+                            class="bg-slate-900/30 hover:bg-blue-600/10 border border-slate-800/80 hover:border-blue-500/30 rounded-2xl p-5 text-left transition-all duration-300 flex items-center justify-between group shadow-lg cursor-pointer">
                             
-                            <div class="flex items-center space-x-3.5 sm:space-x-4 min-w-0 pr-2">
-                                <div class="w-10 h-10 sm:w-11 sm:h-11 shrink-0 bg-slate-900/80 rounded-xl flex items-center justify-center text-slate-400 group-hover:text-blue-400 border border-slate-800 group-hover:border-blue-500/30 transition-all duration-300">
-                                    <i data-lucide="book-open" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+                            <div class="flex items-center space-x-4">
+                                <div class="w-11 h-11 bg-slate-800/80 rounded-xl flex items-center justify-center text-slate-400 group-hover:text-blue-400 border border-slate-700/30 group-hover:border-blue-500/20 transition-all duration-300">
+                                    <i data-lucide="book-open" class="w-5 h-5"></i>
                                 </div>
-                                <div class="min-w-0">
-                                    <h4 class="text-xs sm:text-sm font-black text-white uppercase tracking-wide truncate">${courseName}</h4>
-                                    <p class="text-[8px] sm:text-[9px] text-slate-500 font-mono uppercase tracking-wider mt-0.5">Module ID: ${moduleCode}</p>
+                                <div>
+                                    <div class="flex items-center space-x-2">
+                                        <h4 class="text-sm font-black text-white uppercase tracking-wide">${courseName}</h4>
+                                    </div>
+                                    <p class="text-[9px] text-slate-500 uppercase tracking-wider mt-0.5">Module ID: ${moduleCode}</p>
                                 </div>
                             </div>
                             
-                            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-600 group-hover:text-blue-400 translate-x-0 group-hover:translate-x-1 transition-all shrink-0"></i>
+                            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-600 group-hover:text-blue-400 translate-x-0 group-hover:translate-x-1 transition-all"></i>
                         </button>
                     `;
                 }).join('')}
@@ -510,7 +473,7 @@ window.resolveCurrentDatabaseKey = function() {
     return `${computedPrefix}_${fallbackYear}`;
 };
 
-// Function for Step 4: Course Selection Hub
+// Temporary placeholder function for Step 4 so the program doesn't throw errors on course clicks
 function selectCourse(courseName, explicitProgramKey = null, explicitYearNumber = null) {
     console.log("Course Selected:", courseName);
     
@@ -542,65 +505,42 @@ function selectCourse(courseName, explicitProgramKey = null, explicitYearNumber 
     const contentArea = document.getElementById('dashboard-content');
     if (!contentArea) return;
 
-    // Resolve year fallback for backwards navigation
-    const targetYear = (window.currentSelection && window.currentSelection.year) || 
-                       (typeof currentSelection !== 'undefined' && currentSelection.year) || 
-                       localStorage.getItem('active_year') || 2;
-
-    const targetProgram = (window.currentSelection && window.currentSelection.program) || 
-                          localStorage.getItem('active_program') || 'Academic';
-
     // 1. Draw the Course Hub Layout workspace container
     contentArea.innerHTML = `
-        <div class="w-full h-full max-w-5xl mx-auto flex flex-col animate-in fade-in duration-300 pt-2 sm:pt-4">
+        <div class="w-full h-full max-w-5xl mx-auto flex flex-col animate-in fade-in duration-300 pt-6">
             
-            <!-- BACK NAVIGATION HEADER BAR -->
-            <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-800/60">
-                <button onclick="selectYear(${targetYear})" 
-                    class="bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center space-x-2 cursor-pointer shadow-md">
-                    <i data-lucide="arrow-left" class="w-3.5 h-3.5 text-blue-400"></i>
-                    <span>Return to Modules</span>
-                </button>
-
-                <div class="hidden sm:flex items-center space-x-2 text-[10px] font-mono text-slate-500 uppercase tracking-widest">
-                    <span>${targetProgram}</span>
-                    <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
-                    <span>Year 0${targetYear}</span>
-                    <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
-                    <span class="text-blue-400 font-bold truncate max-w-[150px]">${courseName}</span>
+            <div class="mb-8 border-b border-slate-800/40 pb-4 flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl font-black text-white uppercase tracking-wider">${courseName} Hub</h2>
+                    <p class="text-[10px] text-blue-500 font-bold uppercase tracking-widest mt-1">Select preparation matrix or execute performance assessment</p>
                 </div>
+               <button onclick="selectYear((window.currentSelection && window.currentSelection.year) || (typeof currentSelection !== 'undefined' && currentSelection.year) || localStorage.getItem('active_year') || 2)" 
+                    class="bg-slate-900/40 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800/80 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors flex items-center space-x-2">
+                    <span>← Back to Modules</span>
+                </button>
             </div>
 
-            <!-- COURSE SECTION HEADER -->
-            <div class="mb-6 sm:mb-8">
-                <h2 class="text-lg sm:text-2xl font-black text-white uppercase tracking-wider">${courseName} Hub</h2>
-                <p class="text-[9px] sm:text-[10px] text-blue-400 font-bold uppercase tracking-widest mt-1">Select preparation matrix or execute performance assessment</p>
-            </div>
-
-            <!-- VIEW MODE SELECTION GRID -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 pt-2">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
                 
-                <!-- NOTES SELECTION BUTTON -->
                 <button onclick="selectViewMode('notes')" 
-                    class="bg-[#070e1e] hover:bg-blue-600/[0.04] border border-slate-800 hover:border-blue-500/40 rounded-2xl p-6 sm:p-8 text-left transition-all duration-300 group flex flex-col justify-between space-y-8 sm:space-y-12 shadow-lg min-h-[12rem] sm:min-h-[14rem] cursor-pointer">
-                    <div class="w-10 h-10 sm:w-12 sm:h-12 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-400 border border-blue-500/20 transition-all duration-300 group-hover:scale-105 shrink-0">
-                        <i data-lucide="book-open-check" class="w-5 h-5 sm:w-6 sm:h-6"></i>
+                    class="bg-slate-900/20 hover:bg-blue-600/[0.04] border border-slate-800/80 hover:border-blue-500/30 rounded-2xl p-8 text-left transition-all duration-300 group flex flex-col justify-between space-y-12 shadow-lg h-64">
+                    <div class="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-400 border border-blue-500/20 transition-all duration-300 group-hover:scale-105">
+                        <i data-lucide="book-open-check" class="w-6 h-6"></i>
                     </div>
                     <div>
-                        <h3 class="text-base sm:text-lg font-black text-white uppercase tracking-wide group-hover:text-blue-400 transition-colors">Course Topic Notes</h3>
-                        <p class="text-slate-400 text-[11px] sm:text-xs tracking-wider mt-1.5 leading-relaxed">Review condensed high-yield summary notes organized into portfolios before testing.</p>
+                        <h3 class="text-lg font-black text-white uppercase tracking-wide group-hover:text-blue-400 transition-colors">Course Topic Notes</h3>
+                        <p class="text-slate-500 text-[10px] uppercase tracking-wider mt-1 normal-case leading-relaxed">Review condensed high-yield summary notes organized into portfolios before testing.</p>
                     </div>
                 </button>
 
-                <!-- ASSESSMENTS SELECTION BUTTON -->
                 <button onclick="selectViewMode('assessments')" 
-                    class="bg-[#070e1e] hover:bg-amber-600/[0.04] border border-slate-800 hover:border-amber-500/40 rounded-2xl p-6 sm:p-8 text-left transition-all duration-300 group flex flex-col justify-between space-y-8 sm:space-y-12 shadow-lg min-h-[12rem] sm:min-h-[14rem] cursor-pointer">
-                    <div class="w-10 h-10 sm:w-12 sm:h-12 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500 border border-amber-500/20 transition-all duration-300 group-hover:scale-105 shrink-0">
-                        <i data-lucide="activity" class="w-5 h-5 sm:w-6 sm:h-6"></i>
+                    class="bg-slate-900/20 hover:bg-amber-600/[0.04] border border-slate-800/80 hover:border-amber-500/30 rounded-2xl p-8 text-left transition-all duration-300 group flex flex-col justify-between space-y-12 shadow-lg h-64">
+                    <div class="w-12 h-12 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500 border border-amber-500/20 transition-all duration-300 group-hover:scale-105">
+                        <i data-lucide="activity" class="w-6 h-6"></i>
                     </div>
                     <div>
-                        <h3 class="text-base sm:text-lg font-black text-white uppercase tracking-wide group-hover:text-amber-400 transition-colors">Interactive Assessments</h3>
-                        <p class="text-slate-400 text-[11px] sm:text-xs tracking-wider mt-1.5 leading-relaxed">Launch clinical library data files to run custom question banks and evaluate domain expertise.</p>
+                        <h3 class="text-lg font-black text-white uppercase tracking-wide group-hover:text-amber-400 transition-colors">Interactive Assessments</h3>
+                        <p class="text-slate-500 text-[10px] uppercase tracking-wider mt-1 normal-case leading-relaxed">Launch clinical library data files to run custom question banks and evaluate domain expertise.</p>
                     </div>
                 </button>
 
@@ -622,14 +562,13 @@ function selectViewMode(mode) {
 }
 
 
+// 🎯 PASS CONTEXT DIRECTLY: Add courseName as an explicit second argument
 window.navigateToSlotWorkspace = function(slotId) {
     const contentArea = document.getElementById('dashboard-content');
     if (!contentArea) return;
 
-    // Resolve structural parameters cleanly
+    // Maintain tracking in memory quietly for structural filtering
     const activeCourse = (window.currentSelection && window.currentSelection.course) || localStorage.getItem('active_course') || 'Anatomy';
-    const finalProgram = (window.currentSelection?.program || localStorage.getItem('active_program') || 'mbchb').toUpperCase();
-    const finalYear = window.currentSelection?.year || localStorage.getItem('active_year') || '2';
 
     if (!window.currentSelection) window.currentSelection = {};
     
@@ -638,41 +577,25 @@ window.navigateToSlotWorkspace = function(slotId) {
     window.currentSelection.slotId = cleanSlotId;
     window.currentSelection.course = activeCourse.trim();
 
-    // 1. Render workspace layout
+    // 1. Overwrite the layout to display the simplified view
     contentArea.innerHTML = `
-        <div class="w-full h-full max-w-5xl mx-auto flex flex-col animate-in fade-in duration-300 pt-2 sm:pt-4 px-2 sm:px-4">
+        <div class="w-full h-full max-w-5xl mx-auto flex flex-col animate-in fade-in duration-300 pt-6">
             
-            <!-- BACK NAVIGATION HEADER BAR -->
-            <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-800/60">
-                <button onclick="if(typeof renderStudentAssessmentPortal === 'function') { renderStudentAssessmentPortal(); } else if(typeof selectCourse === 'function') { selectCourse('${activeCourse}'); }" 
-                    class="bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center space-x-2 cursor-pointer shadow-md">
-                    <i data-lucide="arrow-left" class="w-3.5 h-3.5 text-blue-400"></i>
-                    <span>Return to Assessment Slots</span>
-                </button>
-
-                <div class="hidden sm:flex items-center space-x-2 text-[10px] font-mono text-slate-500 uppercase tracking-widest">
-                    <span>${finalProgram}</span>
-                    <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
-                    <span>Year 0${finalYear}</span>
-                    <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
-                    <span class="truncate max-w-[100px]">${activeCourse}</span>
-                    <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
-                    <span class="text-purple-400 font-bold">${cleanSlotId}</span>
+            <div class="mb-8 border-b border-slate-800/40 pb-4 flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl font-black text-white uppercase tracking-wider">${cleanSlotId} Bank — Available Papers</h2>
+                    <p class="text-[10px] text-purple-500 font-bold uppercase tracking-widest mt-1">Review and execute published data records inside this repository</p>
                 </div>
+                
+                <button onclick="if(typeof renderAssessmentsView === 'function') renderAssessmentsView();" 
+                    class="bg-slate-900/40 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800/80 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors flex items-center space-x-2">
+                    <span>← Back to Slots</span>
+                </button>
             </div>
 
-            <!-- SECTION HEADER -->
-            <div class="mb-6 sm:mb-8">
-                <h2 class="text-lg sm:text-2xl font-black text-white uppercase tracking-wider">${cleanSlotId} Bank — Available Papers</h2>
-                <p class="text-[9px] sm:text-[10px] text-purple-400 font-bold uppercase tracking-widest mt-1">Review and execute published data records inside this repository</p>
-            </div>
-
-            <!-- TARGET QUESTION BLUEPRINT PORTAL CONTAINER -->
             <div id="active-quiz-questions-portal" class="w-full space-y-3 mt-2"></div>
         </div>
     `;
-
-    if (window.lucide) window.lucide.createIcons();
 
     // 2. Trigger the blueprint compiler to draw the quiz cards
     if (typeof window.renderTargetQuizBlueprintCards === 'function') {
@@ -1782,8 +1705,7 @@ window.showDashboard = async function() {
     const viewport = document.getElementById('app-viewport');
     if (!viewport) return;
     
-    // Adaptive container setup: flex-col on mobile, flex-row on desktop
-    viewport.className = "w-full h-full flex flex-col md:flex-row bg-[#050b18] relative pt-16 overflow-hidden";
+    viewport.className = "w-full h-full flex bg-[#050b18] relative pt-16 overflow-hidden";
 
     const isAdminHub = (window.currentUserSession && window.currentUserSession.accessMode === "ADMIN_HUB");
 
@@ -1838,7 +1760,7 @@ window.showDashboard = async function() {
 
     if (isAdminUser) {
         identityRackHTML = `
-            <div class="flex items-center space-x-2 bg-blue-500/10 border border-blue-500/20 text-blue-400 px-3 py-1.5 rounded-xl font-mono text-[9px] sm:text-[10px] font-bold tracking-widest uppercase shadow-sm select-none">
+            <div class="flex items-center space-x-2 bg-blue-500/10 border border-blue-500/20 text-blue-400 px-3.5 py-1.5 rounded-xl font-mono text-[10px] font-bold tracking-widest uppercase shadow-sm select-none">
                 <span class="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
                 <i data-lucide="shield-check" class="w-3.5 h-3.5 text-blue-400"></i>
                 <span>ADMIN ACCESS</span>
@@ -1853,29 +1775,29 @@ window.showDashboard = async function() {
         const paymentStatus = String(workingSession?.payment_status || 'UNPAID').toUpperCase();
         const needsPin = workingSession?.pin_required;
 
-        identityRackHTML = `<div class="flex items-center space-x-2 sm:space-x-3 font-mono text-[9px] sm:text-[10px] font-bold tracking-wider">`;
+        identityRackHTML = `<div class="flex items-center space-x-3 font-mono text-[10px] font-bold tracking-wider">`;
 
-        // 1. Subscription Status Badge Wrapper
+        // 1. Subscription Status Badge Wrapper with dedicated ID
         identityRackHTML += `<div id="payment-status-badge">`;
         if (paymentStatus === "PAID") {
             identityRackHTML += `
-                <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg uppercase flex items-center space-x-1.5">
+                <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1.5 rounded-lg uppercase flex items-center space-x-1.5">
                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                     <span>Subscribed</span>
                 </span>
             `;
         } else if (paymentStatus === "PROCESSING") {
             identityRackHTML += `
-                <span class="bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg uppercase flex items-center space-x-1.5 shadow-lg shadow-amber-950/40">
+                <span class="bg-amber-500/10 text-amber-400 border border-amber-500/20 px-3 py-1.5 rounded-lg uppercase flex items-center space-x-1.5 shadow-lg shadow-amber-950/40">
                     <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>
-                    <span>Verifying...</span>
+                    <span>Verifying Payment...</span>
                 </span>
             `;
         } else {
             identityRackHTML += `
-                <span class="bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg uppercase flex items-center space-x-1.5">
+                <span class="bg-rose-500/10 text-rose-400 border border-rose-500/20 px-3 py-1.5 rounded-lg uppercase flex items-center space-x-1.5">
                     <span class="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse"></span>
-                    <span>Pending (K${displayFee})</span>
+                    <span>Subscription Pending (K${displayFee})</span>
                 </span>
             `;
         }
@@ -1885,14 +1807,14 @@ window.showDashboard = async function() {
         if (needsPin) {
             identityRackHTML += `
                 <button id="header-pin-trigger" onclick="togglePinModal(true)" 
-                    class="bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-500/20 hover:border-blue-500 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg uppercase font-black tracking-widest transition-all cursor-pointer flex items-center space-x-1.5 shadow-lg shadow-blue-950/40">
+                    class="bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-500/20 hover:border-blue-500 px-3 py-1.5 rounded-lg uppercase font-black tracking-widest transition-all cursor-pointer flex items-center space-x-1.5 shadow-lg shadow-blue-950/40">
                     <i data-lucide="shield-alert" class="w-3.5 h-3.5"></i>
-                    <span>Set PIN</span>
+                    <span>Set Security PIN</span>
                 </button>
             `;
         } else {
             identityRackHTML += `
-                <span class="bg-slate-800/40 text-slate-400 border border-slate-800/60 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg uppercase flex items-center space-x-1.5">
+                <span class="bg-slate-800/40 text-slate-400 border border-slate-800/60 px-3 py-1.5 rounded-lg uppercase flex items-center space-x-1.5">
                     <i data-lucide="shield-check" class="w-3.5 h-3.5 text-slate-500"></i>
                     <span>Node Secured</span>
                 </span>
@@ -1903,28 +1825,25 @@ window.showDashboard = async function() {
     }
 
     viewport.innerHTML = `
-        <!-- GLOBAL RESPONSIVE HEADER -->
-        <header class="fixed top-0 left-0 w-full flex justify-between items-center px-4 sm:px-6 py-3.5 z-[9999] bg-[#050b18]/90 backdrop-blur-md border-b border-slate-800/40">
-            <div class="flex items-center space-x-2.5 sm:space-x-3">
-                <div class="w-8 h-8 sm:w-9 sm:h-9 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-900/40">
-                    <i data-lucide="brain-circuit" class="text-white w-4 h-4 sm:w-5 sm:h-5"></i>
+        <header class="fixed top-0 left-0 w-full flex justify-between items-center px-6 py-4 z-[9999] bg-[#050b18]/80 backdrop-blur-md border-b border-slate-800/40">
+            <div class="flex items-center space-x-3">
+                <div class="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-900/40">
+                    <i data-lucide="brain-circuit" class="text-white w-5 h-5"></i>
                 </div>
-                <h1 class="font-black text-white text-xs sm:text-sm tracking-[0.15em] sm:tracking-[0.2em] uppercase">Clinical Neural Link</h1>
+                <h1 class="font-black text-white text-sm tracking-[0.2em] uppercase">Clinical Neural Link</h1>
             </div>
 
-            <!-- Header Status Badges (Hidden on mobile top right to save space, rendered below title on mobile center) -->
-            <div id="terminal-identity-rack" class="hidden sm:flex items-center justify-center transition-all duration-300">
+            <div id="terminal-identity-rack" class="flex items-center justify-center transition-all duration-300">
                 ${identityRackHTML}
             </div>
             
             <button type="button" onclick="window.logout(event)" 
-                class="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[9px] sm:text-[10px] font-black tracking-widest transition-all uppercase cursor-pointer">
+                class="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 px-4 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all uppercase cursor-pointer">
                 Log Out
             </button>
         </header>
 
-        <!-- DESKTOP PC SIDEBAR (Hidden on mobile) -->
-        <aside id="sidebar-container" class="hidden md:flex w-80 h-full border-r border-slate-800/60 bg-[#070e1e]/60 p-6 flex-col justify-between z-40">
+        <aside id="sidebar-container" class="w-80 h-full border-r border-slate-800/60 bg-[#070e1e]/60 p-6 flex flex-col justify-between z-40">
             <div class="space-y-6">
                 <div class="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em] mb-4">
                     Academic PROGRAMS
@@ -1958,17 +1877,10 @@ window.showDashboard = async function() {
             </div>
         </aside>
 
-        <!-- MAIN DASHBOARD CONTENT (Dynamic Responsive Center Space) -->
-        <main id="dashboard-content" class="flex-1 h-full p-4 sm:p-8 overflow-y-auto bg-[#050b18]">
-            <div class="w-full max-w-5xl mx-auto space-y-6 sm:space-y-8">
+        <main id="dashboard-content" class="flex-1 h-full p-8 overflow-y-auto bg-[#050b18]">
+            <div class="w-full max-w-5xl mx-auto space-y-8">
                 
-                <!-- MOBILE-ONLY STATUS HEADER (Appears at top of mobile dashboard) -->
-                <div class="flex md:hidden justify-center items-center py-1">
-                    ${identityRackHTML}
-                </div>
-
-                <!-- DESKTOP BILLBOARD CAROUSEL (Hidden on mobile phone views) -->
-                <div id="student-billboard" class="hidden md:flex relative w-full h-[460px] sm:h-[520px] rounded-2xl overflow-hidden border border-slate-800/80 bg-slate-950 items-end p-10 sm:p-12 bg-cover bg-center transition-all duration-1000 ease-in-out shadow-2xl shadow-blue-950/20">
+                <div id="student-billboard" class="relative w-full h-[460px] sm:h-[520px] rounded-2xl overflow-hidden border border-slate-800/80 bg-slate-950 flex items-end p-10 sm:p-12 bg-cover bg-center transition-all duration-1000 ease-in-out shadow-2xl shadow-blue-950/20">
                     <div class="absolute inset-0 bg-gradient-to-t from-[#050b18] via-[#050b18]/60 to-transparent pointer-events-none z-10"></div>
                     
                     <div class="relative z-20 max-w-3xl transition-all duration-300" id="billboard-text-wrapper">
@@ -1979,70 +1891,7 @@ window.showDashboard = async function() {
                     </div>
                 </div>
 
-                <!-- MOBILE-ONLY ACADEMIC PROGRAM SELECTION CARDS (Replaces sidebar on phones) -->
-                <div class="block md:hidden space-y-4">
-                    <div class="text-center space-y-1 mb-6">
-                        <span class="text-[9px] font-black text-blue-400 uppercase tracking-[0.3em]">Academic Portfolios</span>
-                        <h2 class="text-lg font-black text-white uppercase tracking-wider">Select Academic Program</h2>
-                    </div>
-
-                    <div class="grid grid-cols-1 gap-3.5">
-                        <button onclick="selectProgram('mbchb')" class="w-full text-left bg-[#070e1e] hover:bg-blue-600/10 border border-slate-800 hover:border-blue-500/40 p-5 rounded-2xl transition-all flex items-center justify-between group shadow-lg cursor-pointer">
-                            <div class="flex items-center space-x-4">
-                                <div class="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-                                    <i data-lucide="stethoscope" class="w-5 h-5"></i>
-                                </div>
-                                <div>
-                                    <h3 class="text-sm font-black text-white uppercase tracking-wider">MBCHB, BDS and CM</h3>
-                                    <p class="text-[10px] text-slate-400 mt-0.5">Medicine, Dental & Clinical Medicine</p>
-                                </div>
-                            </div>
-                            <i data-lucide="chevron-right" class="w-5 h-5 text-slate-500 group-hover:text-blue-400 transition-colors"></i>
-                        </button>
-
-                        <button onclick="selectProgram('biomedical')" class="w-full text-left bg-[#070e1e] hover:bg-blue-600/10 border border-slate-800 hover:border-blue-500/40 p-5 rounded-2xl transition-all flex items-center justify-between group shadow-lg cursor-pointer">
-                            <div class="flex items-center space-x-4">
-                                <div class="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-                                    <i data-lucide="microscope" class="w-5 h-5"></i>
-                                </div>
-                                <div>
-                                    <h3 class="text-sm font-black text-white uppercase tracking-wider">Biomedical Science</h3>
-                                    <p class="text-[10px] text-slate-400 mt-0.5">Laboratory & Clinical Diagnostics</p>
-                                </div>
-                            </div>
-                            <i data-lucide="chevron-right" class="w-5 h-5 text-slate-500 group-hover:text-blue-400 transition-colors"></i>
-                        </button>
-
-                        <button onclick="selectProgram('public_health')" class="w-full text-left bg-[#070e1e] hover:bg-blue-600/10 border border-slate-800 hover:border-blue-500/40 p-5 rounded-2xl transition-all flex items-center justify-between group shadow-lg cursor-pointer">
-                            <div class="flex items-center space-x-4">
-                                <div class="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-                                    <i data-lucide="activity" class="w-5 h-5"></i>
-                                </div>
-                                <div>
-                                    <h3 class="text-sm font-black text-white uppercase tracking-wider">Public Health</h3>
-                                    <p class="text-[10px] text-slate-400 mt-0.5">Epidemiology & Health Systems</p>
-                                </div>
-                            </div>
-                            <i data-lucide="chevron-right" class="w-5 h-5 text-slate-500 group-hover:text-blue-400 transition-colors"></i>
-                        </button>
-
-                        <button onclick="selectProgram('environmental')" class="w-full text-left bg-[#070e1e] hover:bg-blue-600/10 border border-slate-800 hover:border-blue-500/40 p-5 rounded-2xl transition-all flex items-center justify-between group shadow-lg cursor-pointer">
-                            <div class="flex items-center space-x-4">
-                                <div class="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-                                    <i data-lucide="leaf" class="w-5 h-5"></i>
-                                </div>
-                                <div>
-                                    <h3 class="text-sm font-black text-white uppercase tracking-wider">Environmental Health</h3>
-                                    <p class="text-[10px] text-slate-400 mt-0.5">Occupational & Environmental Core</p>
-                                </div>
-                            </div>
-                            <i data-lucide="chevron-right" class="w-5 h-5 text-slate-500 group-hover:text-blue-400 transition-colors"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- DESKTOP OPERATIONAL INSTRUCTION BANNER (Hidden on mobile) -->
-                <div class="hidden md:flex p-6 rounded-xl bg-[#070e1e]/40 border border-slate-800/40 items-center space-x-4">
+                <div class="p-6 rounded-xl bg-[#070e1e]/40 border border-slate-800/40 flex items-center space-x-4">
                     <div class="w-10 h-10 rounded-lg bg-blue-500/5 border border-blue-500/10 flex items-center justify-center text-blue-400">
                         <i data-lucide="terminal" class="w-4 h-4"></i>
                     </div>
@@ -2153,6 +2002,7 @@ window.showDashboard = async function() {
         window.subscribeToSystemSettingsChanges();
     }
 };
+
 // Initialize single listener
 window.subscribeToSystemSettingsChanges();
 
@@ -4808,8 +4658,7 @@ window.publishLectureHandoutDocument = function() {
 
     assetReader.readAsDataURL(targetFile);
 };
-
-
+// 4. Real-time Live Notes Formatting Engine
 // =========================================================
 // CLOSE WORKSPACE RESET: RETURN BACK TO THE SLOT MATRIX
 // =========================================================
@@ -4848,19 +4697,19 @@ window.renderTargetQuizBlueprintCards = function(examDataStructure, dynamicQuest
         'mbchb_2': ['Anatomy', 'Physiology', 'Biochemistry', 'Pathology', 'Therapeutics', 'Clinical Science', 'Laboratory Science', 'Diagnostics', 'Society and Medicine', 'Public Health'],
         'mbchb_3': ['Anatomy-(iii)', 'Physiology-(iii)', 'Biochemistry-(iii)', 'Pathology-(iii)', 'Therapeutics-(iii)', 'Clinical Science-(iii)', 'Laboratory Science-(iii)', 'Diagnostics-(iii)', 'Society and Medicine-(iii)', 'Public Health-(iii)'],
         
-        // Biomedical Science Tracks
+        // Biomedical Science Tracks (Aligned to 'biomedical')
         'biomedical_2': ['Introduction to Biomedical Science', 'Introduction to Human Anatomy', 'Introduction to Medical Physiology', 'Introduction to Medical Microbiology', 'General Biochemistry'],
         'biomedical_3': ['Society and Medicine-(ii)', 'Histology', 'Physiology-(ii)', 'Parasitology', 'Virology/Mycology', 'Biochemistry-(ii)', 'Molecular and Cell Biology', 'Bacteriology'],
         'biomedical_4': ['Public Health-(iv)', 'General and Systematic Pathology', 'Pharmacology, Therapeutics and Toxicology', 'Immunology', 'Medical Genetics', 'Biostatics', 'Haematology and blood Transfusion', 'Research and Methodology'],
         'biomedical_5': ['Skills in Laboratory Management', 'Medical Teaching Methodology', 'Cellular Pathology', 'Clinical Biochemistry', 'Research Project'],
         
-        // Public Health Tracks
+        // Public Health Tracks (Aligned to 'public-health')
         'public-health_2': ['Primary Health Care-(ii)', 'Microbiology-(ii)', 'Health Promotion-(ii)', 'Human Anatomy-(ii)', 'Human Physiology-(ii)', 'Environmental Health-(ii)'],
         'public-health_3': ['Psychology and Medicine', 'Epidemiology-(iii)', 'Food Technology and Hygiene-(iii)', 'Monitoring and Evaluation', 'Research and Biostatistics'],
         'public-health_4': ['Emerging Public Health Issues', 'Occupational Health and Ergonomics-(vi)', 'Food and Nutrition-(iv)', 'Research Project and Data Management-(iv)', 'Industrial Attachment'],
         'public-health_5': ['Global Health', 'Health Policies and Economics', 'Medical Parasitology-(v)', 'Health System, Management II and Health Promotion II', 'Basic Pharmacology and Toxicology-(v)'],
         
-        // Environmental Health Tracks
+        // Environmental Health Tracks (Aligned to 'environmental')
         'environmental_2': ['Principles of Building and Construction', 'Primary Health Care', 'Environmental Health', 'Microbiology', 'Human Anatomy', 'Human Physiology'],
         'environmental_3': ['Biostatistics and Research', 'Food Animal Anatomy and Slaughter Houses', 'Epidemiology', 'Food Technology and Hygiene', 'Building Development and Planning'],
         'environmental_4': ['Occupational Health and Ergonomics', 'Industrial Training', 'Food Animal Pathology and Meat Inspection', 'Food and Nutrition', 'Inspection of Premises and Reporting', 'Research Project and Data Management'],
@@ -4924,7 +4773,7 @@ window.renderTargetQuizBlueprintCards = function(examDataStructure, dynamicQuest
 
     const activeCourse = activeCourseClean;
 
-    // 🎯 KEY HARMONIZATION MATCH
+    // 🎯 THE PERFECT KEY HARMONIZATION MATCH
     const cleanSlot = activeSlot.toLowerCase().replace(/\s+/g, '');
     const storageKey = `assessment_${activeProg}_${finalYear}_${activeCourse}_${cleanSlot}`;
 
@@ -4932,9 +4781,9 @@ window.renderTargetQuizBlueprintCards = function(examDataStructure, dynamicQuest
     const buildInterfaceLayout = (quizCollectionArray) => {
         if (!quizCollectionArray || quizCollectionArray.length === 0) {
             portalContainer.innerHTML = `
-                <div class="text-center py-10 px-4 border border-dashed border-slate-800 rounded-2xl bg-slate-900/10">
-                    <p class="text-xs text-slate-400 uppercase tracking-wider font-semibold">No active assessment blueprints published to this slot workspace...</p>
-                    <p class="text-[9px] text-slate-600 font-mono mt-1 selection:bg-transparent break-all">Target Schema Identifier: ${storageKey}</p>
+                <div class="text-center py-12 border border-dashed border-slate-800 rounded-2xl bg-slate-900/10">
+                    <p class="text-xs text-slate-500 uppercase tracking-wider">No active assessment blueprints published to this slot workspace...</p>
+                    <p class="text-[9px] text-slate-600 font-mono mt-1 selection:bg-transparent">Target SQL Schema Scope Identifier: ${storageKey}</p>
                 </div>
             `;
             return;
@@ -4955,26 +4804,26 @@ window.renderTargetQuizBlueprintCards = function(examDataStructure, dynamicQuest
                 cleanTitle = `${currentItemNumber}. ${cleanTitle}`;
             }
 
+            // Dynamically add visibility classes to delete module based on admin privileges
             const hideClass = isAdmin ? "" : "hidden";
             const inlineStyle = isAdmin ? "" : "style='display: none;'";
 
             completeHTMLOutput += `
-                <div class="w-full flex items-center justify-between space-x-2 sm:space-x-3 animate-in fade-in duration-200">
+                <div class="w-full flex items-center justify-between space-x-3 animate-in fade-in duration-200">
                     <div onclick="window.launchTargetAssessmentInstance('${storageKey}', ${dynamicIndex})"
-                        class="flex items-center space-x-3 sm:space-x-4 bg-[#050b18]/60 border border-slate-800/80 hover:border-purple-500/50 rounded-xl p-3.5 sm:p-4 w-full transition-all duration-200 cursor-pointer group active:scale-[0.99] shadow-sm">
-                        <div class="text-slate-500 group-hover:text-purple-400 transition-colors pl-0.5 shrink-0">
-                            <i data-lucide="file-text" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+                        class="flex items-center space-x-4 bg-[#050b18]/40 border border-slate-800/80 hover:border-slate-700/80 rounded-xl p-4 w-full transition-all duration-200 cursor-pointer group active:scale-[0.99]">
+                        <div class="text-slate-500 group-hover:text-purple-400 transition-colors pl-1">
+                            <i data-lucide="file-text" class="w-4 h-4"></i>
                         </div>
-                        <div class="min-w-0 flex-1">
-                            <span class="text-xs sm:text-sm font-black text-slate-200 group-hover:text-white transition-colors uppercase tracking-wide selection:bg-transparent block truncate">
+                        <div>
+                            <span class="text-xs font-black text-slate-200 group-hover:text-white transition-colors uppercase tracking-wide selection:bg-transparent">
                                 ${cleanTitle}
                             </span>
                         </div>
-                        <i data-lucide="chevron-right" class="w-4 h-4 text-slate-600 group-hover:text-purple-400 group-hover:translate-x-0.5 transition-all shrink-0"></i>
                     </div>
 
                     <button onclick="window.purgeIndividualQuizSlotItem('${storageKey}', ${dynamicIndex})"
-                        class="${hideClass} p-3.5 sm:p-4 bg-[#050b18]/60 border border-slate-800/80 hover:border-red-500/40 text-slate-500 hover:text-red-400 rounded-xl transition-all duration-200 flex items-center justify-center cursor-pointer group hover:bg-red-950/10 shrink-0"
+                        class="${hideClass} p-4 bg-[#050b18]/40 border border-slate-800/80 hover:border-red-500/40 text-slate-500 hover:text-red-400 rounded-xl transition-all duration-200 flex items-center justify-center cursor-pointer group hover:bg-red-950/10"
                         ${inlineStyle}
                         title="Purge Specified Assessment Item">
                         <i data-lucide="trash-2" class="w-4 h-4 transition-transform group-active:scale-90"></i>
@@ -4987,7 +4836,7 @@ window.renderTargetQuizBlueprintCards = function(examDataStructure, dynamicQuest
         if (window.lucide) window.lucide.createIcons();
     };
 
-    // Optimization check: direct cache loading
+    // Optimization check: If cache already holds data items from a deletion sequence, shortcut directly to layout build
     if (window.cachedQuizBlueprints && window.cachedQuizBlueprints[storageKey]) {
         buildInterfaceLayout(window.cachedQuizBlueprints[storageKey]);
         return;
@@ -4995,15 +4844,14 @@ window.renderTargetQuizBlueprintCards = function(examDataStructure, dynamicQuest
 
     console.log(`📡 Isolate Scanner active. Querying live PostgreSQL context records for: "${storageKey}"`);
 
-    // Loading State Spinner
+    // Loading/Warming Spinner Matrix state representation
     portalContainer.innerHTML = `
-        <div class="flex items-center justify-center space-x-2 py-10 font-mono text-[10px] text-slate-400 uppercase tracking-widest bg-slate-900/10 border border-slate-800/50 rounded-xl">
-            <i data-lucide="loader-2" class="w-4 h-4 animate-spin text-purple-400"></i>
-            <span>Synchronizing live records from PostgreSQL cluster...</span>
+        <div class="text-center py-12 font-mono text-[10px] text-slate-500 uppercase tracking-widest">
+            <span class="inline-block animate-spin mr-2">⏳</span> Synchronizing live records from PostgreSQL cluster...
         </div>
     `;
-    if (window.lucide) window.lucide.createIcons();
 
+    // Target dynamic note ID context (matches targetNoteId in compilation sequence)
     const targetNoteId = 1;
 
     // 3. RETRIEVE RE-BALANCED ARRAY DATA REPOSITORY DIRECTLY FROM PYTHON FASTAPI BACKEND
@@ -5015,6 +4863,7 @@ window.renderTargetQuizBlueprintCards = function(examDataStructure, dynamicQuest
         .then(databaseQuizzes => {
             let fetchedItems = Array.isArray(databaseQuizzes) ? databaseQuizzes : [databaseQuizzes];
 
+            // Map and parse stringified 'questions' objects on-the-fly back to standard JSON structures
             let parsedQuizzes = fetchedItems.map(dbItem => {
                 try {
                     const unfoldedQuestions = JSON.parse(dbItem.questions);
@@ -5029,18 +4878,20 @@ window.renderTargetQuizBlueprintCards = function(examDataStructure, dynamicQuest
                 }
             }).filter(Boolean);
 
+            // 🧼 SAFE REFACTOR COMPENSATOR LAYER: Strips out casing and trailing context indicators like -(iii)
             const normalizeCourseString = (str) => {
                 if (!str) return '';
                 return str.toLowerCase()
-                          .replace(/-\s*\([ivx\d+)]+\)/g, '')
-                          .replace(/[^a-z0-9\s]/g, '')
-                          .replace(/\s+/g, ' ')
+                          .replace(/-\s*\([ivx\d+)]+\)/g, '') // Strips things like -(iii), -(ii), -(iv)
+                          .replace(/[^a-z0-9\s]/g, '')        // Removes trailing punctuation/symbols
+                          .replace(/\s+/g, ' ')               // Collapses extra spacing
                           .trim();
             };
 
             const targetNormalized = normalizeCourseString(activeCourse);
-
-            // 🎯 STACKED FILTER LAYER: ORDERED BY PROGRAM → YEAR → COURSE → SLOT
+            // =========================================================================
+            // 🎯 FIXED STACKED FILTER LAYER: ORDERED BY PROGRAM → YEAR → COURSE → SLOT
+            // =========================================================================
             let quizCollectionArray = parsedQuizzes.filter(item => {
                 if (!item) return false;
 
@@ -5048,7 +4899,7 @@ window.renderTargetQuizBlueprintCards = function(examDataStructure, dynamicQuest
                 const itemProg = String(item.program || '').toLowerCase().trim();
                 if (itemProg && itemProg !== activeProg.toLowerCase().trim()) return false;
 
-                // 2️⃣ YEAR CHECK
+                // 2️⃣ YEAR CHECK (Enforces separation between Year 2 and Year 3)
                 const itemYear = String(item.year || '').replace(/\D/g, '').trim();
                 const targetYear = String(finalYear).replace(/\D/g, '').trim();
                 if (itemYear && itemYear !== targetYear) return false;
@@ -5064,7 +4915,7 @@ window.renderTargetQuizBlueprintCards = function(examDataStructure, dynamicQuest
                 return entryCourseNormalized.includes(targetNormalized) || targetNormalized.includes(entryCourseNormalized);
             });
 
-            // Runtime Cache Allocation
+            // 🛡️ RUNTIME MEMORY ALLOCATION: Cache values so down-stream click handlers still function seamlessly
             if (!window.cachedQuizBlueprints) window.cachedQuizBlueprints = {};
             window.cachedQuizBlueprints[storageKey] = quizCollectionArray;
 
@@ -5073,7 +4924,7 @@ window.renderTargetQuizBlueprintCards = function(examDataStructure, dynamicQuest
         .catch(err => {
             console.error("Critical database synchronization error:", err);
             portalContainer.innerHTML = `
-                <div class="text-center py-10 px-4 border border-red-900/40 rounded-2xl bg-red-950/10 text-red-400">
+                <div class="text-center py-12 border border-red-900/30 rounded-2xl bg-red-950/5 text-red-400">
                     <p class="text-xs font-black uppercase tracking-wider">Database Connection Refused</p>
                     <p class="text-[10px] opacity-70 font-mono mt-1">Unable to map repository row indices dynamically from target stream route.</p>
                 </div>
