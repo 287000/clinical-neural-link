@@ -158,6 +158,9 @@ window.activeQuizSession = {
 // 4. Temporary placeholder for the Dashboard
 
 async function selectProgram(programKey) {
+    // 🛡️ PHASE 1 DIAGNOSTIC HANDSHAKE
+    alert("🟢 TOUCH REGISTERED: " + programKey);
+
     console.log("Program chosen:", programKey);
 
     // ==========================================
