@@ -201,9 +201,6 @@ function synchronizeQuizLibrarySlotsDropdown() {
     console.log(`Slot Dropdown synchronized for milestone tracking suffix: -${suffix}`);
 }
 function renderAssessmentsView() {
-    const contentArea = document.getElementById('dashboard-content');
-    if (!contentArea) return;
-
     // 🎯 SAFE CONTEXT LOOKUP: Grab the active course state cleanly
     const safeCourse = (window.currentSelection && window.currentSelection.course) || localStorage.getItem('active_course') || 'Anatomy';
     
@@ -213,53 +210,100 @@ function renderAssessmentsView() {
     // 🎯 YOUR 7 ACADEMIC MILESTONES ARCHITECTURE
     const baseMilestones = ["Term 1", "Term 2", "Term 3", "Test 1", "Test 2", "Test 3", "Sessional"];
 
-    contentArea.innerHTML = `
-        <div class="w-full h-full max-w-5xl mx-auto flex flex-col animate-in fade-in duration-300 pt-6">
-            
-            <div class="mb-8 border-b border-slate-800/40 pb-4 flex items-center justify-between">
-                <div>
-                    <h2 class="text-xl font-black text-white uppercase tracking-wider">${safeCourse} — Assessments</h2>
-                    <p class="text-[10px] text-blue-500 font-bold uppercase tracking-widest mt-1">Select active file bank to initialize interactive clinical session</p>
-                </div>
-                <button onclick="selectCourse('${safeCourse}')" 
-                    class="bg-slate-900/40 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800/80 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors flex items-center space-x-2">
-                    <span>← Back to Hub</span>
-                </button>
-            </div>
+    // ==========================================
+    // 📱 MOBILE VS 🖥️ DESKTOP VIEW RENDERER
+    // ==========================================
+    const isMobile = window.innerWidth < 768;
 
-            <div class="flex flex-col space-y-3">
-    ${baseMilestones.map(milestone => {
-        // Construct the strict matching signature identifier (e.g., "Term 1-An")
-        const dynamicSlotId = `${milestone}-${suffix}`;
-        
-        return `
-        <div class="flex flex-col space-y-2 w-full">
-            
-            <div class="bg-slate-900/20 border border-slate-800/80 rounded-xl p-4 flex items-center justify-between hover:border-purple-500/30 hover:bg-slate-800/10 transition-all duration-300 group shadow-md">
-                <div class="flex items-center space-x-4">
-                    <div class="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:bg-purple-500/10 group-hover:text-purple-400 transition-all duration-300 shadow-inner">
-                        <i data-lucide="folder" class="w-4 h-4 transition-transform group-hover:scale-110"></i>
-                    </div>
-                    <div class="flex flex-col">
-                        <span class="text-xs font-black text-white uppercase tracking-wider group-hover:text-purple-300 transition-colors">${dynamicSlotId}</span>
-                        <span class="text-[8px] text-slate-500 uppercase tracking-widest font-mono mt-0.5">Locker Code: LN-LIB-${dynamicSlotId.replace(/\s+/g, '')}</span>
-                    </div>
-                </div>
-                
-                <button onclick="if(!window.currentSelection) window.currentSelection = {}; window.currentSelection.slotId = '${dynamicSlotId}'; window.navigateToSlotWorkspace('${dynamicSlotId}');" 
-                    class="text-[8px] bg-slate-900/60 hover:bg-purple-600 text-slate-400 hover:text-white px-3 py-1.5 rounded-lg font-black tracking-widest uppercase border border-slate-800 hover:border-purple-500 transition-all transform active:scale-97 cursor-pointer">
-                    Inspect Slot
-                </button>
-            </div>
+    if (isMobile) {
+        const mobileContainer = document.getElementById('mobile-drilldown-container');
+        if (!mobileContainer) return;
 
-            <div id="active-quiz-portal-slot-${dynamicSlotId}" class="w-full pl-4 space-y-3 hidden"></div>
-            
-        </div>
+        mobileContainer.innerHTML = `
+            <div class="space-y-3 animate-in fade-in duration-200">
+                <button onclick="selectCourse('${safeCourse.replace(/'/g, "\\'")}')" 
+                    class="flex items-center space-x-1.5 text-purple-400 hover:text-purple-300 text-[10px] font-black uppercase tracking-wider mb-2 bg-purple-500/10 border border-purple-500/20 px-3 py-1.5 rounded-lg w-fit">
+                    <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
+                    <span>Back to Hub</span>
+                </button>
+
+                <div class="border-b border-slate-800/60 pb-3">
+                    <h2 class="text-xs font-black text-white uppercase tracking-wider">${safeCourse}</h2>
+                    <p class="text-[9px] text-blue-400 font-bold uppercase tracking-widest mt-0.5">Assessments File Bank</p>
+                </div>
+
+                <div class="flex flex-col space-y-2.5">
+                    ${baseMilestones.map(milestone => {
+                        const dynamicSlotId = `${milestone}-${suffix}`;
+                        return `
+                        <div class="flex flex-col space-y-2 w-full">
+                            <div class="bg-slate-900/30 border border-slate-800/80 rounded-xl p-3.5 flex items-center justify-between hover:border-purple-500/30 transition-all shadow-sm">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500 border border-amber-500/20">
+                                        <i data-lucide="folder" class="w-3.5 h-3.5"></i>
+                                    </div>
+                                    <div class="flex flex-col">
+                                        <span class="text-xs font-black text-white uppercase tracking-wider">${dynamicSlotId}</span>
+                                        <span class="text-[8px] text-slate-500 uppercase tracking-widest font-mono">LN-LIB-${dynamicSlotId.replace(/\s+/g, '')}</span>
+                                    </div>
+                                </div>
+                                <button onclick="if(!window.currentSelection) window.currentSelection = {}; window.currentSelection.slotId = '${dynamicSlotId}'; window.navigateToSlotWorkspace('${dynamicSlotId}');" 
+                                    class="text-[8px] bg-slate-800/80 hover:bg-purple-600 text-slate-300 hover:text-white px-2.5 py-1.5 rounded-lg font-black tracking-widest uppercase border border-slate-700 transition-all cursor-pointer">
+                                    Inspect
+                                </button>
+                            </div>
+                            <div id="active-quiz-portal-slot-${dynamicSlotId}" class="w-full pl-2 space-y-2 hidden"></div>
+                        </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
         `;
-    }).join('')}
-</div>
-        </div>
-    `;
+    } else {
+        const contentArea = document.getElementById('dashboard-content');
+        if (!contentArea) return;
+
+        contentArea.innerHTML = `
+            <div class="w-full h-full max-w-5xl mx-auto flex flex-col animate-in fade-in duration-300 pt-6">
+                <div class="mb-8 border-b border-slate-800/40 pb-4 flex items-center justify-between">
+                    <div>
+                        <h2 class="text-xl font-black text-white uppercase tracking-wider">${safeCourse} — Assessments</h2>
+                        <p class="text-[10px] text-blue-500 font-bold uppercase tracking-widest mt-1">Select active file bank to initialize interactive clinical session</p>
+                    </div>
+                    <button onclick="selectCourse('${safeCourse.replace(/'/g, "\\'")}')" 
+                        class="bg-slate-900/40 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800/80 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors flex items-center space-x-2 cursor-pointer">
+                        <span>← Back to Hub</span>
+                    </button>
+                </div>
+
+                <div class="flex flex-col space-y-3">
+                    ${baseMilestones.map(milestone => {
+                        const dynamicSlotId = `${milestone}-${suffix}`;
+                        return `
+                        <div class="flex flex-col space-y-2 w-full">
+                            <div class="bg-slate-900/20 border border-slate-800/80 rounded-xl p-4 flex items-center justify-between hover:border-purple-500/30 hover:bg-slate-800/10 transition-all duration-300 group shadow-md">
+                                <div class="flex items-center space-x-4">
+                                    <div class="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:bg-purple-500/10 group-hover:text-purple-400 transition-all duration-300 shadow-inner">
+                                        <i data-lucide="folder" class="w-4 h-4 transition-transform group-hover:scale-110"></i>
+                                    </div>
+                                    <div class="flex flex-col">
+                                        <span class="text-xs font-black text-white uppercase tracking-wider group-hover:text-purple-300 transition-colors">${dynamicSlotId}</span>
+                                        <span class="text-[8px] text-slate-500 uppercase tracking-widest font-mono mt-0.5">Locker Code: LN-LIB-${dynamicSlotId.replace(/\s+/g, '')}</span>
+                                    </div>
+                                </div>
+                                <button onclick="if(!window.currentSelection) window.currentSelection = {}; window.currentSelection.slotId = '${dynamicSlotId}'; window.navigateToSlotWorkspace('${dynamicSlotId}');" 
+                                    class="text-[8px] bg-slate-900/60 hover:bg-purple-600 text-slate-400 hover:text-white px-3 py-1.5 rounded-lg font-black tracking-widest uppercase border border-slate-800 hover:border-purple-500 transition-all transform active:scale-97 cursor-pointer">
+                                    Inspect Slot
+                                </button>
+                            </div>
+                            <div id="active-quiz-portal-slot-${dynamicSlotId}" class="w-full pl-4 space-y-3 hidden"></div>
+                        </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+    }
 
     if (window.lucide) lucide.createIcons();
 }
