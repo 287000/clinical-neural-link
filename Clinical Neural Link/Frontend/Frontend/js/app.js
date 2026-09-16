@@ -1705,6 +1705,7 @@ window.showDashboard = async function() {
     const viewport = document.getElementById('app-viewport');
     if (!viewport) return;
     
+    // Viewport setup: flex layout with top padding for fixed desktop header
     viewport.className = "w-full h-full flex bg-[#050b18] relative pt-16 overflow-hidden";
 
     const isAdminHub = (window.currentUserSession && window.currentUserSession.accessMode === "ADMIN_HUB");
@@ -1741,8 +1742,14 @@ window.showDashboard = async function() {
         console.warn("⚠️ System configuration matrix unreachable, falling back to local state baseline:", error);
     }
 
-    const activeSessionRaw = sessionStorage.getItem('neural_link_active_session');
-    const workingSession = activeSessionRaw ? JSON.parse(activeSessionRaw) : window.currentUserSession;
+    // Safely retrieve session data
+    let workingSession = window.currentUserSession;
+    try {
+        const activeSessionRaw = sessionStorage.getItem('neural_link_active_session');
+        if (activeSessionRaw) workingSession = JSON.parse(activeSessionRaw);
+    } catch (err) {
+        console.error("Failed to parse active session data:", err);
+    }
 
     const sessionRole = String(workingSession?.role || workingSession?.userRole || workingSession?.type || '').toUpperCase();
     const sessionAccess = String(workingSession?.accessMode || '').toUpperCase();
@@ -1777,7 +1784,7 @@ window.showDashboard = async function() {
 
         identityRackHTML = `<div class="flex items-center space-x-3 font-mono text-[10px] font-bold tracking-wider">`;
 
-        // 1. Subscription Status Badge Wrapper with dedicated ID
+        // 1. Subscription Status Badge
         identityRackHTML += `<div id="payment-status-badge">`;
         if (paymentStatus === "PAID") {
             identityRackHTML += `
@@ -1803,7 +1810,7 @@ window.showDashboard = async function() {
         }
         identityRackHTML += `</div>`;
 
-        // 2. High-Security PIN Status Component
+        // 2. PIN Status Badge
         if (needsPin) {
             identityRackHTML += `
                 <button id="header-pin-trigger" onclick="togglePinModal(true)" 
@@ -1825,25 +1832,42 @@ window.showDashboard = async function() {
     }
 
     viewport.innerHTML = `
-        <header class="fixed top-0 left-0 w-full flex justify-between items-center px-6 py-4 z-[9999] bg-[#050b18]/80 backdrop-blur-md border-b border-slate-800/40">
-            <div class="flex items-center space-x-3">
-                <div class="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-900/40">
-                    <i data-lucide="brain-circuit" class="text-white w-5 h-5"></i>
+        <!-- ════════════════════════════════════════════════════════════════
+             1. FIXED HEADER & IDENTITY RACK
+        ════════════════════════════════════════════════════════════════ -->
+        <header class="fixed top-0 left-0 w-full z-[9999] bg-[#050b18]/90 backdrop-blur-md border-b border-slate-800/40">
+            <!-- Top Nav Row -->
+            <div class="flex justify-between items-center px-4 md:px-6 py-3 md:py-4">
+                <div class="flex items-center space-x-2.5 md:space-x-3">
+                    <div class="w-8 h-8 md:w-9 md:h-9 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-900/40">
+                        <i data-lucide="brain-circuit" class="text-white w-4 h-4 md:w-5 md:h-5"></i>
+                    </div>
+                    <h1 class="font-black text-white text-xs md:text-sm tracking-[0.15em] md:tracking-[0.2em] uppercase">Clinical Neural Link</h1>
                 </div>
-                <h1 class="font-black text-white text-sm tracking-[0.2em] uppercase">Clinical Neural Link</h1>
+
+                <!-- Desktop Identity Rack -->
+                <div id="terminal-identity-rack" class="hidden md:flex items-center justify-center transition-all duration-300">
+                    ${identityRackHTML}
+                </div>
+                
+                <button type="button" onclick="window.logout(event)" 
+                    class="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-[10px] font-black tracking-widest transition-all uppercase cursor-pointer">
+                    Log Out
+                </button>
             </div>
 
-            <div id="terminal-identity-rack" class="flex items-center justify-center transition-all duration-300">
-                ${identityRackHTML}
+            <!-- Mobile Sub-Header Identity Bar (< md) -->
+            <div class="md:hidden flex items-center justify-between px-4 py-2 bg-[#030712]/80 border-t border-slate-800/40 overflow-x-auto">
+                <div id="mobile-terminal-identity-rack" class="w-full flex items-center justify-between">
+                    ${identityRackHTML}
+                </div>
             </div>
-            
-            <button type="button" onclick="window.logout(event)" 
-                class="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 px-4 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all uppercase cursor-pointer">
-                Log Out
-            </button>
         </header>
 
-        <aside id="sidebar-container" class="w-80 h-full border-r border-slate-800/60 bg-[#070e1e]/60 p-6 flex flex-col justify-between z-40">
+        <!-- ════════════════════════════════════════════════════════════════
+             2. DESKTOP SIDEBAR (hidden on mobile, visible on md+)
+        ════════════════════════════════════════════════════════════════ -->
+        <aside id="sidebar-container" class="hidden md:flex w-80 h-full border-r border-slate-800/60 bg-[#070e1e]/60 p-6 flex-col justify-between z-40">
             <div class="space-y-6">
                 <div class="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em] mb-4">
                     Academic PROGRAMS
@@ -1877,7 +1901,10 @@ window.showDashboard = async function() {
             </div>
         </aside>
 
-        <main id="dashboard-content" class="flex-1 h-full p-8 overflow-y-auto bg-[#050b18]">
+        <!-- ════════════════════════════════════════════════════════════════
+             3. DESKTOP MAIN VIEW (hidden on mobile, visible on md+)
+        ════════════════════════════════════════════════════════════════ -->
+        <main id="dashboard-content" class="hidden md:block flex-1 h-full p-8 overflow-y-auto bg-[#050b18]">
             <div class="w-full max-w-5xl mx-auto space-y-8">
                 
                 <div id="student-billboard" class="relative w-full h-[460px] sm:h-[520px] rounded-2xl overflow-hidden border border-slate-800/80 bg-slate-950 flex items-end p-10 sm:p-12 bg-cover bg-center transition-all duration-1000 ease-in-out shadow-2xl shadow-blue-950/20">
@@ -1904,6 +1931,85 @@ window.showDashboard = async function() {
             </div>
         </main>
 
+        <!-- ════════════════════════════════════════════════════════════════
+             4. MOBILE DRILL-DOWN STAGE CONTAINER (visible on < md)
+        ════════════════════════════════════════════════════════════════ -->
+        <div id="mobile-stage-viewport" class="md:hidden flex-1 w-full h-full p-4 overflow-y-auto bg-[#050b18] pt-12 pb-24">
+            <div id="mobile-drilldown-container" class="w-full space-y-4">
+                <!-- Mobile Stage 1: Program Selection Touch Cards -->
+                <div id="mobile-stage-programs" class="space-y-3">
+                    <div class="flex items-center justify-between pb-2 border-b border-slate-800/60">
+                        <span class="text-[10px] font-black text-blue-400 uppercase tracking-[0.25em]">Select Academic Program</span>
+                        <span class="text-[9px] font-mono text-slate-500">STAGE 01</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-3 pt-2">
+                        <button onclick="mobileSelectProgram('mbchb')" 
+                            class="w-full text-left bg-slate-900/80 active:bg-blue-600/20 border border-slate-800 active:border-blue-500 p-4 rounded-2xl transition-all flex items-center justify-between group">
+                            <div class="flex items-center space-x-3.5">
+                                <div class="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+                                    <i data-lucide="stethoscope" class="w-5 h-5"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-xs font-black text-white uppercase tracking-wider">MBCHB, BDS and CM</h3>
+                                    <p class="text-[10px] text-slate-400 mt-0.5">Medicine, Surgery & Dental Surgery</p>
+                                </div>
+                            </div>
+                            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-500 group-active:text-blue-400"></i>
+                        </button>
+
+                        <button onclick="mobileSelectProgram('biomedical')" 
+                            class="w-full text-left bg-slate-900/80 active:bg-blue-600/20 border border-slate-800 active:border-blue-500 p-4 rounded-2xl transition-all flex items-center justify-between group">
+                            <div class="flex items-center space-x-3.5">
+                                <div class="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+                                    <i data-lucide="dna" class="w-5 h-5"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-xs font-black text-white uppercase tracking-wider">Biomedical Science</h3>
+                                    <p class="text-[10px] text-slate-400 mt-0.5">Laboratory & Clinical Diagnostics</p>
+                                </div>
+                            </div>
+                            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-500 group-active:text-blue-400"></i>
+                        </button>
+
+                        <button onclick="mobileSelectProgram('public_health')" 
+                            class="w-full text-left bg-slate-900/80 active:bg-blue-600/20 border border-slate-800 active:border-blue-500 p-4 rounded-2xl transition-all flex items-center justify-between group">
+                            <div class="flex items-center space-x-3.5">
+                                <div class="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+                                    <i data-lucide="activity" class="w-5 h-5"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-xs font-black text-white uppercase tracking-wider">Public Health</h3>
+                                    <p class="text-[10px] text-slate-400 mt-0.5">Epidemiology & Health Systems</p>
+                                </div>
+                            </div>
+                            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-500 group-active:text-blue-400"></i>
+                        </button>
+
+                        <button onclick="mobileSelectProgram('environmental')" 
+                            class="w-full text-left bg-slate-900/80 active:bg-blue-600/20 border border-slate-800 active:border-blue-500 p-4 rounded-2xl transition-all flex items-center justify-between group">
+                            <div class="flex items-center space-x-3.5">
+                                <div class="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+                                    <i data-lucide="shield-check" class="w-5 h-5"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-xs font-black text-white uppercase tracking-wider">Environmental Health</h3>
+                                    <p class="text-[10px] text-slate-400 mt-0.5">Occupational Safety & Sanitation</p>
+                                </div>
+                            </div>
+                            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-500 group-active:text-blue-400"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Dynamic Container populated by Mobile Nav Handlers (Years / Courses / Slots) -->
+                <div id="mobile-dynamic-stage-content" class="hidden space-y-3"></div>
+            </div>
+        </div>
+
+        <!-- ════════════════════════════════════════════════════════════════
+             5. SHARED MODALS (PIN & PAYMENT)
+        ════════════════════════════════════════════════════════════════ -->
         <!-- PIN CONFIGURATION INTERFACE COMPONENT -->
         <div id="pin-modal-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[99999] hidden flex items-center justify-center p-4">
             <div class="bg-[#070e1e] border border-slate-800 rounded-2xl p-6 w-full max-w-sm space-y-4 shadow-2xl">
@@ -1912,10 +2018,10 @@ window.showDashboard = async function() {
                     <p class="text-slate-400 text-[11px] mt-1">Configure your permanent 4-digit token configuration parameter.</p>
                 </div>
                 <form onsubmit="submitSecurityPinToken(event)" class="space-y-3">
-                    <input type="password" id="modal-pin-input" inputmode="numeric" maxlength="4" pattern="\\d{4}" required placeholder="ENTER 4-DIGIT PIN" 
-                        class="w-full bg-slate-950/60 border border-slate-800 text-white rounded-xl p-3 text-center text-sm font-mono tracking-[0.5em] focus:outline-none focus:border-blue-500 text-slate-300">
-                    <input type="password" id="modal-pin-confirm" inputmode="numeric" maxlength="4" pattern="\\d{4}" required placeholder="CONFIRM 4-DIGIT PIN" 
-                        class="w-full bg-slate-950/60 border border-slate-800 text-white rounded-xl p-3 text-center text-sm font-mono tracking-[0.5em] focus:outline-none focus:border-blue-500 text-slate-300">
+                    <input type="password" id="modal-pin-input" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" required placeholder="ENTER 4-DIGIT PIN" 
+                        class="w-full bg-slate-950/60 border border-slate-800 text-white rounded-xl p-3 text-center text-sm font-mono tracking-[0.5em] focus:outline-none focus:border-blue-500">
+                    <input type="password" id="modal-pin-confirm" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" required placeholder="CONFIRM 4-DIGIT PIN" 
+                        class="w-full bg-slate-950/60 border border-slate-800 text-white rounded-xl p-3 text-center text-sm font-mono tracking-[0.5em] focus:outline-none focus:border-blue-500">
                     <div class="flex space-x-2 pt-2">
                         <button type="button" onclick="togglePinModal(false)" class="w-1/2 bg-slate-800/40 border border-slate-800 hover:bg-slate-800 text-slate-400 hover:text-white py-2 rounded-xl text-[10px] uppercase font-black tracking-wider transition-all cursor-pointer">Cancel</button>
                         <button type="submit" class="w-1/2 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-xl text-[10px] uppercase font-black tracking-wider transition-all shadow-lg shadow-blue-900/20 cursor-pointer">Save Pin</button>
@@ -1941,7 +2047,7 @@ window.showDashboard = async function() {
                     <div>
                         <p class="text-[9px] text-slate-500 uppercase font-bold tracking-wider">Required Contribution</p>
                         <p class="text-white text-lg font-black tracking-wide mt-0.5">
-                            K<span id="payment-amount-display">65.00</span>
+                            K<span id="payment-amount-display">${displayFee}</span>
                         </p>
                     </div>
                     <div class="text-right">
@@ -1996,7 +2102,10 @@ window.showDashboard = async function() {
 
     if (window.lucide) lucide.createIcons();
 
-    initializeDashboardBillboard();
+    // Initialize billboard carousel only for desktop viewports
+    if (window.innerWidth >= 768 && typeof initializeDashboardBillboard === 'function') {
+        initializeDashboardBillboard();
+    }
 
     if (typeof window.subscribeToSystemSettingsChanges === 'function') {
         window.subscribeToSystemSettingsChanges();
