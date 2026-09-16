@@ -155,8 +155,6 @@ window.activeQuizSession = {
     aiEvaluations: {}    // Stores the dynamic AI grading feedback responses for Long Answers
 };
 
-// 4. Temporary placeholder for the Dashboard
-
 async function selectProgram(programKey) {
     console.log("Program chosen:", programKey);
 
@@ -238,6 +236,17 @@ async function selectProgram(programKey) {
     // 🎯 THE TRACE CLEANER: Instantly delete the stale course from browser storage!
     localStorage.removeItem('active_course');
 
+    // ==========================================
+    // 📱 MOBILE DRILL-DOWN ROUTER (< md screens)
+    // ==========================================
+    if (window.innerWidth < 768 && typeof window.mobileSelectProgram === 'function') {
+        window.mobileSelectProgram(programKey);
+        return;
+    }
+
+    // ==========================================
+    // 💻 DESKTOP CANVAS INJECTION (UNCHANGED)
+    // ==========================================
     const contentArea = document.getElementById('dashboard-content');
     if (!contentArea) return;
     
@@ -320,6 +329,17 @@ function selectYear(yearNumber) {
     currentSelection.year = yearNumber;
     currentSelection.course = null; 
 
+    // ==========================================
+    // 📱 MOBILE DRILL-DOWN ROUTER (< md screens)
+    // ==========================================
+    if (window.innerWidth < 768 && typeof window.mobileSelectYear === 'function') {
+        window.mobileSelectYear(yearNumber);
+        return;
+    }
+
+    // ==========================================
+    // 💻 DESKTOP CANVAS INJECTION (UNCHANGED)
+    // ==========================================
     const contentArea = document.getElementById('dashboard-content');
     if (!contentArea) return;
 
@@ -473,7 +493,7 @@ window.resolveCurrentDatabaseKey = function() {
     return `${computedPrefix}_${fallbackYear}`;
 };
 
-// Temporary placeholder function for Step 4 so the program doesn't throw errors on course clicks
+// Function for Step 4: course selection with mobile router delegation
 function selectCourse(courseName, explicitProgramKey = null, explicitYearNumber = null) {
     console.log("Course Selected:", courseName);
     
@@ -502,6 +522,17 @@ function selectCourse(courseName, explicitProgramKey = null, explicitYearNumber 
     window.currentSelection.viewMode = null; 
     window.currentSelection.term = null;
 
+    // ==========================================
+    // 📱 MOBILE DRILL-DOWN ROUTER (< md screens)
+    // ==========================================
+    if (window.innerWidth < 768 && typeof window.mobileSelectCourse === 'function') {
+        window.mobileSelectCourse(courseName, explicitProgramKey, explicitYearNumber);
+        return;
+    }
+
+    // ==========================================
+    // 💻 DESKTOP CANVAS INJECTION (UNCHANGED)
+    // ==========================================
     const contentArea = document.getElementById('dashboard-content');
     if (!contentArea) return;
 
@@ -565,7 +596,7 @@ function selectViewMode(mode) {
 // 🎯 PASS CONTEXT DIRECTLY: Add courseName as an explicit second argument
 window.navigateToSlotWorkspace = function(slotId) {
     const contentArea = document.getElementById('dashboard-content');
-    if (!contentArea) return;
+    if (!contentArea && window.innerWidth >= 768) return;
 
     // Maintain tracking in memory quietly for structural filtering
     const activeCourse = (window.currentSelection && window.currentSelection.course) || localStorage.getItem('active_course') || 'Anatomy';
@@ -576,6 +607,19 @@ window.navigateToSlotWorkspace = function(slotId) {
     const cleanSlotId = String(slotId).trim();
     window.currentSelection.slotId = cleanSlotId;
     window.currentSelection.course = activeCourse.trim();
+
+    // ==========================================
+    // 📱 MOBILE DRILL-DOWN ROUTER (< md screens)
+    // ==========================================
+    if (window.innerWidth < 768 && typeof window.mobileNavigateToSlotWorkspace === 'function') {
+        window.mobileNavigateToSlotWorkspace(slotId);
+        return;
+    }
+
+    // ==========================================
+    // 💻 DESKTOP CANVAS INJECTION (UNCHANGED)
+    // ==========================================
+    if (!contentArea) return;
 
     // 1. Overwrite the layout to display the simplified view
     contentArea.innerHTML = `
@@ -4794,8 +4838,11 @@ function deletePathAQuestionBlock(slotId, index) {
     }
 }
 window.renderTargetQuizBlueprintCards = function(examDataStructure, dynamicQuestionPool) {
-    // 🎯 TARGET STANDARD WORKSPACE PORTAL
-    const portalContainer = document.getElementById('active-quiz-questions-portal');
+    // 🎯 TARGET STANDARD WORKSPACE PORTAL (Supports Mobile & Desktop)
+    let portalContainer = document.getElementById('active-quiz-questions-portal');
+    if (!portalContainer && window.innerWidth < 768) {
+        portalContainer = document.getElementById('mobile-quiz-questions-portal');
+    }
     if (!portalContainer) return;
 
     portalContainer.removeAttribute('style');
@@ -4991,10 +5038,10 @@ window.renderTargetQuizBlueprintCards = function(examDataStructure, dynamicQuest
             const normalizeCourseString = (str) => {
                 if (!str) return '';
                 return str.toLowerCase()
-                          .replace(/-\s*\([ivx\d+)]+\)/g, '') // Strips things like -(iii), -(ii), -(iv)
-                          .replace(/[^a-z0-9\s]/g, '')        // Removes trailing punctuation/symbols
-                          .replace(/\s+/g, ' ')               // Collapses extra spacing
-                          .trim();
+                        .replace(/-\s*\([ivx\d+)]+\)/g, '') // Strips things like -(iii), -(ii), -(iv)
+                        .replace(/[^a-z0-9\s]/g, '')        // Removes trailing punctuation/symbols
+                        .replace(/\s+/g, ' ')               // Collapses extra spacing
+                        .trim();
             };
 
             const targetNormalized = normalizeCourseString(activeCourse);
