@@ -163,16 +163,21 @@ async function selectProgram(programKey) {
     // ==========================================
     // 🛡️ PROGRAM ACADEMIC BOUNDARY GUARD RAIL
     // ==========================================
-    const userRole = window.currentUserSession ? window.currentUserSession.role : 'STUDENT';
+    const userRole = window.currentUserSession ? String(window.currentUserSession.role || '').toUpperCase() : 'STUDENT';
     
     if (userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
-        const userProgram = window.currentUserSession ? window.currentUserSession.program : '';
+        const userProgram = String(window.currentUserSession?.program || '').toLowerCase().trim();
+        const targetProgram = String(programKey || '').toLowerCase().trim();
         
-        if (userProgram.toLowerCase().trim() !== programKey.toLowerCase().trim()) {
+        // Flexible validation: allows match if either string contains the other or they match directly
+        const isProgramMatched = userProgram === targetProgram || 
+                                 (userProgram && targetProgram && (userProgram.includes(targetProgram) || targetProgram.includes(userProgram)));
+
+        if (userProgram && !isProgramMatched) {
             if (typeof window.showToast === 'function') {
                 window.showToast(
                     "Access Denied", 
-                    `Your academic profile is locked to the ${programKey.toUpperCase()} registry portal.`, 
+                    `Your academic profile is locked to your assigned registry portal.`, 
                     "error"
                 );
             } else {
@@ -184,7 +189,7 @@ async function selectProgram(programKey) {
         // ==========================================
         // 💳 PAYMENT GATEWAY SECURITY SHIELD (PART 1)
         // ==========================================
-        const paymentStatus = window.currentUserSession ? window.currentUserSession.payment_status : 'UNPAID';
+        const paymentStatus = String(window.currentUserSession?.payment_status || 'UNPAID').toUpperCase();
 
         if (paymentStatus !== 'PAID') {
             let maintenanceFee = "65.00"; 
@@ -226,9 +231,11 @@ async function selectProgram(programKey) {
         }
     }
 
-    currentSelection.program = programKey;
-    currentSelection.year = null;    
-    currentSelection.course = null;  
+    if (typeof currentSelection !== 'undefined') {
+        currentSelection.program = programKey;
+        currentSelection.year = null;    
+        currentSelection.course = null;   
+    }
 
     localStorage.removeItem('active_course');
 
@@ -243,12 +250,12 @@ async function selectProgram(programKey) {
     // 3. Unlocked Academic Year Mappings (Synchronized Keys)
     const programYears = {
         'mbchb': [ 2, 3 ], 
-        'biomedical': [ 2, 3, 4, 5 ],   
+        'biomedical': [ 2, 3, 4, 5 ],    
         'public_health': [ 2, 3, 4, 5 ], 
         'environmental': [ 2, 3, 4, 5 ]  
     };
 
-    const years = programYears[programKey] || [];
+    const years = programYears[programKey] || [ 2, 3, 4, 5 ];
     const displayName = programNames[programKey] || programKey;
 
     // ==========================================
@@ -262,7 +269,7 @@ async function selectProgram(programKey) {
 
         mobileContainer.innerHTML = `
             <div class="space-y-3 animate-in fade-in duration-200">
-                <button onclick="window.showDashboard()" class="flex items-center space-x-1.5 text-blue-400 hover:text-blue-300 text-[10px] font-black uppercase tracking-wider mb-2 bg-blue-500/10 border border-blue-500/20 px-3 py-1.5 rounded-lg w-fit">
+                <button onclick="window.showDashboard()" class="flex items-center space-x-1.5 text-blue-400 hover:text-blue-300 text-[10px] font-black uppercase tracking-wider mb-2 bg-blue-500/10 border border-blue-500/20 px-3 py-1.5 rounded-lg w-fit cursor-pointer">
                     <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
                     <span>Back to Programs</span>
                 </button>
@@ -275,7 +282,7 @@ async function selectProgram(programKey) {
                 <div class="flex flex-col space-y-2.5">
                     ${years.map(year => `
                         <button onclick="selectYear(${year})" 
-                            class="w-full text-left bg-slate-800/30 active:bg-blue-600/20 text-slate-200 border border-slate-800 p-3.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-between">
+                            class="w-full text-left bg-slate-800/30 active:bg-blue-600/20 text-slate-200 border border-slate-800 p-3.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-between cursor-pointer">
                             <div class="flex items-center space-x-3">
                                 <div class="w-7 h-7 bg-slate-800 rounded-lg flex items-center justify-center text-blue-400 border border-slate-700/40">
                                     <i data-lucide="layers" class="w-3.5 h-3.5"></i>
