@@ -15,8 +15,13 @@ let currentSelection = {
     viewMode: null, // NEW: Tracks if looking at 'notes' or 'assessments'
     term: null      // NEW: Tracks if looking at term 1, 2, or 3
 };
+
 // Master Dynamic Memory Heap for Quiz Compilation
 let currentQuizQuestionsHeap = [];
+// Central API Base URL Configuration
+const API_BASE_URL = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
+  ? 'http://127.0.0.1:8000'
+  : 'https://clinical-neural-link.onrender.com';
 
 // Change your current initApp function to this:
 async function initApp() {
@@ -895,7 +900,7 @@ function processAndRenderNotesCollection(collectionArray, isUsingFallbackLocalCa
 window.fetchLiveDatabaseNotes = function() {
     console.log("📡 Initializing Live Sync Pipeline against Python FastAPI Database...");
 
-    fetch(`http://127.0.0.1:8000/notes`)
+    fetch(`${API_BASE_URL}/notes`)
     .then(response => {
         if (!response.ok) throw new Error(`HTTP Error Status: ${response.status}`);
         return response.json();
@@ -919,7 +924,6 @@ window.fetchLiveDatabaseNotes = function() {
         processAndRenderNotesCollection(localNotesArray, true);
     });
 };
-
 // =========================================================================
 // 📡 REAL-TIME PUSHER LISTENER FOR NOTES
 // =========================================================================
@@ -1051,49 +1055,48 @@ window.deleteNoteFromSystem = function(event, isFallbackCache, referenceIdentity
     // =======================================================================
     // 📡 PATH A: LIVE PYTHON FASTAPI POSTGRESQL DELETION DRIVER
     // =======================================================================
-    if (!isFallbackCache && referenceIdentityKey && !isNaN(parseInt(referenceIdentityKey, 10))) {
-        const BACKEND_URL = `http://127.0.0.1:8000/notes/${referenceIdentityKey}`;
-        
-        fetch(BACKEND_URL, {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' }
-        })
-        .then(response => {
-            // 🧠 Hybrid Fallback: If 404 (doesn't exist in DB), try clearing localStorage cache
-            if (response.status === 404) {
-                console.warn("⚠️ Server returned 404. Falling back to clearing browser memory...");
-                performLocalStoragePurge();
-                return null;
+   if (!isFallbackCache && referenceIdentityKey && !isNaN(parseInt(referenceIdentityKey, 10))) {
+    const BACKEND_URL = `${API_BASE_URL}/notes/${referenceIdentityKey}`;
+    
+    fetch(BACKEND_URL, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(response => {
+        // 🧠 Hybrid Fallback: If 404 (doesn't exist in DB), try clearing localStorage cache
+        if (response.status === 404) {
+            console.warn("⚠️ Server returned 404. Falling back to clearing browser memory...");
+            performLocalStoragePurge();
+            return null;
+        }
+        if (!response.ok) throw new Error(`Server status code: ${response.status}`);
+        return response.json();
+    })
+    .then(apiFeedback => {
+        if (apiFeedback) {
+            console.log("🎯 Live FastAPI backend drop transaction committed:", apiFeedback);
+            
+            // Keep local storage synced with DB removals
+            performLocalStoragePurge(); 
+            
+            if (typeof window.showToast === 'function') {
+                window.showToast(
+                    "Database Ledger Updated",
+                    `Document "${noteTitle.toUpperCase()}" scrubbed successfully from the server.`,
+                    "success"
+                );
             }
-            if (!response.ok) throw new Error(`Server status code: ${response.status}`);
-            return response.json();
-        })
-        .then(apiFeedback => {
-            if (apiFeedback) {
-                console.log("🎯 Live FastAPI backend drop transaction committed:", apiFeedback);
-                
-                // Keep local storage synced with DB removals
-                performLocalStoragePurge(); 
-                
-                if (typeof window.showToast === 'function') {
-                    window.showToast(
-                        "Database Ledger Updated",
-                        `Document "${noteTitle.toUpperCase()}" scrubbed successfully from the server.`,
-                        "success"
-                    );
-                }
-                triggerViewportHotReload();
-            }
-        })
-        .catch(err => {
-            console.error("Database deletion pipeline failure:", err);
-            // Backup prompt if connection fails completely
-            const forceLocal = confirm("Connection to server failed. Force delete this note from your browser locally anyway?");
-            if (forceLocal) {
-                performLocalStoragePurge();
-            }
-        });
-
+            triggerViewportHotReload();
+        }
+    })
+    .catch(err => {
+        console.error("Database deletion pipeline failure:", err);
+        // Backup prompt if connection fails completely
+        const forceLocal = confirm("Connection to server failed. Force delete this note from your browser locally anyway?");
+        if (forceLocal) {
+            performLocalStoragePurge();
+        }
+    });
     // =======================================================================
     // 💾 PATH B: DIRECT LOCAL STORAGE MUTATION
     // =======================================================================
@@ -1822,7 +1825,8 @@ window.showDashboard = async function() {
     }
 
     viewport.innerHTML = `
-        <header class="fixed top-0 left-0 w-full flex justify-between items-center px-6 py-4 z-[9999] bg-[#050b18]/80 backdrop-blur-md border-b border-slate-800/40">
+        <!-- DESKTOP HEADER (Preserved 100%) -->
+        <header class="hidden md:flex fixed top-0 left-0 w-full justify-between items-center px-6 py-4 z-[9999] bg-[#050b18]/80 backdrop-blur-md border-b border-slate-800/40">
             <div class="flex items-center space-x-3">
                 <div class="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-900/40">
                     <i data-lucide="brain-circuit" class="text-white w-5 h-5"></i>
@@ -1840,7 +1844,8 @@ window.showDashboard = async function() {
             </button>
         </header>
 
-        <aside id="sidebar-container" class="w-80 h-full border-r border-slate-800/60 bg-[#070e1e]/60 p-6 flex flex-col justify-between z-40">
+        <!-- DESKTOP SIDEBAR (Preserved 100%) -->
+        <aside id="sidebar-container" class="hidden md:flex w-80 h-full border-r border-slate-800/60 bg-[#070e1e]/60 p-6 flex-col justify-between z-40">
             <div class="space-y-6">
                 <div class="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em] mb-4">
                     Academic PROGRAMS
@@ -1874,7 +1879,8 @@ window.showDashboard = async function() {
             </div>
         </aside>
 
-        <main id="dashboard-content" class="flex-1 h-full p-8 overflow-y-auto bg-[#050b18]">
+        <!-- DESKTOP MAIN WORKSPACE (Preserved 100%) -->
+        <main id="dashboard-content" class="hidden md:block flex-1 h-full p-8 overflow-y-auto bg-[#050b18]">
             <div class="w-full max-w-5xl mx-auto space-y-8">
                 
                 <div id="student-billboard" class="relative w-full h-[460px] sm:h-[520px] rounded-2xl overflow-hidden border border-slate-800/80 bg-slate-950 flex items-end p-10 sm:p-12 bg-cover bg-center transition-all duration-1000 ease-in-out shadow-2xl shadow-blue-950/20">
@@ -1901,7 +1907,65 @@ window.showDashboard = async function() {
             </div>
         </main>
 
-        <!-- PIN CONFIGURATION INTERFACE COMPONENT -->
+        <!-- 📱 MOBILE WORKSPACE (MOBILE-ONLY DRILL-DOWN CONTAINER) -->
+        <div id="mobile-viewport-workspace" class="flex md:hidden flex-col w-full h-full bg-[#050b18] p-4 overflow-y-auto">
+            
+            <!-- Mobile Header -->
+            <header class="flex justify-between items-center pb-4 border-b border-slate-800/60 mb-4">
+                <div class="flex items-center space-x-2">
+                    <div class="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center">
+                        <i data-lucide="brain-circuit" class="text-white w-4 h-4"></i>
+                    </div>
+                    <h1 class="font-black text-white text-xs tracking-widest uppercase">Clinical Neural Link</h1>
+                </div>
+
+                <button type="button" onclick="window.logout(event)" 
+                    class="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 px-3 py-1.5 rounded-lg text-[9px] font-black tracking-widest uppercase cursor-pointer">
+                    Log Out
+                </button>
+            </header>
+
+            <!-- Mobile Status Badges Row -->
+            <div class="flex items-center justify-center w-full mb-6">
+                ${identityRackHTML}
+            </div>
+
+            <!-- Mobile Drill-Down Screen Center Wrapper -->
+            <div id="mobile-drilldown-portal" class="flex-1 flex flex-col justify-center items-center w-full max-w-sm mx-auto space-y-4">
+                
+                <div class="w-full text-center mb-2">
+                    <span class="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em]">
+                        Select Academic Program
+                    </span>
+                </div>
+
+                <div class="w-full space-y-2.5" id="mobile-program-nav">
+                    <button onclick="selectProgram('mbchb')" class="w-full text-left bg-slate-800/40 border border-slate-800 hover:border-blue-500/50 p-4 rounded-xl text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center justify-between group active:scale-[0.98] transition-all">
+                        <span>MBCHB, BDS and CM</span>
+                        <i data-lucide="chevron-right" class="w-4 h-4 text-slate-500 group-hover:text-blue-400"></i>
+                    </button>
+
+                    <button onclick="selectProgram('biomedical')" class="w-full text-left bg-slate-800/40 border border-slate-800 hover:border-blue-500/50 p-4 rounded-xl text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center justify-between group active:scale-[0.98] transition-all">
+                        <span>Biomedical Science</span>
+                        <i data-lucide="chevron-right" class="w-4 h-4 text-slate-500 group-hover:text-blue-400"></i>
+                    </button>
+
+                    <button onclick="selectProgram('public_health')" class="w-full text-left bg-slate-800/40 border border-slate-800 hover:border-blue-500/50 p-4 rounded-xl text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center justify-between group active:scale-[0.98] transition-all">
+                        <span>Public Health</span>
+                        <i data-lucide="chevron-right" class="w-4 h-4 text-slate-500 group-hover:text-blue-400"></i>
+                    </button>
+
+                    <button onclick="selectProgram('environmental')" class="w-full text-left bg-slate-800/40 border border-slate-800 hover:border-blue-500/50 p-4 rounded-xl text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center justify-between group active:scale-[0.98] transition-all">
+                        <span>Environmental Health</span>
+                        <i data-lucide="chevron-right" class="w-4 h-4 text-slate-500 group-hover:text-blue-400"></i>
+                    </button>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- PIN CONFIGURATION INTERFACE COMPONENT (Preserved) -->
         <div id="pin-modal-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[99999] hidden flex items-center justify-center p-4">
             <div class="bg-[#070e1e] border border-slate-800 rounded-2xl p-6 w-full max-w-sm space-y-4 shadow-2xl">
                 <div>
@@ -1921,7 +1985,7 @@ window.showDashboard = async function() {
             </div>
         </div>
 
-        <!-- INTEGRATED MTN MOMO PAYMENT OVERLAY INTERFACE -->
+        <!-- INTEGRATED MTN MOMO PAYMENT OVERLAY INTERFACE (Preserved) -->
         <div id="payment-modal-overlay" class="fixed inset-0 bg-black/70 backdrop-blur-md z-[99999] hidden flex items-center justify-center p-4">
             <form onsubmit="return false;" class="bg-[#070e1e] border border-slate-800 rounded-2xl p-6 w-full max-w-md space-y-5 shadow-2xl shadow-amber-950/10">
                 <div class="flex items-start justify-between border-b border-slate-800/60 pb-3">
@@ -3668,7 +3732,7 @@ window.renderSubQuestionFormArray = function(parentId) {
     const subQuestionId = `sub_${parentId}_${Date.now()}_${subIndex}`;
 
     // 🧵 ALIGNMENT MAP: Generate alphabetical label prefixes (a., b., c., d...)
-    const alphaPrefixes = ["a", "b", "c", "d", "e", "f", "g", "h"];
+    const alphaPrefixes = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t"];
     const activeLabelPrefix = alphaPrefixes[(subIndex - 1) % alphaPrefixes.length];
 
     // Push new question meta config layer into the parent's nested storage track array
@@ -4345,7 +4409,12 @@ async function handleQuizImageIngestion(eventOrInput, questionId) {
         const formData = new FormData();
         formData.append('file', chosenFile);
 
-        const response = await fetch('http://127.0.0.1:8000/upload-diagram', {
+        // Dynamically resolution for backend base URL (works for local dev & production Render backend)
+        const API_BASE_URL = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
+            ? 'http://127.0.0.1:8000'
+            : 'https://clinical-neural-link.onrender.com'; // Adjust to your actual Render URL if different
+
+        const response = await fetch(`${API_BASE_URL}/upload-diagram`, {
             method: 'POST',
             body: formData
         });
@@ -4356,37 +4425,37 @@ async function handleQuizImageIngestion(eventOrInput, questionId) {
 
         const data = await response.json();
         
-        // 5. Build absolute URL pointing to FastAPI (prevents Live Server 5501 relative 404s)
+        // 5. Build absolute URL (Supabase URLs starting with http/https pass straight through)
         const rawUrl = data.image_url;
         const serverImageUrl = rawUrl.startsWith('http') 
             ? rawUrl 
-            : `http://127.0.0.1:8000${rawUrl}`;
+            : `${API_BASE_URL}${rawUrl}`;
 
-        // 6. Update memory heap pointer with absolute static URL
+        // 6. Update memory heap pointer with absolute cloud/static URL
         const targetNode = currentQuizQuestionsHeap.find(q => q.id === questionId);
         if (targetNode) {
             targetNode.image_url = serverImageUrl;
             delete targetNode.imageBase64; // Clear legacy Base64 key if present
         }
 
-        // 7. Update DOM attribute context node with absolute static URL
+        // 7. Update DOM attribute context node with absolute URL
         const parentQuestionCard = document.getElementById(questionId);
         if (parentQuestionCard) {
             parentQuestionCard.setAttribute('data-attached-image', serverImageUrl);
         }
 
-        // 8. Finalize UI Preview State
+        // 8. Finalize UI Preview State using the public Supabase link
         previewBox.innerHTML = `
             <img src="${serverImageUrl}" class="max-h-14 max-w-full rounded border border-purple-500/30 object-contain shadow-md">
         `;
 
-        console.log(`Diagram uploaded and linked successfully for question ${questionId}: ${serverImageUrl}`);
+        console.log(`Diagram uploaded to cloud and linked successfully for question ${questionId}: ${serverImageUrl}`);
 
     } catch (error) {
         console.error(`Failed to ingest diagram for ${questionId}:`, error);
         previewBox.innerHTML = `<span class="text-red-400 font-bold text-[9px]">Upload Failed</span>`;
     }
-}
+}    
 // Exit clean up loop to return home and put student links back
 function exitAdminHub() {
     // 1. Restore Admin Hub Trigger button in header
@@ -4615,7 +4684,7 @@ window.publishLectureHandoutDocument = function() {
             
             console.log("🚀 Transporting data packets to Python FastAPI server...");
 
-            fetch("http://127.0.0.1:8000/notes", {
+            fetch(`${API_BASE_URL}/notes`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(dbPayload)
@@ -5008,7 +5077,7 @@ window.renderTargetQuizBlueprintCards = function(examDataStructure, dynamicQuest
     const targetNoteId = 1;
 
     // 3. RETRIEVE RE-BALANCED ARRAY DATA REPOSITORY DIRECTLY FROM PYTHON FASTAPI BACKEND
-    fetch(`http://127.0.0.1:8000/notes/${targetNoteId}/assessments`)
+    fetch(`${API_BASE_URL}/notes/${targetNoteId}/assessments`)
         .then(response => {
             if (!response.ok) throw new Error(`HTTP network response failure: ${response.status}`);
             return response.json();
@@ -5042,7 +5111,6 @@ window.renderTargetQuizBlueprintCards = function(examDataStructure, dynamicQuest
             };
 
             const targetNormalized = normalizeCourseString(activeCourse);
-
             // =========================================================================
             // 🎯 FIXED STACKED FILTER LAYER: ORDERED BY PROGRAM → YEAR → COURSE → SLOT
             // =========================================================================
@@ -5159,10 +5227,10 @@ window.purgeIndividualQuizSlotItem = function(storageKey, itemIndex) {
 
         // 3. Define endpoints based on whether we successfully resolved a real note_id
         let PRIMARY_ENDPOINT;
-        const FALLBACK_ENDPOINT = `http://127.0.0.1:8000/assessments/${dbRecordId}`;
+        const FALLBACK_ENDPOINT = `${API_BASE_URL}/assessments/${dbRecordId}`;
 
         if (targetNoteId && !isNaN(parseInt(targetNoteId, 10))) {
-            PRIMARY_ENDPOINT = `http://127.0.0.1:8000/notes/${targetNoteId}/assessments/${dbRecordId}`;
+            PRIMARY_ENDPOINT = `${API_BASE_URL}/notes/${targetNoteId}/assessments/${dbRecordId}`;
         } else {
             console.log("⚠️ No valid parent note_id found on target object. Defaulting directly to flat endpoint.");
             PRIMARY_ENDPOINT = FALLBACK_ENDPOINT;
@@ -5344,7 +5412,7 @@ function compileAndSaveQuizConfiguration() {
     // =========================================================================
     
     // 1. Temporarily define a Note ID to map this assessment to (use 1 for testing or bind dynamically)
-    const targetNoteId = 1; 
+   const targetNoteId = 1; 
 
     // 2. Package the complex frontend structure into a clean JSON string
     const pythonPayload = {
@@ -5362,7 +5430,7 @@ function compileAndSaveQuizConfiguration() {
     };
 
     // PUSH DATA LIVE TO THE NEW PYTHON FASTAPI DATABASE
-    fetch("http://127.0.0.1:8000/assessments", {
+    fetch(`${API_BASE_URL}/assessments`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
