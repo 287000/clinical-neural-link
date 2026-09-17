@@ -163,21 +163,17 @@ async function selectProgram(programKey) {
     // ==========================================
     // 🛡️ PROGRAM ACADEMIC BOUNDARY GUARD RAIL
     // ==========================================
-    const userRole = window.currentUserSession ? String(window.currentUserSession.role || '').toUpperCase() : 'STUDENT';
+    const userRole = window.currentUserSession ? window.currentUserSession.role : 'STUDENT';
     
     if (userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
-        const userProgram = String(window.currentUserSession?.program || '').toLowerCase().trim();
-        const targetProgram = String(programKey || '').toLowerCase().trim();
+        const userProgram = window.currentUserSession ? window.currentUserSession.program : '';
         
-        // Flexible validation: allows match if either string contains the other or they match directly
-        const isProgramMatched = userProgram === targetProgram || 
-                                 (userProgram && targetProgram && (userProgram.includes(targetProgram) || targetProgram.includes(targetProgram)));
-
-        if (userProgram && !isProgramMatched) {
+        // Match incoming profile strings cleanly (e.g., 'biomedical' === 'biomedical')
+        if (userProgram.toLowerCase().trim() !== programKey.toLowerCase().trim()) {
             if (typeof window.showToast === 'function') {
                 window.showToast(
                     "Access Denied", 
-                    `Your academic profile is locked to your assigned registry portal.`, 
+                    `Your academic profile is locked to the ${programKey.toUpperCase()} registry portal.`, 
                     "error"
                 );
             } else {
@@ -189,12 +185,14 @@ async function selectProgram(programKey) {
         // ==========================================
         // 💳 PAYMENT GATEWAY SECURITY SHIELD (PART 1)
         // ==========================================
-        const paymentStatus = String(window.currentUserSession?.payment_status || 'UNPAID').toUpperCase();
+        const paymentStatus = window.currentUserSession ? window.currentUserSession.payment_status : 'UNPAID';
 
         if (paymentStatus !== 'PAID') {
-            let maintenanceFee = "65.00"; 
+            // 🌟 DYNAMICALLY RESOLVE MAINTENANCE FEE FROM SYSTEM SETTINGS
+            let maintenanceFee = "65.00"; // Fallback default matching system_settings table
 
             try {
+                // Read from memory cache if available, otherwise query system_settings engine
                 if (window.systemSettings && window.systemSettings.registry_maintenance_fee) {
                     maintenanceFee = window.systemSettings.registry_maintenance_fee;
                 } else if (window.supabase) {
@@ -212,6 +210,7 @@ async function selectProgram(programKey) {
                 console.warn("⚠️ Could not fetch dynamic maintenance fee setting, using default:", err);
             }
 
+            // Format clean output display (e.g., 65.00 -> K65.00, 30 -> K30)
             const formattedFee = `K${parseFloat(maintenanceFee) || maintenanceFee}`;
 
             if (typeof window.showToast === 'function') {
@@ -222,23 +221,26 @@ async function selectProgram(programKey) {
                 );
             }
             
+            // 🚀 Trigger the simulated checkout flow/modal
             if (typeof window.openPaymentModal === 'function') {
                 window.openPaymentModal();
             } else {
                 alert(`Access Restricted: Please complete your ${formattedFee} program maintenance fee configuration.`);
             }
-            return; 
+            return; // Hard stop! Prevents the layout grid from injecting below.
         }
     }
 
-    if (typeof currentSelection !== 'undefined') {
-        currentSelection.program = programKey;
-        currentSelection.year = null;    
-        currentSelection.course = null;   
-    }
+    currentSelection.program = programKey;
+    currentSelection.year = null;    // Reset children states on parent shift
+    currentSelection.course = null;  // Reset children states on parent shift
 
+    // 🎯 THE TRACE CLEANER: Instantly delete the stale course from browser storage!
     localStorage.removeItem('active_course');
 
+    const contentArea = document.getElementById('dashboard-content');
+    if (!contentArea) return;
+    
     // 2. Unlocked Program Name Mappings for Display Titles (Synchronized Keys)
     const programNames = {
         'mbchb': 'MBCHB, BDS and CM',
@@ -250,80 +252,43 @@ async function selectProgram(programKey) {
     // 3. Unlocked Academic Year Mappings (Synchronized Keys)
     const programYears = {
         'mbchb': [ 2, 3 ], 
-        'biomedical': [ 2, 3, 4, 5 ],    
+        'biomedical': [ 2, 3, 4, 5 ],   
         'public_health': [ 2, 3, 4, 5 ], 
         'environmental': [ 2, 3, 4, 5 ]  
     };
 
-    const years = programYears[programKey] || [ 2, 3, 4, 5 ];
+    const years = programYears[programKey] || [];
     const displayName = programNames[programKey] || programKey;
 
-    // ==========================================
-    // 📱 MOBILE VS 🖥️ DESKTOP VIEW RENDERER
-    // ==========================================
-    const isMobile = window.innerWidth < 768;
-
-    if (isMobile) {
-        const mobileContainer = document.getElementById('mobile-drilldown-container');
-        if (!mobileContainer) return;
-
-        mobileContainer.innerHTML = `
-            <div class="space-y-3 animate-in fade-in duration-200">
-                <button onclick="window.showDashboard()" class="flex items-center space-x-1.5 text-blue-400 hover:text-blue-300 text-[10px] font-black uppercase tracking-wider mb-2 bg-blue-500/10 border border-blue-500/20 px-3 py-1.5 rounded-lg w-fit cursor-pointer">
-                    <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
-                    <span>Back to Programs</span>
-                </button>
-
-                <div class="border-b border-slate-800/60 pb-3">
-                    <h2 class="text-xs font-black text-white uppercase tracking-wider">${displayName}</h2>
-                    <p class="text-[9px] text-blue-400 font-bold uppercase tracking-widest mt-0.5">Select Academic Year</p>
-                </div>
-
-                <div class="flex flex-col space-y-2.5">
-                    ${years.map(year => `
-                        <button onclick="selectYear(${year})" 
-                            class="w-full text-left bg-slate-800/30 active:bg-blue-600/20 text-slate-200 border border-slate-800 p-3.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-between cursor-pointer">
-                            <div class="flex items-center space-x-3">
-                                <div class="w-7 h-7 bg-slate-800 rounded-lg flex items-center justify-center text-blue-400 border border-slate-700/40">
-                                    <i data-lucide="layers" class="w-3.5 h-3.5"></i>
-                                </div>
-                                <span>Year 0${year}</span>
-                            </div>
-                            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-500"></i>
-                        </button>
-                    `).join('')}
-                </div>
+    // 4. Inject the premium dynamic grid layout into the right panel canvas
+    contentArea.innerHTML = `
+        <div class="w-full h-full max-w-5xl mx-auto flex flex-col animate-in fade-in duration-300 pt-6">
+            
+            <div class="mb-8 border-b border-slate-800/40 pb-4">
+                <h2 class="text-xl font-black text-white uppercase tracking-wider">${displayName}</h2>
+                <p class="text-[10px] text-blue-500 font-bold uppercase tracking-widest mt-1">Select Academic Year Portfolio</p>
             </div>
-        `;
-    } else {
-        const contentArea = document.getElementById('dashboard-content');
-        if (!contentArea) return;
 
-        contentArea.innerHTML = `
-            <div class="w-full h-full max-w-5xl mx-auto flex flex-col animate-in fade-in duration-300 pt-6">
-                <div class="mb-8 border-b border-slate-800/40 pb-4">
-                    <h2 class="text-xl font-black text-white uppercase tracking-wider">${displayName}</h2>
-                    <p class="text-[10px] text-blue-500 font-bold uppercase tracking-widest mt-1">Select Academic Year Portfolio</p>
-                </div>
-
-                <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                    ${years.map(year => `
-                        <button onclick="selectYear(${year})" 
-                            class="bg-slate-900/30 hover:bg-blue-600/10 border border-slate-800/80 hover:border-blue-500/30 rounded-2xl p-8 text-center transition-all duration-300 group flex flex-col items-center justify-center space-y-4 shadow-lg cursor-pointer">
-                            <div class="w-12 h-12 bg-slate-800/80 rounded-xl flex items-center justify-center text-slate-400 group-hover:text-blue-400 border border-slate-700/30 group-hover:border-blue-500/20 transition-all duration-300">
-                                <i data-lucide="layers" class="w-5 h-5"></i>
-                            </div>
-                            <div class="flex flex-col space-y-1">
-                                <span class="text-sm font-black text-white tracking-wide uppercase">Year 0${year}</span>
-                                <span class="text-[9px] text-slate-500 font-black uppercase tracking-wider">Academic Level</span>
-                            </div>
-                        </button>
-                    `).join('')}
-                </div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                ${years.map(year => `
+                    <button onclick="selectYear(${year})" 
+                        class="bg-slate-900/30 hover:bg-blue-600/10 border border-slate-800/80 hover:border-blue-500/30 rounded-2xl p-8 text-center transition-all duration-300 group flex flex-col items-center justify-center space-y-4 shadow-lg">
+                        
+                        <div class="w-12 h-12 bg-slate-800/80 rounded-xl flex items-center justify-center text-slate-400 group-hover:text-blue-400 border border-slate-700/30 group-hover:border-blue-500/20 transition-all duration-300">
+                            <i data-lucide="layers" class="w-5 h-5"></i>
+                        </div>
+                        
+                        <div class="flex flex-col space-y-1">
+                            <span class="text-sm font-black text-white tracking-wide uppercase">Year 0${year}</span>
+                            <span class="text-[9px] text-slate-500 font-black uppercase tracking-wider">Academic Level</span>
+                        </div>
+                    </button>
+                `).join('')}
             </div>
-        `;
-    }
+        </div>
+    `;
 
+    // 5. Instantly compile Lucide icons for the newly injected cards
     if (window.lucide) lucide.createIcons();
 }
 function selectYear(yearNumber) {
@@ -355,156 +320,103 @@ function selectYear(yearNumber) {
     currentSelection.year = yearNumber;
     currentSelection.course = null; 
 
+    const contentArea = document.getElementById('dashboard-content');
+    if (!contentArea) return;
+
     // THE COURSE DATABASE: Synchronized keys matching active session names perfectly
     const courseDatabase = {
         // MBCHB Tracks
         'mbchb_2': ['Anatomy', 'Physiology', 'Biochemistry', 'Pathology', 'Therapeutics', 'Clinical Science', 'Laboratory Science', 'Diagnostics', 'Society and Medicine', 'Public Health'],
         'mbchb_3': ['Anatomy-(iii)', 'Physiology-(iii)', 'Biochemistry-(iii)', 'Pathology-(iii)', 'Therapeutics-(iii)', 'Clinical Science-(iii)', 'Laboratory Science-(iii)', 'Diagnostics-(iii)', 'Society and Medicine-(iii)', 'Public Health-(iii)'],
         
-        // Biomedical Science Tracks
+        // Biomedical Science Tracks (✅ Fixed Keys)
         'biomedical_2': ['Introduction to Biomedical Science', 'Introduction to Human Anatomy', 'Introduction to Medical Physiology', 'Introduction to Medical Microbiology', 'General Biochemistry'],
         'biomedical_3': ['Society and Medicine-(ii)', 'Histology', 'Physiology-(ii)', 'Parasitology', 'Virology/Mycology', 'Biochemistry-(ii)', 'Molecular and Cell Biology', 'Bacteriology'],
         'biomedical_4': ['Public Health-(iv)', 'General and Systematic Pathology', 'Pharmacology, Therapeutics and Toxicology', 'Immunology', 'Medical Genetics', 'Biostatics', 'Haematology and Blood Transfusion', 'Research and Methodology'],
         'biomedical_5': ['Skills in Laboratory Management', 'Medical Teaching Methodology', 'Cellular Pathology', 'Clinical Biochemistry', 'Research Project'],
         
-        // Public Health Tracks
+        // Public Health Tracks (✅ Fixed Keys)
         'public_health_2': ['Primary Health Care-(ii)', 'Microbiology-(ii)', 'Health Promotion-(ii)', 'Human Anatomy-(ii) ', 'Human Physiology-(ii)', 'Environmental Health-(ii)'],
         'public_health_3': ['Psychology and Medicine', 'Epidemiology-(iii)', 'Food Technology and Hygiene-(iii)', 'Monitoring and Evaluation', 'Research and Biostatistics'],
         'public_health_4': ['Emerging Public Health Issues', 'Occupational Health and Ergonomics-(vi)', 'Food and Nutrition-(iv)', 'Research Project and Data Management-(iv)', 'Industrial Attachment'],
         'public_health_5': ['Global Health', 'Health Policies and Economics', 'Medical Parasitology-(v)', 'Health System, Management II and Health Promotion II', 'Basic Pharmacology and Toxicology-(v)'],
         
-        // Environmental Health Tracks
+        // Environmental Health Tracks (✅ Fixed Keys)
         'environmental_2': ['Principles of Building and Construction', 'Primary Health Care', 'Environmental Health', 'Microbiology', 'Human Anatomy', 'Human Physiology'],
         'environmental_3': ['Biostatistics and Research', 'Food Animal Anatomy and Slaughter Houses', 'Epidemiology', 'Food Technology and Hygiene', 'Building Development and Planning'],
         'environmental_4': ['Occupational Health and Ergonomics', 'Industrial Training', 'Food Animal Pathology and Meat Inspection', 'Food and Nutrition', 'Inspection of Premises and Reporting', 'Research Project and Data Management'],
         'environmental_5': ['Environmental Economics, Management, Laws and Policies', 'Medical Parasitology', 'Occupational Health and Risk Analysis', 'Food Processing and Inspection', 'Basic Pharmacology and Toxicology', 'Environmental Health', 'Introduction to Public Health']
     };
 
+    // Create the unique finder key based on current system state (e.g., "biomedical_2")
     const searchKey = `${currentSelection.program}_${yearNumber}`;
+    
+    // Fetch courses, or default to an empty list if we haven't added data for that year yet
     const activeCourses = courseDatabase[searchKey] || [];
+
+    // Header layout configurations
     const displayYear = `Year 0${yearNumber}`;
 
-    // ==========================================
-    // 📱 MOBILE VS 🖥️ DESKTOP VIEW RENDERER
-    // ==========================================
-    const isMobile = window.innerWidth < 768;
-
-    if (isMobile) {
-        const mobileContainer = document.getElementById('mobile-drilldown-container');
-        if (!mobileContainer) return;
-
-        if (activeCourses.length === 0) {
-            mobileContainer.innerHTML = `
-                <div class="space-y-3 animate-in fade-in duration-200">
-                    <button onclick="selectProgram('${currentSelection.program}')" class="flex items-center space-x-1.5 text-blue-400 hover:text-blue-300 text-[10px] font-black uppercase tracking-wider mb-2 bg-blue-500/10 border border-blue-500/20 px-3 py-1.5 rounded-lg w-fit">
-                        <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
-                        <span>Back to Years</span>
-                    </button>
-                    <div class="p-8 text-center border border-dashed border-slate-800 rounded-xl bg-slate-900/20">
-                        <i data-lucide="folder-open" class="w-6 h-6 text-slate-700 mx-auto mb-2"></i>
-                        <p class="text-slate-500 text-[10px] font-black uppercase tracking-widest">Curriculum Empty</p>
-                        <p class="text-slate-600 text-[11px] mt-1">No modules mapped to this terminal.</p>
-                    </div>
-                </div>
-            `;
-            if (window.lucide) lucide.createIcons();
-            return;
-        }
-
-        mobileContainer.innerHTML = `
-            <div class="space-y-3 animate-in fade-in duration-200">
-                <button onclick="selectProgram('${currentSelection.program}')" class="flex items-center space-x-1.5 text-blue-400 hover:text-blue-300 text-[10px] font-black uppercase tracking-wider mb-2 bg-blue-500/10 border border-blue-500/20 px-3 py-1.5 rounded-lg w-fit">
-                    <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
-                    <span>Back to Years</span>
-                </button>
-
-                <div class="border-b border-slate-800/60 pb-3">
-                    <h2 class="text-xs font-black text-white uppercase tracking-wider">${displayYear} Modules</h2>
-                    <p class="text-[9px] text-blue-400 font-bold uppercase tracking-widest mt-0.5">Select Module to Open File Bank</p>
-                </div>
-
-                <div class="flex flex-col space-y-2.5">
-                    ${activeCourses.map((courseName, index) => {
-                        const moduleCode = `${courseName.substring(0, 3).toUpperCase()}-0${index + 1}`;
-                        return `
-                            <button onclick="selectCourse('${courseName}', '${currentSelection.program}', ${yearNumber})" 
-                                class="w-full text-left bg-slate-800/30 active:bg-blue-600/20 text-slate-200 border border-slate-800 p-3.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-between">
-                                <div class="flex items-center space-x-3 overflow-hidden">
-                                    <div class="w-7 h-7 bg-slate-800 rounded-lg flex items-center justify-center text-blue-400 border border-slate-700/40 shrink-0">
-                                        <i data-lucide="book-open" class="w-3.5 h-3.5"></i>
-                                    </div>
-                                    <div class="truncate">
-                                        <p class="truncate text-white">${courseName}</p>
-                                        <p class="text-[8px] text-slate-500 font-black">${moduleCode}</p>
-                                    </div>
-                                </div>
-                                <i data-lucide="chevron-right" class="w-4 h-4 text-slate-500 shrink-0"></i>
-                            </button>
-                        `;
-                    }).join('')}
-                </div>
-            </div>
-        `;
-    } else {
-        const contentArea = document.getElementById('dashboard-content');
-        if (!contentArea) return;
-
-        if (activeCourses.length === 0) {
-            contentArea.innerHTML = `
-                <div class="w-full h-full max-w-5xl mx-auto flex flex-col animate-in fade-in duration-300 pt-6">
-                    <div class="mb-8 flex items-center justify-between border-b border-slate-800/40 pb-4">
-                        <h2 class="text-xl font-black text-white uppercase tracking-wider">${displayYear} Modules</h2>
-                        <button onclick="selectProgram('${currentSelection.program}')" class="bg-slate-900/40 hover:bg-slate-800 text-slate-400 border border-slate-800/80 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors cursor-pointer">← Back to Years</button>
-                    </div>
-                    <div class="flex-1 flex flex-col items-center justify-center p-12 border border-dashed border-slate-800 rounded-2xl bg-slate-900/10">
-                        <i data-lucide="folder-open" class="w-8 h-8 text-slate-700 mb-3"></i>
-                        <p class="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em]">Curriculum Database Empty</p>
-                        <p class="text-slate-600 text-xs mt-1 text-center">No modules are currently mapped to this specific academic terminal.</p>
-                    </div>
-                </div>
-            `;
-            if (window.lucide) lucide.createIcons();
-            return;
-        }
-
+    // If no courses are found for this specific year yet
+    if (activeCourses.length === 0) {
         contentArea.innerHTML = `
             <div class="w-full h-full max-w-5xl mx-auto flex flex-col animate-in fade-in duration-300 pt-6">
-                <div class="mb-8 border-b border-slate-800/40 pb-4 flex items-center justify-between">
-                    <div>
-                        <h2 class="text-xl font-black text-white uppercase tracking-wider">${displayYear} — Curriculum Modules</h2>
-                        <p class="text-[10px] text-blue-500 font-bold uppercase tracking-widest mt-1">Select standard module to launch active file banks</p>
-                    </div>
-                    <button onclick="selectProgram('${currentSelection.program}')" 
-                        class="bg-slate-900/40 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800/80 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors flex items-center space-x-2 cursor-pointer">
-                        <span>← Back to Years</span>
-                    </button>
+                <div class="mb-8 flex items-center justify-between border-b border-slate-800/40 pb-4">
+                    <h2 class="text-xl font-black text-white uppercase tracking-wider">${displayYear} Modules</h2>
+                    <button onclick="selectProgram('${currentSelection.program}')" class="bg-slate-900/40 hover:bg-slate-800 text-slate-400 border border-slate-800/80 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors">← Back to Years</button>
                 </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    ${activeCourses.map((courseName, index) => {
-                        const moduleCode = `${courseName.substring(0, 3).toUpperCase()}-0${index + 1}`;
-                        return `
-                            <button onclick="selectCourse('${courseName}', '${currentSelection.program}', ${yearNumber})" 
-                                class="bg-slate-900/30 hover:bg-blue-600/10 border border-slate-800/80 hover:border-blue-500/30 rounded-2xl p-5 text-left transition-all duration-300 flex items-center justify-between group shadow-lg cursor-pointer">
-                                <div class="flex items-center space-x-4">
-                                    <div class="w-11 h-11 bg-slate-800/80 rounded-xl flex items-center justify-center text-slate-400 group-hover:text-blue-400 border border-slate-700/30 group-hover:border-blue-500/20 transition-all duration-300">
-                                        <i data-lucide="book-open" class="w-5 h-5"></i>
-                                    </div>
-                                    <div>
-                                        <div class="flex items-center space-x-2">
-                                            <h4 class="text-sm font-black text-white uppercase tracking-wide">${courseName}</h4>
-                                        </div>
-                                        <p class="text-[9px] text-slate-500 uppercase tracking-wider mt-0.5">Module ID: ${moduleCode}</p>
-                                    </div>
-                                </div>
-                                <i data-lucide="chevron-right" class="w-4 h-4 text-slate-600 group-hover:text-blue-400 translate-x-0 group-hover:translate-x-1 transition-all"></i>
-                            </button>
-                        `;
-                    }).join('')}
+                <div class="flex-1 flex flex-col items-center justify-center p-12 border border-dashed border-slate-800 rounded-2xl bg-slate-900/10">
+                    <i data-lucide="folder-open" class="w-8 h-8 text-slate-700 mb-3"></i>
+                    <p class="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em]">Curriculum Database Empty</p>
+                    <p class="text-slate-600 text-xs mt-1 text-center">No modules are currently mapped to this specific academic terminal.</p>
                 </div>
             </div>
         `;
+        if (window.lucide) lucide.createIcons();
+        return;
     }
+
+    // Render the completely customized curriculum course block
+    contentArea.innerHTML = `
+        <div class="w-full h-full max-w-5xl mx-auto flex flex-col animate-in fade-in duration-300 pt-6">
+            
+            <div class="mb-8 border-b border-slate-800/40 pb-4 flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl font-black text-white uppercase tracking-wider">${displayYear} — Curriculum Modules</h2>
+                    <p class="text-[10px] text-blue-500 font-bold uppercase tracking-widest mt-1">Select standard module to launch active file banks</p>
+                </div>
+                <button onclick="selectProgram('${currentSelection.program}')" 
+                    class="bg-slate-900/40 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800/80 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors flex items-center space-x-2">
+                    <span>← Back to Years</span>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                ${activeCourses.map((courseName, index) => {
+                    const moduleCode = `${courseName.substring(0, 3).toUpperCase()}-0${index + 1}`;
+                    return `
+                        <button onclick="selectCourse('${courseName}', '${currentSelection.program}', ${yearNumber})" 
+                            class="bg-slate-900/30 hover:bg-blue-600/10 border border-slate-800/80 hover:border-blue-500/30 rounded-2xl p-5 text-left transition-all duration-300 flex items-center justify-between group shadow-lg cursor-pointer">
+                            
+                            <div class="flex items-center space-x-4">
+                                <div class="w-11 h-11 bg-slate-800/80 rounded-xl flex items-center justify-center text-slate-400 group-hover:text-blue-400 border border-slate-700/30 group-hover:border-blue-500/20 transition-all duration-300">
+                                    <i data-lucide="book-open" class="w-5 h-5"></i>
+                                </div>
+                                <div>
+                                    <div class="flex items-center space-x-2">
+                                        <h4 class="text-sm font-black text-white uppercase tracking-wide">${courseName}</h4>
+                                    </div>
+                                    <p class="text-[9px] text-slate-500 uppercase tracking-wider mt-0.5">Module ID: ${moduleCode}</p>
+                                </div>
+                            </div>
+                            
+                            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-600 group-hover:text-blue-400 translate-x-0 group-hover:translate-x-1 transition-all"></i>
+                        </button>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+    `;
 
     if (window.lucide) lucide.createIcons();
 }
@@ -561,6 +473,7 @@ window.resolveCurrentDatabaseKey = function() {
     return `${computedPrefix}_${fallbackYear}`;
 };
 
+// Temporary placeholder function for Step 4 so the program doesn't throw errors on course clicks
 function selectCourse(courseName, explicitProgramKey = null, explicitYearNumber = null) {
     console.log("Course Selected:", courseName);
     
@@ -589,127 +502,71 @@ function selectCourse(courseName, explicitProgramKey = null, explicitYearNumber 
     window.currentSelection.viewMode = null; 
     window.currentSelection.term = null;
 
-    const activeYearVal = (window.currentSelection && window.currentSelection.year) || (typeof currentSelection !== 'undefined' && currentSelection.year) || localStorage.getItem('active_year') || 2;
+    const contentArea = document.getElementById('dashboard-content');
+    if (!contentArea) return;
 
-    // ==========================================
-    // 📱 MOBILE VS 🖥️ DESKTOP VIEW RENDERER
-    // ==========================================
-    const isMobile = window.innerWidth < 768;
+    // 1. Draw the Course Hub Layout workspace container
+    contentArea.innerHTML = `
+        <div class="w-full h-full max-w-5xl mx-auto flex flex-col animate-in fade-in duration-300 pt-6">
+            
+            <div class="mb-8 border-b border-slate-800/40 pb-4 flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl font-black text-white uppercase tracking-wider">${courseName} Hub</h2>
+                    <p class="text-[10px] text-blue-500 font-bold uppercase tracking-widest mt-1">Select preparation matrix or execute performance assessment</p>
+                </div>
+               <button onclick="selectYear((window.currentSelection && window.currentSelection.year) || (typeof currentSelection !== 'undefined' && currentSelection.year) || localStorage.getItem('active_year') || 2)" 
+                    class="bg-slate-900/40 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800/80 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors flex items-center space-x-2">
+                    <span>← Back to Modules</span>
+                </button>
+            </div>
 
-    if (isMobile) {
-        const mobileContainer = document.getElementById('mobile-drilldown-container');
-        if (!mobileContainer) return;
-
-        mobileContainer.innerHTML = `
-            <div class="space-y-3 animate-in fade-in duration-200">
-                <button onclick="selectYear(${activeYearVal})" class="flex items-center space-x-1.5 text-blue-400 hover:text-blue-300 text-[10px] font-black uppercase tracking-wider mb-2 bg-blue-500/10 border border-blue-500/20 px-3 py-1.5 rounded-lg w-fit">
-                    <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
-                    <span>Back to Modules</span>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+                
+                <button onclick="selectViewMode('notes')" 
+                    class="bg-slate-900/20 hover:bg-blue-600/[0.04] border border-slate-800/80 hover:border-blue-500/30 rounded-2xl p-8 text-left transition-all duration-300 group flex flex-col justify-between space-y-12 shadow-lg h-64">
+                    <div class="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-400 border border-blue-500/20 transition-all duration-300 group-hover:scale-105">
+                        <i data-lucide="book-open-check" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-black text-white uppercase tracking-wide group-hover:text-blue-400 transition-colors">Course Topic Notes</h3>
+                        <p class="text-slate-500 text-[10px] uppercase tracking-wider mt-1 normal-case leading-relaxed">Review condensed high-yield summary notes organized into portfolios before testing.</p>
+                    </div>
                 </button>
 
-                <div class="border-b border-slate-800/60 pb-3">
-                    <h2 class="text-xs font-black text-white uppercase tracking-wider">${courseName} Hub</h2>
-                    <p class="text-[9px] text-blue-400 font-bold uppercase tracking-widest mt-0.5">Select Matrix or Assessment</p>
-                </div>
-
-                <div class="flex flex-col space-y-3">
-                    <button onclick="selectViewMode('notes')" 
-                        class="w-full text-left bg-slate-800/30 active:bg-blue-600/20 text-slate-200 border border-slate-800 p-4 rounded-xl transition-all flex flex-col space-y-2">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-8 h-8 bg-blue-500/10 rounded-lg flex items-center justify-center text-blue-400 border border-blue-500/20 shrink-0">
-                                <i data-lucide="book-open-check" class="w-4 h-4"></i>
-                            </div>
-                            <span class="text-xs font-black text-white uppercase tracking-wide">Course Topic Notes</span>
-                        </div>
-                        <p class="text-[10px] text-slate-400 normal-case leading-relaxed">Review condensed high-yield summary notes organized into portfolios.</p>
-                    </button>
-
-                    <button onclick="selectViewMode('assessments')" 
-                        class="w-full text-left bg-slate-800/30 active:bg-amber-600/20 text-slate-200 border border-slate-800 p-4 rounded-xl transition-all flex flex-col space-y-2">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-8 h-8 bg-amber-500/10 rounded-lg flex items-center justify-center text-amber-500 border border-amber-500/20 shrink-0">
-                                <i data-lucide="activity" class="w-4 h-4"></i>
-                            </div>
-                            <span class="text-xs font-black text-white uppercase tracking-wide">Interactive Assessments</span>
-                        </div>
-                        <p class="text-[10px] text-slate-400 normal-case leading-relaxed">Launch custom question banks to evaluate domain expertise.</p>
-                    </button>
-                </div>
-            </div>
-        `;
-    } else {
-        const contentArea = document.getElementById('dashboard-content');
-        if (!contentArea) return;
-
-        contentArea.innerHTML = `
-            <div class="w-full h-full max-w-5xl mx-auto flex flex-col animate-in fade-in duration-300 pt-6">
-                <div class="mb-8 border-b border-slate-800/40 pb-4 flex items-center justify-between">
-                    <div>
-                        <h2 class="text-xl font-black text-white uppercase tracking-wider">${courseName} Hub</h2>
-                        <p class="text-[10px] text-blue-500 font-bold uppercase tracking-widest mt-1">Select preparation matrix or execute performance assessment</p>
+                <button onclick="selectViewMode('assessments')" 
+                    class="bg-slate-900/20 hover:bg-amber-600/[0.04] border border-slate-800/80 hover:border-amber-500/30 rounded-2xl p-8 text-left transition-all duration-300 group flex flex-col justify-between space-y-12 shadow-lg h-64">
+                    <div class="w-12 h-12 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500 border border-amber-500/20 transition-all duration-300 group-hover:scale-105">
+                        <i data-lucide="activity" class="w-6 h-6"></i>
                     </div>
-                    <button onclick="selectYear(${activeYearVal})" 
-                        class="bg-slate-900/40 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800/80 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors flex items-center space-x-2 cursor-pointer">
-                        <span>← Back to Modules</span>
-                    </button>
-                </div>
+                    <div>
+                        <h3 class="text-lg font-black text-white uppercase tracking-wide group-hover:text-amber-400 transition-colors">Interactive Assessments</h3>
+                        <p class="text-slate-500 text-[10px] uppercase tracking-wider mt-1 normal-case leading-relaxed">Launch clinical library data files to run custom question banks and evaluate domain expertise.</p>
+                    </div>
+                </button>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
-                    <button onclick="selectViewMode('notes')" 
-                        class="bg-slate-900/20 hover:bg-blue-600/[0.04] border border-slate-800/80 hover:border-blue-500/30 rounded-2xl p-8 text-left transition-all duration-300 group flex flex-col justify-between space-y-12 shadow-lg h-64 cursor-pointer">
-                        <div class="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-400 border border-blue-500/20 transition-all duration-300 group-hover:scale-105">
-                            <i data-lucide="book-open-check" class="w-6 h-6"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-lg font-black text-white uppercase tracking-wide group-hover:text-blue-400 transition-colors">Course Topic Notes</h3>
-                            <p class="text-slate-500 text-[10px] uppercase tracking-wider mt-1 normal-case leading-relaxed">Review condensed high-yield summary notes organized into portfolios before testing.</p>
-                        </div>
-                    </button>
-
-                    <button onclick="selectViewMode('assessments')" 
-                        class="bg-slate-900/20 hover:bg-amber-600/[0.04] border border-slate-800/80 hover:border-amber-500/30 rounded-2xl p-8 text-left transition-all duration-300 group flex flex-col justify-between space-y-12 shadow-lg h-64 cursor-pointer">
-                        <div class="w-12 h-12 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500 border border-amber-500/20 transition-all duration-300 group-hover:scale-105">
-                            <i data-lucide="activity" class="w-6 h-6"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-lg font-black text-white uppercase tracking-wide group-hover:text-amber-400 transition-colors">Interactive Assessments</h3>
-                            <p class="text-slate-500 text-[10px] uppercase tracking-wider mt-1 normal-case leading-relaxed">Launch clinical library data files to run custom question banks and evaluate domain expertise.</p>
-                        </div>
-                    </button>
-                </div>
             </div>
-        `;
-    }
+        </div>
+    `;
 
     if (window.lucide) lucide.createIcons();
 }
 function selectViewMode(mode) {
     currentSelection.viewMode = mode;
     
-    // ==========================================
-    // 📱 MOBILE VS 🖥️ DESKTOP VIEW ROUTING
-    // ==========================================
-    const isMobile = window.innerWidth < 768;
-
-    if (isMobile) {
-        // Mobile view routing can be handled inside the respective render functions 
-        // by targeting #mobile-drilldown-container, or managed here:
-        if (mode === 'assessments') {
-            if (typeof renderAssessmentsView === 'function') renderAssessmentsView();
-        } else if (mode === 'notes') {
-            if (typeof renderTermsView === 'function') renderTermsView();
-        }
-    } else {
-        if (mode === 'assessments') {
-            renderAssessmentsView();
-        } else if (mode === 'notes') {
-            renderTermsView(); 
-        }
+    if (mode === 'assessments') {
+        renderAssessmentsView();
+    } else if (mode === 'notes') {
+        // We will build this layout engine in Step 4!
+        renderTermsView(); 
     }
 }
 
+
 // 🎯 PASS CONTEXT DIRECTLY: Add courseName as an explicit second argument
 window.navigateToSlotWorkspace = function(slotId) {
+    const contentArea = document.getElementById('dashboard-content');
+    if (!contentArea) return;
+
     // Maintain tracking in memory quietly for structural filtering
     const activeCourse = (window.currentSelection && window.currentSelection.course) || localStorage.getItem('active_course') || 'Anatomy';
 
@@ -720,62 +577,35 @@ window.navigateToSlotWorkspace = function(slotId) {
     window.currentSelection.slotId = cleanSlotId;
     window.currentSelection.course = activeCourse.trim();
 
-    // ==========================================
-    // 📱 MOBILE VS 🖥️ DESKTOP VIEW RENDERER
-    // ==========================================
-    const isMobile = window.innerWidth < 768;
-
-    if (isMobile) {
-        const mobileContainer = document.getElementById('mobile-drilldown-container');
-        if (!mobileContainer) return;
-
-        mobileContainer.innerHTML = `
-            <div class="space-y-3 animate-in fade-in duration-200">
+    // 1. Overwrite the layout to display the simplified view
+    contentArea.innerHTML = `
+        <div class="w-full h-full max-w-5xl mx-auto flex flex-col animate-in fade-in duration-300 pt-6">
+            
+            <div class="mb-8 border-b border-slate-800/40 pb-4 flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl font-black text-white uppercase tracking-wider">${cleanSlotId} Bank — Available Papers</h2>
+                    <p class="text-[10px] text-purple-500 font-bold uppercase tracking-widest mt-1">Review and execute published data records inside this repository</p>
+                </div>
+                
                 <button onclick="if(typeof renderAssessmentsView === 'function') renderAssessmentsView();" 
-                    class="flex items-center space-x-1.5 text-purple-400 hover:text-purple-300 text-[10px] font-black uppercase tracking-wider mb-2 bg-purple-500/10 border border-purple-500/20 px-3 py-1.5 rounded-lg w-fit">
-                    <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
-                    <span>Back to Slots</span>
+                    class="bg-slate-900/40 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800/80 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors flex items-center space-x-2">
+                    <span>← Back to Slots</span>
                 </button>
-
-                <div class="border-b border-slate-800/60 pb-3">
-                    <h2 class="text-xs font-black text-white uppercase tracking-wider">${cleanSlotId} Bank</h2>
-                    <p class="text-[9px] text-purple-400 font-bold uppercase tracking-widest mt-0.5">Available Papers</p>
-                </div>
-
-                <div id="active-quiz-questions-portal" class="w-full space-y-2.5 mt-2"></div>
             </div>
-        `;
-    } else {
-        const contentArea = document.getElementById('dashboard-content');
-        if (!contentArea) return;
 
-        contentArea.innerHTML = `
-            <div class="w-full h-full max-w-5xl mx-auto flex flex-col animate-in fade-in duration-300 pt-6">
-                <div class="mb-8 border-b border-slate-800/40 pb-4 flex items-center justify-between">
-                    <div>
-                        <h2 class="text-xl font-black text-white uppercase tracking-wider">${cleanSlotId} Bank — Available Papers</h2>
-                        <p class="text-[10px] text-purple-500 font-bold uppercase tracking-widest mt-1">Review and execute published data records inside this repository</p>
-                    </div>
-                    
-                    <button onclick="if(typeof renderAssessmentsView === 'function') renderAssessmentsView();" 
-                        class="bg-slate-900/40 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800/80 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors flex items-center space-x-2 cursor-pointer">
-                        <span>← Back to Slots</span>
-                    </button>
-                </div>
-
-                <div id="active-quiz-questions-portal" class="w-full space-y-3 mt-2"></div>
-            </div>
-        `;
-    }
+            <div id="active-quiz-questions-portal" class="w-full space-y-3 mt-2"></div>
+        </div>
+    `;
 
     // 2. Trigger the blueprint compiler to draw the quiz cards
     if (typeof window.renderTargetQuizBlueprintCards === 'function') {
         window.renderTargetQuizBlueprintCards();
     }
-
-    if (window.lucide) lucide.createIcons();
 };
 window.renderTermsView = function() {
+    const contentArea = document.getElementById('dashboard-content');
+    if (!contentArea) return;
+
     // 1. Gather descriptive title parameters with reliable string state fallbacks
     const activeCourseName = ((window.currentSelection && window.currentSelection.course) || localStorage.getItem('active_course') || 'Course Module').trim();
     
@@ -784,78 +614,39 @@ window.renderTermsView = function() {
         window.renderActiveModulePortalView = window.renderTermsView;
     }
 
-    // ==========================================
-    // 📱 MOBILE VS 🖥️ DESKTOP VIEW RENDERER
-    // ==========================================
-    const isMobile = window.innerWidth < 768;
-
-    if (isMobile) {
-        const mobileContainer = document.getElementById('mobile-drilldown-container');
-        if (!mobileContainer) return;
-
-        mobileContainer.innerHTML = `
-            <div class="space-y-3 animate-in fade-in duration-200">
+    // 2. Inject structural elements using purple accents to isolate the PDF sub-modules
+    contentArea.innerHTML = `
+        <div class="w-full h-full max-w-5xl mx-auto flex flex-col animate-in fade-in duration-300 pt-6">
+            
+            <div class="mb-8 border-b border-slate-800/40 pb-4 flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl font-black text-white uppercase tracking-wider">${activeCourseName.toUpperCase()} — Summary Portfolios</h2>
+                    <p class="text-[10px] text-purple-500 font-bold uppercase tracking-widest mt-1">Select academic term to unlock high-yield topics index</p>
+                </div>
                 <button onclick="selectCourse('${activeCourseName.replace(/'/g, "\\'")}')" 
-                    class="flex items-center space-x-1.5 text-purple-400 hover:text-purple-300 text-[10px] font-black uppercase tracking-wider mb-2 bg-purple-500/10 border border-purple-500/20 px-3 py-1.5 rounded-lg w-fit">
-                    <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
-                    <span>Back to Hub</span>
+                    class="bg-slate-900/40 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800/80 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors flex items-center space-x-2 cursor-pointer">
+                    <span>← Back to Hub</span>
                 </button>
-
-                <div class="border-b border-slate-800/60 pb-3">
-                    <h2 class="text-xs font-black text-white uppercase tracking-wider">${activeCourseName.toUpperCase()}</h2>
-                    <p class="text-[9px] text-purple-400 font-bold uppercase tracking-widest mt-0.5">Select Academic Term Index</p>
-                </div>
-
-                <div class="flex flex-col space-y-2.5">
-                    ${[1, 2, 3].map(termNum => `
-                        <button onclick="window.selectTermPortfolio(${termNum})" 
-                            class="w-full text-left bg-slate-800/30 active:bg-purple-600/20 text-slate-200 border border-slate-800 p-3.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-between">
-                            <div class="flex items-center space-x-3">
-                                <div class="w-7 h-7 bg-purple-500/10 rounded-lg flex items-center justify-center text-purple-400 border border-purple-500/20">
-                                    <i data-lucide="archive" class="w-3.5 h-3.5"></i>
-                                </div>
-                                <span>Academic Term 0${termNum}</span>
-                            </div>
-                            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-500"></i>
-                        </button>
-                    `).join('')}
-                </div>
             </div>
-        `;
-    } else {
-        const contentArea = document.getElementById('dashboard-content');
-        if (!contentArea) return;
 
-        contentArea.innerHTML = `
-            <div class="w-full h-full max-w-5xl mx-auto flex flex-col animate-in fade-in duration-300 pt-6">
-                <div class="mb-8 border-b border-slate-800/40 pb-4 flex items-center justify-between">
-                    <div>
-                        <h2 class="text-xl font-black text-white uppercase tracking-wider">${activeCourseName.toUpperCase()} — Summary Portfolios</h2>
-                        <p class="text-[10px] text-purple-500 font-bold uppercase tracking-widest mt-1">Select academic term to unlock high-yield topics index</p>
-                    </div>
-                    <button onclick="selectCourse('${activeCourseName.replace(/'/g, "\\'")}')" 
-                        class="bg-slate-900/40 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800/80 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors flex items-center space-x-2 cursor-pointer">
-                        <span>← Back to Hub</span>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+                ${[1, 2, 3].map(termNum => `
+                    <button onclick="window.selectTermPortfolio(${termNum})" 
+                        class="bg-slate-900/30 hover:bg-purple-600/[0.03] border border-slate-800/80 hover:border-purple-500/20 hover:shadow-purple-950/10 rounded-2xl p-6 text-center transition-all duration-300 group flex flex-col items-center justify-center space-y-4 shadow-lg cursor-pointer">
+                        
+                        <div class="w-12 h-12 bg-purple-500/10 rounded-xl flex items-center justify-center text-purple-400 group-hover:bg-purple-600 group-hover:text-slate-950 border border-purple-500/20 transition-all duration-300 shadow-inner">
+                            <i data-lucide="archive" class="w-5 h-5 transition-transform group-hover:scale-110"></i>
+                        </div>
+                        
+                        <div class="flex flex-col space-y-1">
+                            <span class="text-sm font-black text-white tracking-wide uppercase">Academic Term 0${termNum}</span>
+                            <span class="text-[9px] text-slate-500 font-black uppercase tracking-wider">Summary Handouts Index</span>
+                        </div>
                     </button>
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-                    ${[1, 2, 3].map(termNum => `
-                        <button onclick="window.selectTermPortfolio(${termNum})" 
-                            class="bg-slate-900/30 hover:bg-purple-600/[0.03] border border-slate-800/80 hover:border-purple-500/20 hover:shadow-purple-950/10 rounded-2xl p-6 text-center transition-all duration-300 group flex flex-col items-center justify-center space-y-4 shadow-lg cursor-pointer">
-                            <div class="w-12 h-12 bg-purple-500/10 rounded-xl flex items-center justify-center text-purple-400 group-hover:bg-purple-600 group-hover:text-slate-950 border border-purple-500/20 transition-all duration-300 shadow-inner">
-                                <i data-lucide="archive" class="w-5 h-5 transition-transform group-hover:scale-110"></i>
-                            </div>
-                            <div class="flex flex-col space-y-1">
-                                <span class="text-sm font-black text-white tracking-wide uppercase">Academic Term 0${termNum}</span>
-                                <span class="text-[9px] text-slate-500 font-black uppercase tracking-wider">Summary Handouts Index</span>
-                            </div>
-                        </button>
-                    `).join('')}
-                </div>
+                `).join('')}
             </div>
-        `;
-    }
+        </div>
+    `;
 
     if (window.lucide) lucide.createIcons();
 };
@@ -868,6 +659,9 @@ window.selectTermPortfolio = function(termNumber) {
         window.currentSelection.term = termNumber;
     }
     localStorage.setItem('active_viewing_term', String(termNumber));
+
+    const contentArea = document.getElementById('dashboard-content');
+    if (!contentArea) return;
 
     // Gather baseline path keys safely from current program tracking states
     window.activeCourseRaw = ((window.currentSelection && window.currentSelection.course) || localStorage.getItem('active_course') || 'Anatomy').trim();
@@ -954,43 +748,8 @@ window.selectTermPortfolio = function(termNumber) {
         if (window.currentSelection) window.currentSelection.year = resolvedYearDigit;
     }
 
-    // ==========================================
-    // 📱 MOBILE VS 🖥️ DESKTOP VIEW RENDERER
-    // ==========================================
-    const isMobile = window.innerWidth < 768;
-
-    if (isMobile) {
-        const mobileContainer = document.getElementById('mobile-drilldown-container');
-        if (!mobileContainer) return;
-
-        mobileContainer.innerHTML = `
-            <div class="space-y-3 animate-in fade-in duration-200">
-                <button onclick="renderTermsView()" 
-                    class="flex items-center space-x-1.5 text-purple-400 hover:text-purple-300 text-[10px] font-black uppercase tracking-wider mb-2 bg-purple-500/10 border border-purple-500/20 px-3 py-1.5 rounded-lg w-fit">
-                    <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
-                    <span>Back to Terms</span>
-                </button>
-
-                <div class="border-b border-slate-800/60 pb-3">
-                    <h2 class="text-xs font-black text-white uppercase tracking-wider">Term 0${termNumber} Notes</h2>
-                    <p class="text-[9px] text-purple-400 font-bold uppercase tracking-widest mt-0.5">High-Yield Topics Index</p>
-                </div>
-
-                <div id="portfolio-runtime-render-slot" class="w-full">
-                    <div class="w-full flex items-center justify-center p-12 min-h-[150px]">
-                        <div class="flex flex-col items-center space-y-3">
-                            <div class="w-5 h-5 border-2 border-purple-500/20 border-t-purple-500 rounded-full animate-spin"></div>
-                            <span class="text-[9px] font-mono text-slate-500 uppercase tracking-widest animate-pulse">Querying Central Notes Matrix...</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-    } else {
-        const contentArea = document.getElementById('dashboard-content');
-        if (!contentArea) return;
-
-        contentArea.innerHTML = `
+    function compileBaseDashboardShellMarkup(innerContentMarkup) {
+        return `
             <div class="w-full h-full max-w-5xl mx-auto flex flex-col animate-in fade-in duration-300 pt-6">
                 <div class="mb-8 border-b border-slate-800/40 pb-4 flex items-center justify-between">
                     <div>
@@ -1003,23 +762,25 @@ window.selectTermPortfolio = function(termNumber) {
                     </button>
                 </div>
                 <div id="portfolio-runtime-render-slot">
-                    <div class="w-full h-full flex items-center justify-center p-20 min-h-[200px]">
-                        <div class="flex flex-col items-center space-y-3">
-                            <div class="w-6 h-6 border-2 border-purple-500/20 border-t-purple-500 rounded-full animate-spin"></div>
-                            <span class="text-[9px] font-mono text-slate-500 uppercase tracking-widest animate-pulse">Querying Central Notes Matrix...</span>
-                        </div>
-                    </div>
+                    ${innerContentMarkup}
                 </div>
             </div>
         `;
     }
 
+    contentArea.innerHTML = compileBaseDashboardShellMarkup(`
+        <div class="w-full h-full flex items-center justify-center p-20 min-h-[200px]">
+            <div class="flex flex-col items-center space-y-3">
+                <div class="w-6 h-6 border-2 border-purple-500/20 border-t-purple-500 rounded-full animate-spin"></div>
+                <span class="text-[9px] font-mono text-slate-500 uppercase tracking-widest animate-pulse">Querying Central Notes Matrix...</span>
+            </div>
+        </div>
+    `);
+
     if (window.lucide) window.lucide.createIcons();
 
     // Fetch the notes immediately now that the framework structure is appended
-    if (typeof window.fetchLiveDatabaseNotes === 'function') {
-        window.fetchLiveDatabaseNotes();
-    }
+    window.fetchLiveDatabaseNotes();
 };
 
 function processAndRenderNotesCollection(collectionArray, isUsingFallbackLocalCache = false) {
@@ -1944,8 +1705,7 @@ window.showDashboard = async function() {
     const viewport = document.getElementById('app-viewport');
     if (!viewport) return;
     
-    // Updated viewport class to handle mobile column layout vs desktop row layout
-    viewport.className = "w-full h-full flex flex-col md:flex-row bg-[#050b18] relative pt-16 md:pt-16 overflow-hidden";
+    viewport.className = "w-full h-full flex bg-[#050b18] relative pt-16 overflow-hidden";
 
     const isAdminHub = (window.currentUserSession && window.currentUserSession.accessMode === "ADMIN_HUB");
 
@@ -1997,7 +1757,6 @@ window.showDashboard = async function() {
         (!hasStudentNumber && sessionRole !== "STUDENT");
 
     let identityRackHTML = '';
-    let mobileIdentityRackHTML = '';
 
     if (isAdminUser) {
         identityRackHTML = `
@@ -2007,7 +1766,6 @@ window.showDashboard = async function() {
                 <span>ADMIN ACCESS</span>
             </div>
         `;
-        mobileIdentityRackHTML = identityRackHTML;
     } else {
         const targetStudentNumber = workingSession?.student_number || workingSession?.studentNumber;
         if (targetStudentNumber && typeof window.initializePusherRealTime === 'function') {
@@ -2017,33 +1775,37 @@ window.showDashboard = async function() {
         const paymentStatus = String(workingSession?.payment_status || 'UNPAID').toUpperCase();
         const needsPin = workingSession?.pin_required;
 
-        let paymentBadgeContent = '';
+        identityRackHTML = `<div class="flex items-center space-x-3 font-mono text-[10px] font-bold tracking-wider">`;
+
+        // 1. Subscription Status Badge Wrapper with dedicated ID
+        identityRackHTML += `<div id="payment-status-badge">`;
         if (paymentStatus === "PAID") {
-            paymentBadgeContent = `
+            identityRackHTML += `
                 <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1.5 rounded-lg uppercase flex items-center space-x-1.5">
                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                     <span>Subscribed</span>
                 </span>
             `;
         } else if (paymentStatus === "PROCESSING") {
-            paymentBadgeContent = `
+            identityRackHTML += `
                 <span class="bg-amber-500/10 text-amber-400 border border-amber-500/20 px-3 py-1.5 rounded-lg uppercase flex items-center space-x-1.5 shadow-lg shadow-amber-950/40">
                     <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>
                     <span>Verifying Payment...</span>
                 </span>
             `;
         } else {
-            paymentBadgeContent = `
+            identityRackHTML += `
                 <span class="bg-rose-500/10 text-rose-400 border border-rose-500/20 px-3 py-1.5 rounded-lg uppercase flex items-center space-x-1.5">
                     <span class="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse"></span>
                     <span>Subscription Pending (K${displayFee})</span>
                 </span>
             `;
         }
+        identityRackHTML += `</div>`;
 
-        let pinBadgeContent = '';
+        // 2. High-Security PIN Status Component
         if (needsPin) {
-            pinBadgeContent = `
+            identityRackHTML += `
                 <button id="header-pin-trigger" onclick="togglePinModal(true)" 
                     class="bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-500/20 hover:border-blue-500 px-3 py-1.5 rounded-lg uppercase font-black tracking-widest transition-all cursor-pointer flex items-center space-x-1.5 shadow-lg shadow-blue-950/40">
                     <i data-lucide="shield-alert" class="w-3.5 h-3.5"></i>
@@ -2051,7 +1813,7 @@ window.showDashboard = async function() {
                 </button>
             `;
         } else {
-            pinBadgeContent = `
+            identityRackHTML += `
                 <span class="bg-slate-800/40 text-slate-400 border border-slate-800/60 px-3 py-1.5 rounded-lg uppercase flex items-center space-x-1.5">
                     <i data-lucide="shield-check" class="w-3.5 h-3.5 text-slate-500"></i>
                     <span>Node Secured</span>
@@ -2059,13 +1821,11 @@ window.showDashboard = async function() {
             `;
         }
 
-        identityRackHTML = `<div class="flex items-center space-x-3 font-mono text-[10px] font-bold tracking-wider"><div id="payment-status-badge">${paymentBadgeContent}</div>${pinBadgeContent}</div>`;
-        mobileIdentityRackHTML = `<div class="flex items-center space-x-2 font-mono text-[9px] font-bold tracking-wider"><div id="mobile-payment-status-badge">${paymentBadgeContent}</div>${pinBadgeContent}</div>`;
+        identityRackHTML += `</div>`;
     }
 
     viewport.innerHTML = `
-        <!-- DESKTOP HEADER (Hidden on mobile) -->
-        <header class="hidden md:flex fixed top-0 left-0 w-full justify-between items-center px-6 py-4 z-[9999] bg-[#050b18]/80 backdrop-blur-md border-b border-slate-800/40">
+        <header class="fixed top-0 left-0 w-full flex justify-between items-center px-6 py-4 z-[9999] bg-[#050b18]/80 backdrop-blur-md border-b border-slate-800/40">
             <div class="flex items-center space-x-3">
                 <div class="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-900/40">
                     <i data-lucide="brain-circuit" class="text-white w-5 h-5"></i>
@@ -2083,28 +1843,7 @@ window.showDashboard = async function() {
             </button>
         </header>
 
-        <!-- MOBILE HEADER (Visible only on mobile) -->
-        <header class="md:hidden fixed top-0 left-0 w-full flex justify-between items-center px-4 py-3 z-[9999] bg-[#050b18]/90 backdrop-blur-md border-b border-slate-800/40">
-            <div class="flex items-center space-x-2">
-                <div class="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center shadow-md shadow-blue-900/40">
-                    <i data-lucide="brain-circuit" class="text-white w-4 h-4"></i>
-                </div>
-                <h1 class="font-black text-white text-xs tracking-wider uppercase">Clinical Neural Link</h1>
-            </div>
-
-            <button type="button" onclick="window.logout(event)" 
-                class="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 px-3 py-1.5 rounded-lg text-[9px] font-black tracking-wider transition-all uppercase cursor-pointer">
-                Log Out
-            </button>
-        </header>
-
-        <!-- MOBILE STATUS BAR (Subscribed/Pending & Node Secure/PIN) -->
-        <div class="md:hidden w-full bg-[#070e1e]/80 border-b border-slate-800/60 px-4 py-2.5 flex items-center justify-between overflow-x-auto z-30 mt-16">
-            ${mobileIdentityRackHTML}
-        </div>
-
-        <!-- DESKTOP SIDEBAR (Hidden on mobile) -->
-        <aside id="sidebar-container" class="hidden md:flex w-80 h-full border-r border-slate-800/60 bg-[#070e1e]/60 p-6 flex-col justify-between z-40">
+        <aside id="sidebar-container" class="w-80 h-full border-r border-slate-800/60 bg-[#070e1e]/60 p-6 flex flex-col justify-between z-40">
             <div class="space-y-6">
                 <div class="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em] mb-4">
                     Academic PROGRAMS
@@ -2138,37 +1877,7 @@ window.showDashboard = async function() {
             </div>
         </aside>
 
-        <!-- MOBILE DRILL-DOWN CONTAINER (Visible only on mobile) -->
-        <div id="mobile-drilldown-container" class="md:hidden flex-1 p-4 overflow-y-auto bg-[#050b18] space-y-4">
-            <div class="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em] mb-2 px-1">
-                Academic PROGRAMS
-            </div>
-            
-            <nav class="flex flex-col space-y-2.5" id="mobile-program-nav">
-                <button onclick="selectProgram('mbchb')" class="w-full text-left bg-slate-800/30 active:bg-blue-600/20 text-slate-200 border border-slate-800 p-3.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-between">
-                    <span>MBCHB, BDS and CM</span>
-                    <i data-lucide="chevron-right" class="w-4 h-4 text-blue-400"></i>
-                </button>
-
-                <button onclick="selectProgram('biomedical')" class="w-full text-left bg-slate-800/30 active:bg-blue-600/20 text-slate-200 border border-slate-800 p-3.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-between">
-                    <span>Biomedical Science</span>
-                    <i data-lucide="chevron-right" class="w-4 h-4 text-blue-400"></i>
-                </button>
-
-                <button onclick="selectProgram('public_health')" class="w-full text-left bg-slate-800/30 active:bg-blue-600/20 text-slate-200 border border-slate-800 p-3.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-between">
-                    <span>Public Health</span>
-                    <i data-lucide="chevron-right" class="w-4 h-4 text-blue-400"></i>
-                </button>
-
-                <button onclick="selectProgram('environmental')" class="w-full text-left bg-slate-800/30 active:bg-blue-600/20 text-slate-200 border border-slate-800 p-3.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-between">
-                    <span>Environmental Health</span>
-                    <i data-lucide="chevron-right" class="w-4 h-4 text-blue-400"></i>
-                </button>
-            </nav>
-        </div>
-
-        <!-- DESKTOP MAIN CONTENT (Hidden on mobile) -->
-        <main id="dashboard-content" class="hidden md:flex flex-1 h-full p-8 overflow-y-auto bg-[#050b18] flex-col">
+        <main id="dashboard-content" class="flex-1 h-full p-8 overflow-y-auto bg-[#050b18]">
             <div class="w-full max-w-5xl mx-auto space-y-8">
                 
                 <div id="student-billboard" class="relative w-full h-[460px] sm:h-[520px] rounded-2xl overflow-hidden border border-slate-800/80 bg-slate-950 flex items-end p-10 sm:p-12 bg-cover bg-center transition-all duration-1000 ease-in-out shadow-2xl shadow-blue-950/20">
@@ -4950,6 +4659,167 @@ window.publishLectureHandoutDocument = function() {
     assetReader.readAsDataURL(targetFile);
 };
 // 4. Real-time Live Notes Formatting Engine
+
+function renderStudentAssessmentPortal() {
+    const contentArea = document.getElementById('dashboard-content'); 
+    if (!contentArea) return;
+
+    // Direct binding: ensure course context uppercase strings match your hub selections
+    const currentCourseName = currentSelection.course || "Anatomy";
+    
+    // Safely match program strings to lowercase format used by compileAndSaveQuizConfiguration()
+    const finalProgram = (currentSelection.program || localStorage.getItem('active_program') || 'mbchb').toLowerCase();
+    const finalYear = currentSelection.year || localStorage.getItem('active_year') || '2';
+
+    const totalSlots = [1, 2, 3, 4, 5];
+
+    const assessmentSlots = totalSlots.map(slotId => {
+        const storageKey = `quiz_${finalProgram}_${finalYear}_slot${slotId}`;
+        const storedManifest = localStorage.getItem(storageKey);
+        
+        let displayTitle = `CLINICAL LIBRARY SLOT 0${slotId}`;
+        let isLive = false;
+
+        if (storedManifest) {
+            try {
+                const parsed = JSON.parse(storedManifest);
+                // Only mark live and update text if a valid custom title exists and isn't a test placeholder
+                if (parsed.quizTitle && parsed.quizTitle.trim() !== "" && !parsed.quizTitle.toUpperCase().includes("TESTING")) {
+                    displayTitle = parsed.quizTitle.toUpperCase();
+                    isLive = true;
+                } else if (parsed.examDataStructure && parsed.examDataStructure.length > 0) {
+                    // Safe fallback: if data is present but title is blank/placeholder
+                    displayTitle = `LIVE PAPER — SLOT 0${slotId}`;
+                    isLive = true;
+                }
+            } catch(e) {
+                console.error("Error reading storage map alignment indices:", e);
+            }
+        }
+
+        return {
+            id: slotId,
+            title: displayTitle,
+            isLive: isLive
+        };
+    });
+
+    // 🎨 UI CONTAINER MARKUP — Locked directly into Screenshot 928 parameters
+    const listMarkup = `
+        <div class="flex flex-col space-y-3 w-full">
+            ${assessmentSlots.map(slot => `
+                <div id="slot-card-${slot.id}" class="flex items-center justify-between bg-[#050b18]/85 border ${slot.isLive ? 'border-purple-500/30 bg-purple-950/5' : 'border-slate-800/40'} rounded-xl p-4 hover:border-purple-500/40 shadow-sm hover:shadow-[0_0_20px_-5px_rgba(147,51,234,0.1)] transition-all group w-full">
+                    <div class="flex items-center space-x-4">
+                        <div class="p-2.5 ${slot.isLive ? 'bg-purple-500/10 text-purple-400' : 'bg-amber-500/10 text-amber-500'} rounded-lg transition-colors">
+                            <i data-lucide="${slot.isLive ? 'file-text' : 'folder'}" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-xs font-black text-slate-200 tracking-wide uppercase group-hover:text-white transition-colors">${slot.title}</h3>
+                            <div class="flex items-center space-x-2 mt-0.5">
+                                <span class="text-[9px] font-mono font-bold text-slate-500 uppercase">ID: LN-LIB-0${slot.id}</span>
+                                ${slot.isLive ? `<span class="text-[8px] bg-purple-500/20 text-purple-300 font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">Live Paper</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button onclick="window.startActiveQuizEngine('${finalProgram}', '${finalYear}', '${slot.id}')" 
+                        class="px-4 py-1.5 bg-[#0a1224] hover:bg-purple-600 text-slate-400 hover:text-white text-[10px] font-black uppercase tracking-wider rounded-lg border border-slate-800 hover:border-purple-500 transition-all transform active:scale-98 shadow-sm cursor-pointer">
+                        Configure & Launch
+                    </button>
+                </div>
+            `).join('')}
+        </div>
+    `;
+
+    contentArea.innerHTML = `
+        <div class="w-full h-full max-w-5xl mx-auto flex flex-col animate-in fade-in duration-300 pt-6 px-4">
+            <div class="mb-8 border-b border-slate-800/40 pb-4 flex items-center justify-between w-full">
+                <div>
+                    <h2 class="text-xl font-black text-white uppercase tracking-wider">${currentCourseName} &mdash; Assessments</h2>
+                    <p class="text-[10px] text-blue-500 font-bold uppercase tracking-widest mt-1">Select active file bank to initialize interactive clinical session</p>
+                </div>
+                
+                <button onclick="selectCourse('${currentCourseName}')" 
+                    class="bg-slate-900/40 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800/80 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors flex items-center space-x-2 cursor-pointer">
+                    <span>&larr; Back to Hub</span>
+                </button>
+            </div>
+
+            ${listMarkup}
+        </div>
+    `;
+
+    if (window.lucide) window.lucide.createIcons();
+}
+
+
+window.startActiveQuizEngine = function(programId, yearId, slotNum) {
+    const contentArea = document.getElementById('dashboard-content');
+    if (!contentArea) return;
+
+    // Resolve structural parameters cleanly
+    let finalProgram = programId || window.currentProgram || localStorage.getItem('active_program') || 'mbchb';
+    let finalYear = yearId || window.currentYear || localStorage.getItem('active_year') || '2';
+    let finalSlot = slotNum || '1';
+
+    // FORCE DYNAMIC HEADER FIX
+    let assessmentHeadingTitle = `SLOT 0${finalSlot} &mdash; AVAILABLE PAPER`;
+    
+    const finalStorageKey = `quiz_${String(finalProgram).toLowerCase()}_${finalYear}_slot${finalSlot}`;
+    const storedData = localStorage.getItem(finalStorageKey);
+    
+    let dynamicQuestionPool = [];
+    let examDataStructure = [];
+
+    if (storedData) {
+        try {
+            const parsedBundle = JSON.parse(storedData);
+            if (parsedBundle.examDataStructure) {
+                examDataStructure = parsedBundle.examDataStructure;
+                examDataStructure.forEach(sec => {
+                    if (sec.questions) dynamicQuestionPool = dynamicQuestionPool.concat(sec.questions);
+                });
+            } else if (parsedBundle.questions) {
+                dynamicQuestionPool = parsedBundle.questions;
+            }
+        } catch(e) {
+            console.error("Data bundle tracking array read error:", e);
+        }
+    }
+
+    // Overwrite workspace view layout - BIG OUTER CONTAINER BOX REMOVED
+    contentArea.innerHTML = `
+        <div class="w-full h-full max-w-5xl mx-auto flex flex-col animate-in fade-in duration-300 pt-6 px-4">
+            
+            <div class="mb-8 border-b border-slate-800/40 pb-4 flex items-center justify-between w-full">
+                <div>
+                    <h2 id="active-quiz-header-title" class="text-xl font-black text-white uppercase tracking-wider">${assessmentHeadingTitle}</h2>
+                    <p class="text-[10px] text-blue-500 font-bold uppercase tracking-widest mt-1">Active Clinical Examination Workspace</p>
+                </div>
+                <button onclick="if(typeof selectCourse === 'function') { selectCourse(window.currentSelection.course); } else if(typeof renderAssessmentsView === 'function') { renderAssessmentsView(); }" 
+    class="bg-slate-900/40 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800/80 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors flex items-center space-x-2">
+    <span>← Back to Slots</span>
+</button>
+            </div>
+
+            <div id="active-quiz-questions-portal" class="w-full space-y-3">
+                Initializing examination data modules...
+            </div>
+        </div>
+    `;
+
+    // Safe layout component linking
+    try {
+        if (typeof renderTargetQuizBlueprintCards === "function") {
+            renderTargetQuizBlueprintCards(examDataStructure, dynamicQuestionPool);
+        }
+    } catch (linkageError) {
+        console.warn("Handled inner linkage bypass constraint:", linkageError.message);
+    }
+
+    if (window.lucide) window.lucide.createIcons();
+};
+
 // =========================================================
 // CLOSE WORKSPACE RESET: RETURN BACK TO THE SLOT MATRIX
 // =========================================================
@@ -5222,6 +5092,7 @@ window.renderTargetQuizBlueprintCards = function(examDataStructure, dynamicQuest
             `;
         });
 };
+
 // =========================================================================
 // 📡 REAL-TIME PUSHER LISTENER FOR ASSESSMENT PUBLISHING
 // =========================================================================
@@ -5858,11 +5729,3 @@ function parseQuestionCardsArray(questionNodes, isChoiceMatrixActive, extractedR
 
     return collectedQuestionsHeap;
 }
-
-
-
-
-
-
-
-
