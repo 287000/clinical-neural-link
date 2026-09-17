@@ -2139,70 +2139,34 @@ window.showDashboard = async function() {
         </aside>
 
         <!-- MOBILE DRILL-DOWN CONTAINER (Visible only on mobile) -->
-    <div id="mobile-drilldown-container" class="md:hidden flex-1 p-4 overflow-y-auto bg-[#050b18] space-y-4">
-        <div class="flex items-center justify-between mb-2 px-1">
-            <div class="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em]">
-                Select Academic Program
+        <div id="mobile-drilldown-container" class="md:hidden flex-1 p-4 overflow-y-auto bg-[#050b18] space-y-4">
+            <div class="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em] mb-2 px-1">
+                Academic PROGRAMS
             </div>
-            <div class="text-[9px] font-black text-slate-500 uppercase tracking-widest">
-                Stage 01
-            </div>
+            
+            <nav class="flex flex-col space-y-2.5" id="mobile-program-nav">
+                <button onclick="selectProgram('mbchb')" class="w-full text-left bg-slate-800/30 active:bg-blue-600/20 text-slate-200 border border-slate-800 p-3.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-between">
+                    <span>MBCHB, BDS and CM</span>
+                    <i data-lucide="chevron-right" class="w-4 h-4 text-blue-400"></i>
+                </button>
+
+                <button onclick="selectProgram('biomedical')" class="w-full text-left bg-slate-800/30 active:bg-blue-600/20 text-slate-200 border border-slate-800 p-3.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-between">
+                    <span>Biomedical Science</span>
+                    <i data-lucide="chevron-right" class="w-4 h-4 text-blue-400"></i>
+                </button>
+
+                <button onclick="selectProgram('public_health')" class="w-full text-left bg-slate-800/30 active:bg-blue-600/20 text-slate-200 border border-slate-800 p-3.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-between">
+                    <span>Public Health</span>
+                    <i data-lucide="chevron-right" class="w-4 h-4 text-blue-400"></i>
+                </button>
+
+                <button onclick="selectProgram('environmental')" class="w-full text-left bg-slate-800/30 active:bg-blue-600/20 text-slate-200 border border-slate-800 p-3.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-between">
+                    <span>Environmental Health</span>
+                    <i data-lucide="chevron-right" class="w-4 h-4 text-blue-400"></i>
+                </button>
+            </nav>
         </div>
-        
-        <nav class="flex flex-col space-y-3" id="mobile-program-nav">
-            <button onclick="selectProgram('mbchb')" class="w-full text-left bg-[#081026]/80 active:bg-blue-600/20 text-slate-200 border border-slate-800/80 hover:border-blue-500/30 p-4 rounded-2xl transition-all flex items-center justify-between cursor-pointer shadow-lg">
-                <div class="flex items-center space-x-3.5">
-                    <div class="w-10 h-10 bg-blue-600/10 border border-blue-500/20 rounded-xl flex items-center justify-center text-blue-400">
-                        <i data-lucide="stethoscope" class="w-5 h-5"></i>
-                    </div>
-                    <div>
-                        <div class="text-xs font-black text-white uppercase tracking-wider">MBCHB, BDS and CM</div>
-                        <div class="text-[10px] text-slate-400 mt-0.5">Medicine, Surgery & Dental Surgery</div>
-                    </div>
-                </div>
-                <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
-            </button>
 
-            <button onclick="selectProgram('biomedical')" class="w-full text-left bg-[#081026]/80 active:bg-blue-600/20 text-slate-200 border border-slate-800/80 hover:border-blue-500/30 p-4 rounded-2xl transition-all flex items-center justify-between cursor-pointer shadow-lg">
-                <div class="flex items-center space-x-3.5">
-                    <div class="w-10 h-10 bg-blue-600/10 border border-blue-500/20 rounded-xl flex items-center justify-center text-blue-400">
-                        <i data-lucide="dna" class="w-5 h-5"></i>
-                    </div>
-                    <div>
-                        <div class="text-xs font-black text-white uppercase tracking-wider">Biomedical Science</div>
-                        <div class="text-[10px] text-slate-400 mt-0.5">Laboratory & Clinical Diagnostics</div>
-                    </div>
-                </div>
-                <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
-            </button>
-
-            <button onclick="selectProgram('public_health')" class="w-full text-left bg-[#081026]/80 active:bg-blue-600/20 text-slate-200 border border-slate-800/80 hover:border-blue-500/30 p-4 rounded-2xl transition-all flex items-center justify-between cursor-pointer shadow-lg">
-                <div class="flex items-center space-x-3.5">
-                    <div class="w-10 h-10 bg-blue-600/10 border border-blue-500/20 rounded-xl flex items-center justify-center text-blue-400">
-                        <i data-lucide="activity" class="w-5 h-5"></i>
-                    </div>
-                    <div>
-                        <div class="text-xs font-black text-white uppercase tracking-wider">Public Health</div>
-                        <div class="text-[10px] text-slate-400 mt-0.5">Epidemiology & Health Systems</div>
-                    </div>
-                </div>
-                <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
-            </button>
-
-            <button onclick="selectProgram('environmental')" class="w-full text-left bg-[#081026]/80 active:bg-blue-600/20 text-slate-200 border border-slate-800/80 hover:border-blue-500/30 p-4 rounded-2xl transition-all flex items-center justify-between cursor-pointer shadow-lg">
-                <div class="flex items-center space-x-3.5">
-                    <div class="w-10 h-10 bg-blue-600/10 border border-blue-500/20 rounded-xl flex items-center justify-center text-blue-400">
-                        <i data-lucide="shield" class="w-5 h-5"></i>
-                    </div>
-                    <div>
-                        <div class="text-xs font-black text-white uppercase tracking-wider">Environmental Health</div>
-                        <div class="text-[10px] text-slate-400 mt-0.5">Occupational Safety & Sanitation</div>
-                    </div>
-                </div>
-                <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
-            </button>
-        </nav>
-    </div>
         <!-- DESKTOP MAIN CONTENT (Hidden on mobile) -->
         <main id="dashboard-content" class="hidden md:flex flex-1 h-full p-8 overflow-y-auto bg-[#050b18] flex-col">
             <div class="w-full max-w-5xl mx-auto space-y-8">
@@ -2329,6 +2293,8 @@ window.showDashboard = async function() {
         window.subscribeToSystemSettingsChanges();
     }
 };
+
+
 // Initialize single listener
 window.subscribeToSystemSettingsChanges();
 
@@ -5107,7 +5073,7 @@ window.renderTargetQuizBlueprintCards = function(examDataStructure, dynamicQuest
     const buildInterfaceLayout = (quizCollectionArray) => {
         if (!quizCollectionArray || quizCollectionArray.length === 0) {
             portalContainer.innerHTML = `
-                <div class="text-center py-10 border border-dashed border-slate-800 rounded-2xl bg-slate-900/10">
+                <div class="text-center py-12 border border-dashed border-slate-800 rounded-2xl bg-slate-900/10">
                     <p class="text-xs text-slate-500 uppercase tracking-wider">No active assessment blueprints published to this slot workspace...</p>
                     <p class="text-[9px] text-slate-600 font-mono mt-1 selection:bg-transparent">Target SQL Schema Scope Identifier: ${storageKey}</p>
                 </div>
@@ -5137,7 +5103,7 @@ window.renderTargetQuizBlueprintCards = function(examDataStructure, dynamicQuest
             completeHTMLOutput += `
                 <div class="w-full flex items-center justify-between space-x-3 animate-in fade-in duration-200">
                     <div onclick="window.launchTargetAssessmentInstance('${storageKey}', ${dynamicIndex})"
-                        class="flex items-center space-x-3 bg-slate-900/40 hover:bg-slate-800/60 border border-slate-800/80 hover:border-slate-700/80 rounded-xl p-3.5 w-full transition-all duration-200 cursor-pointer group active:scale-[0.99]">
+                        class="flex items-center space-x-4 bg-[#050b18]/40 border border-slate-800/80 hover:border-slate-700/80 rounded-xl p-4 w-full transition-all duration-200 cursor-pointer group active:scale-[0.99]">
                         <div class="text-slate-500 group-hover:text-purple-400 transition-colors pl-1">
                             <i data-lucide="file-text" class="w-4 h-4"></i>
                         </div>
@@ -5149,7 +5115,7 @@ window.renderTargetQuizBlueprintCards = function(examDataStructure, dynamicQuest
                     </div>
 
                     <button onclick="window.purgeIndividualQuizSlotItem('${storageKey}', ${dynamicIndex})"
-                        class="${hideClass} p-3.5 bg-slate-900/40 border border-slate-800/80 hover:border-red-500/40 text-slate-500 hover:text-red-400 rounded-xl transition-all duration-200 flex items-center justify-center cursor-pointer group hover:bg-red-950/10"
+                        class="${hideClass} p-4 bg-[#050b18]/40 border border-slate-800/80 hover:border-red-500/40 text-slate-500 hover:text-red-400 rounded-xl transition-all duration-200 flex items-center justify-center cursor-pointer group hover:bg-red-950/10"
                         ${inlineStyle}
                         title="Purge Specified Assessment Item">
                         <i data-lucide="trash-2" class="w-4 h-4 transition-transform group-active:scale-90"></i>
@@ -5172,7 +5138,7 @@ window.renderTargetQuizBlueprintCards = function(examDataStructure, dynamicQuest
 
     // Loading/Warming Spinner Matrix state representation
     portalContainer.innerHTML = `
-        <div class="text-center py-10 font-mono text-[10px] text-slate-500 uppercase tracking-widest">
+        <div class="text-center py-12 font-mono text-[10px] text-slate-500 uppercase tracking-widest">
             <span class="inline-block animate-spin mr-2">⏳</span> Synchronizing live records from PostgreSQL cluster...
         </div>
     `;
@@ -5210,7 +5176,7 @@ window.renderTargetQuizBlueprintCards = function(examDataStructure, dynamicQuest
                 return str.toLowerCase()
                           .replace(/-\s*\([ivx\d+)]+\)/g, '') // Strips things like -(iii), -(ii), -(iv)
                           .replace(/[^a-z0-9\s]/g, '')        // Removes trailing punctuation/symbols
-                          .replace(/\s+/g, ' ')              // Collapses extra spacing
+                          .replace(/\s+/g, ' ')               // Collapses extra spacing
                           .trim();
             };
 
@@ -5250,7 +5216,7 @@ window.renderTargetQuizBlueprintCards = function(examDataStructure, dynamicQuest
         .catch(err => {
             console.error("Critical database synchronization error:", err);
             portalContainer.innerHTML = `
-                <div class="text-center py-10 border border-red-900/30 rounded-2xl bg-red-950/5 text-red-400">
+                <div class="text-center py-12 border border-red-900/30 rounded-2xl bg-red-950/5 text-red-400">
                     <p class="text-xs font-black uppercase tracking-wider">Database Connection Refused</p>
                     <p class="text-[10px] opacity-70 font-mono mt-1">Unable to map repository row indices dynamically from target stream route.</p>
                 </div>
