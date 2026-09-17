@@ -2294,7 +2294,6 @@ window.showDashboard = async function() {
     }
 };
 
-
 // Initialize single listener
 window.subscribeToSystemSettingsChanges();
 
