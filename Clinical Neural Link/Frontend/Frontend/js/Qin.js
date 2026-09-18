@@ -20,7 +20,7 @@ window.launchTargetAssessmentInstance = function(storageKey, itemIndex) {
             window.lastActivePapersHTMLSnapshot = portalContainer.innerHTML;
         }
 
-        // 📡 DATABASE DATA SOURCE: Read from our live synchronized database memory cache instead of localStorage
+        // 📡 DATABASE DATA SOURCE: Read from live synchronized database memory cache
         if (!window.cachedQuizBlueprints || !window.cachedQuizBlueprints[storageKey]) {
             console.error(`❌ Active cache allocation missing for target database footprint: ${storageKey}`);
             alert("⚠️ Failed to synchronize live question dataset. Please refresh the category tab workspace.");
@@ -47,30 +47,24 @@ window.launchTargetAssessmentInstance = function(storageKey, itemIndex) {
         window.activeQuizSession.studentResponses = {};
         window.activeQuizSession.flatQuestionsList = [];
         
-        // 🌟 NEW SELECTION STATE TRACKERS INITIALIZED
-        window.activeQuizSession.chosenQuestionIds = new Set();      // Holds global indices of checked questions
-        window.activeQuizSession.completedPreSelections = new Set(); // Holds section IDs where "Proceed" was clicked
+        // 🌟 SELECTION STATE TRACKERS INITIALIZED
+        window.activeQuizSession.chosenQuestionIds = new Set();
+        window.activeQuizSession.completedPreSelections = new Set();
 
         // Compile multi-section questions or flat arrays into a direct sequential index list tracking structure
         if (targetQuizData.examDataStructure && targetQuizData.examDataStructure.length > 0) {
             targetQuizData.examDataStructure.forEach((section) => {
                 if (!section.questions) return;
                 
-                // 🌟 Create a safe, unique section ID grouping handle
                 const uniqueSectionId = `sec-${section.sectionHeading?.replace(/\s+/g, '').toLowerCase() || 'default'}`;
                 
                 section.questions.forEach(q => {
-                    // 🎯 FIX: Intelligently detect if section details are present instead of checking targetQuizData.isSectionedExam
                     const hasSectionDetails = !!(section.sectionHeading || section.sectionLetter);
 
-                    // Inject section tracking information directly onto the question object blueprint wrapper
                     window.activeQuizSession.flatQuestionsList.push({
                         ...q,
                         belongsToSectionHeading: hasSectionDetails ? section.sectionHeading : null,
                         belongsToSectionInstructions: hasSectionDetails ? section.sectionInstructions : null,
-                        
-                        // 🔮 NEW INTEGRATION PROPERTIES FOR THE CHOICE MATRIX ENGINE
-                        // If no required count exists or it matches total items, it defaults to the full length (Answer All)
                         sectionRequiredCount: section.requiredQuestionCount ? parseInt(section.requiredQuestionCount) : section.questions.length,
                         totalSectionQuestionsCount: section.questions.length,
                         sectionId: uniqueSectionId
@@ -85,14 +79,13 @@ window.launchTargetAssessmentInstance = function(storageKey, itemIndex) {
         }
 
         // 1. ENTER DISTRACTION-FREE FULLSCREEN LOOK MODE
-        // Force hide sidebar using high-priority inline overrides & standard utility classes
         const academicSidebar = document.getElementById('sidebar-container') || document.querySelector('aside, .academic-navigation-sidebar, [class*="sidebar"]');
         if (academicSidebar) {
             academicSidebar.style.setProperty('display', 'none', 'important');
             academicSidebar.classList.add('hidden');
         }
         
-        // Expand the dashboard main wrapper to take 100% width and drop grid template columns
+        // Expand dashboard main wrapper
         const dashboardContent = document.getElementById('dashboard-content');
         if (dashboardContent) {
             dashboardContent.style.width = '100%';
@@ -102,11 +95,13 @@ window.launchTargetAssessmentInstance = function(storageKey, itemIndex) {
         const mainLayoutGrid = dashboardContent?.parentElement || document.querySelector('main')?.parentElement;
         if (mainLayoutGrid) {
             mainLayoutGrid.style.gridTemplateColumns = '1fr';
-            mainLayoutGrid.style.display = 'block'; // Prevents CSS Grid gaps from preserving left-side margin space
+            mainLayoutGrid.style.display = 'block';
         }
 
-        // Fire the individual question viewport rendering engine block loop
-        window.renderActiveQuizEngineViewItem();
+        // Fire individual question viewport rendering engine
+        if (typeof window.renderActiveQuizEngineViewItem === 'function') {
+            window.renderActiveQuizEngineViewItem();
+        }
 
     } catch(e) {
         console.error("Failed to route active quiz card activation click profile", e);
