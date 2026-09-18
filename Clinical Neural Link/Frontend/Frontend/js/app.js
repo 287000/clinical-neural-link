@@ -4857,6 +4857,7 @@ window.quitActiveQuizEngineSession = function() {
             window.playedNeuralInsights.clear();
         }
         
+        // Reset dashboard content container styles
         const contentArea = document.getElementById('dashboard-content');
         if (contentArea) {
             contentArea.classList.remove('items-start', 'justify-start');
@@ -4865,34 +4866,24 @@ window.quitActiveQuizEngineSession = function() {
             contentArea.style.maxWidth = '';
         }
 
+        // Restore main platform header
         const mainPlatformHeader = document.querySelector('header') || document.getElementById('main-header') || document.querySelector('nav');
         if (mainPlatformHeader) {
             mainPlatformHeader.classList.remove('hidden');
         }
 
-        // 🎯 RESPONSIVE SIDEBAR RESTORATION CONTROL
-        const isMobileDevice = window.innerWidth < 768;
+        // 🎯 CLEAR INLINE SIDEBAR OVERRIDES (Allow CSS Media Queries from HTML to govern layout)
         const academicSidebar = document.getElementById('sidebar-container') || document.querySelector('aside, .academic-navigation-sidebar, [class*="sidebar"]');
-        
         if (academicSidebar) {
-            if (isMobileDevice) {
-                // Keep sidebar hidden completely on mobile devices
-                academicSidebar.style.setProperty('display', 'none', 'important');
-                academicSidebar.classList.add('hidden');
-            } else {
-                // Restore standard desktop layout rules
-                academicSidebar.style.removeProperty('display');
-                academicSidebar.classList.remove('hidden');
-                academicSidebar.style.display = 'flex';
-                academicSidebar.style.flexDirection = 'column';
-                academicSidebar.style.justifyContent = 'space-between';
-            }
+            academicSidebar.style.removeProperty('display');
+            academicSidebar.classList.remove('hidden');
         }
 
+        // Reset grid container inline styles completely
         const mainLayoutGrid = contentArea?.parentElement || document.querySelector('main')?.parentElement;
         if (mainLayoutGrid) {
-            mainLayoutGrid.style.gridTemplateColumns = isMobileDevice ? '1fr' : ''; 
-            mainLayoutGrid.style.display = isMobileDevice ? 'block' : ''; 
+            mainLayoutGrid.style.gridTemplateColumns = ''; 
+            mainLayoutGrid.style.display = ''; 
         }
 
         window.activeQuizSession = null;
@@ -4905,7 +4896,6 @@ window.quitActiveQuizEngineSession = function() {
         }
     };
 };
-
 // =========================================================
 // CLOSE WORKSPACE RESET: RETURN BACK TO THE SLOT MATRIX
 // =========================================================
