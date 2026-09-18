@@ -4812,95 +4812,98 @@ window.publishLectureHandoutDocument = function() {
 // 4. Real-time Live Notes Formatting Engine
 
 
-window.startActiveQuizEngine = function(programId, yearId, slotNum) {
-    const contentArea = document.getElementById('dashboard-content');
-    if (!contentArea) return;
+window.quitActiveQuizEngineSession = function() {
+    const modalOverlay = document.createElement('div');
+    modalOverlay.id = "custom-quiz-quit-modal";
+    modalOverlay.className = "fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200";
 
-    // Resolve structural parameters cleanly
-    let finalProgram = programId || window.currentSelection?.program || localStorage.getItem('active_program') || 'mbchb';
-    let finalYear = yearId || window.currentSelection?.year || localStorage.getItem('active_year') || '2';
-    let finalSlot = slotNum || '1';
-    let activeCourse = window.currentSelection?.course || localStorage.getItem('active_course') || 'Anatomy';
+    modalOverlay.innerHTML = `
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl shadow-purple-950/20 transform animate-in zoom-in-95 duration-200">
+            <div class="flex items-center space-x-3 mb-4">
+                <div class="p-2.5 bg-red-500/10 text-red-400 rounded-xl border border-red-500/20">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                </div>
+                <h3 class="text-slate-200 text-sm font-black uppercase tracking-wider">Terminate Session?</h3>
+            </div>
 
-    // Parse Quiz Manifest & Question Pool
-    const finalStorageKey = `quiz_${String(finalProgram).toLowerCase()}_${finalYear}_slot${finalSlot}`;
-    const storedData = localStorage.getItem(finalStorageKey);
-    
-    let dynamicQuestionPool = [];
-    let examDataStructure = [];
-    let assessmentHeadingTitle = `SLOT 0${finalSlot} &mdash; AVAILABLE PAPER`;
+            <p class="text-slate-400 text-[11px] font-sans leading-relaxed mb-6">
+                Are you sure you want to terminate this assessment track session? All active <span class="text-purple-400 font-semibold">runtime progress</span> will be permanently discarded.
+            </p>
 
-    if (storedData) {
-        try {
-            const parsedBundle = JSON.parse(storedData);
-            
-            // Extract custom title if present
-            if (parsedBundle.quizTitle && parsedBundle.quizTitle.trim() !== "") {
-                assessmentHeadingTitle = parsedBundle.quizTitle.toUpperCase();
-            }
-
-            if (parsedBundle.examDataStructure) {
-                examDataStructure = parsedBundle.examDataStructure;
-                examDataStructure.forEach(sec => {
-                    if (sec.questions) dynamicQuestionPool = dynamicQuestionPool.concat(sec.questions);
-                });
-            } else if (parsedBundle.questions) {
-                dynamicQuestionPool = parsedBundle.questions;
-            }
-        } catch(e) {
-            console.error("Data bundle tracking array read error:", e);
-        }
-    }
-
-    // Overwrite workspace view layout
-    contentArea.innerHTML = `
-        <div class="w-full h-full max-w-5xl mx-auto flex flex-col animate-in fade-in duration-300 pt-2 sm:pt-4 px-2 sm:px-4">
-            
-            <!-- BACK NAVIGATION HEADER BAR -->
-            <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-800/60">
-                <button onclick="if(typeof renderAssessmentsView === 'function') { renderAssessmentsView(); } else if(typeof selectCourse === 'function') { selectCourse('${activeCourse}'); }" 
-                    class="bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center space-x-2 cursor-pointer shadow-md">
-                    <i data-lucide="arrow-left" class="w-3.5 h-3.5 text-blue-400"></i>
-                    <span>Return to Assessment Slots</span>
+            <div class="flex items-center justify-end space-x-3">
+                <button id="modal-cancel-quit" 
+                    class="px-4 py-2 bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 rounded-xl text-slate-300 text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer active:scale-95">
+                    Cancel
                 </button>
-
-                <div class="hidden sm:flex items-center space-x-2 text-[10px] font-mono text-slate-500 uppercase tracking-widest">
-                    <span>${finalProgram}</span>
-                    <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
-                    <span>Year 0${finalYear}</span>
-                    <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
-                    <span class="truncate max-w-[100px]">${activeCourse}</span>
-                    <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
-                    <span>Slot 0${finalSlot}</span>
-                </div>
-            </div>
-
-            <!-- EXAMINATION WORKSPACE HEADER -->
-            <div class="mb-6 sm:mb-8">
-                <h2 id="active-quiz-header-title" class="text-lg sm:text-2xl font-black text-white uppercase tracking-wider">${assessmentHeadingTitle}</h2>
-                <p class="text-[9px] sm:text-[10px] text-purple-400 font-bold uppercase tracking-widest mt-1">Active Clinical Examination Workspace</p>
-            </div>
-
-            <!-- QUESTIONS / BLUEPRINT PORTAL CONTAINER -->
-            <div id="active-quiz-questions-portal" class="w-full space-y-3">
-                <div class="flex items-center space-x-3 p-4 bg-slate-900/40 border border-slate-800 rounded-xl text-slate-400 text-xs font-mono">
-                    <i data-lucide="loader-2" class="w-4 h-4 animate-spin text-purple-400"></i>
-                    <span>Initializing examination data modules...</span>
-                </div>
+                
+                <button id="modal-confirm-quit" 
+                    class="px-4 py-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-red-950/50 transition-all cursor-pointer active:scale-95">
+                    Terminate
+                </button>
             </div>
         </div>
     `;
 
-    // Safe layout component linkage
-    try {
-        if (typeof renderTargetQuizBlueprintCards === "function") {
-            renderTargetQuizBlueprintCards(examDataStructure, dynamicQuestionPool);
-        }
-    } catch (linkageError) {
-        console.warn("Handled inner linkage bypass constraint:", linkageError.message);
-    }
+    document.body.appendChild(modalOverlay);
 
-    if (window.lucide) window.lucide.createIcons();
+    document.getElementById('modal-cancel-quit').onclick = function() {
+        modalOverlay.remove();
+    };
+
+    document.getElementById('modal-confirm-quit').onclick = function() {
+        modalOverlay.remove();
+        
+        if (window.playedNeuralInsights) {
+            window.playedNeuralInsights.clear();
+        }
+        
+        const contentArea = document.getElementById('dashboard-content');
+        if (contentArea) {
+            contentArea.classList.remove('items-start', 'justify-start');
+            contentArea.classList.add('items-center', 'justify-center');
+            contentArea.style.width = '';
+            contentArea.style.maxWidth = '';
+        }
+
+        const mainPlatformHeader = document.querySelector('header') || document.getElementById('main-header') || document.querySelector('nav');
+        if (mainPlatformHeader) {
+            mainPlatformHeader.classList.remove('hidden');
+        }
+
+        // 🎯 RESPONSIVE SIDEBAR RESTORATION CONTROL
+        const isMobileDevice = window.innerWidth < 768;
+        const academicSidebar = document.getElementById('sidebar-container') || document.querySelector('aside, .academic-navigation-sidebar, [class*="sidebar"]');
+        
+        if (academicSidebar) {
+            if (isMobileDevice) {
+                // Keep sidebar hidden completely on mobile devices
+                academicSidebar.style.setProperty('display', 'none', 'important');
+                academicSidebar.classList.add('hidden');
+            } else {
+                // Restore standard desktop layout rules
+                academicSidebar.style.removeProperty('display');
+                academicSidebar.classList.remove('hidden');
+                academicSidebar.style.display = 'flex';
+                academicSidebar.style.flexDirection = 'column';
+                academicSidebar.style.justifyContent = 'space-between';
+            }
+        }
+
+        const mainLayoutGrid = contentArea?.parentElement || document.querySelector('main')?.parentElement;
+        if (mainLayoutGrid) {
+            mainLayoutGrid.style.gridTemplateColumns = isMobileDevice ? '1fr' : ''; 
+            mainLayoutGrid.style.display = isMobileDevice ? 'block' : ''; 
+        }
+
+        window.activeQuizSession = null;
+
+        // ⚡ ROUTE DIRECTLY BACK TO ASSESSMENT SLOTS VIEW
+        if (typeof window.renderAssessmentsView === 'function') {
+            window.renderAssessmentsView();
+        } else if (typeof window.forceExitQuizViewUIMatrixShell === 'function') {
+            window.forceExitQuizViewUIMatrixShell();
+        }
+    };
 };
 
 // =========================================================
