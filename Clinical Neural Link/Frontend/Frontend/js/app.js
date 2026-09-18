@@ -645,7 +645,7 @@ window.navigateToSlotWorkspace = function(slotId) {
             
             <!-- BACK NAVIGATION HEADER BAR -->
             <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-800/60">
-                <button onclick="if(typeof renderStudentAssessmentPortal === 'function') { renderStudentAssessmentPortal(); } else if(typeof selectCourse === 'function') { selectCourse('${activeCourse}'); }" 
+                <button onclick="if(typeof renderAssessmentsView === 'function') { renderAssessmentsView(); } else if(typeof selectCourse === 'function') { selectCourse('${activeCourse}'); }" 
                     class="bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center space-x-2 cursor-pointer shadow-md">
                     <i data-lucide="arrow-left" class="w-3.5 h-3.5 text-blue-400"></i>
                     <span>Return to Assessment Slots</span>
@@ -664,7 +664,7 @@ window.navigateToSlotWorkspace = function(slotId) {
 
             <!-- SECTION HEADER -->
             <div class="mb-6 sm:mb-8">
-                <h2 class="text-lg sm:text-2xl font-black text-white uppercase tracking-wider">${cleanSlotId} Bank — Available Papers</h2>
+                <h2 class="text-lg sm:text-2xl font-black text-white uppercase tracking-wider">${cleanSlotId} Bank &mdash; Available Papers</h2>
                 <p class="text-[9px] sm:text-[10px] text-purple-400 font-bold uppercase tracking-widest mt-1">Review and execute published data records inside this repository</p>
             </div>
 
@@ -4858,7 +4858,7 @@ window.startActiveQuizEngine = function(programId, yearId, slotNum) {
             
             <!-- BACK NAVIGATION HEADER BAR -->
             <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-800/60">
-                <button onclick="if(typeof renderStudentAssessmentPortal === 'function') { renderStudentAssessmentPortal(); } else if(typeof selectCourse === 'function') { selectCourse('${activeCourse}'); }" 
+                <button onclick="if(typeof renderAssessmentsView === 'function') { renderAssessmentsView(); } else if(typeof selectCourse === 'function') { selectCourse('${activeCourse}'); }" 
                     class="bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center space-x-2 cursor-pointer shadow-md">
                     <i data-lucide="arrow-left" class="w-3.5 h-3.5 text-blue-400"></i>
                     <span>Return to Assessment Slots</span>
