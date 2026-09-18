@@ -69,11 +69,17 @@
             }
         }
 
-        /* Desktop-only sidebar overrides */
+        /* 🎯 STRICT RESPONSIVE SIDEBAR OVERRIDES */
+        /* Force-hide sidebar by default on mobile screens */
+        aside, #sidebar-container {
+            display: none;
+        }
+
+        /* Display flex ONLY on desktop viewports */
         @media (min-width: 1024px) {
             aside, #sidebar-container {
                 min-height: calc(100vh - 60px);
-                display: flex;
+                display: flex !important;
                 flex-direction: column;
                 justify-content: space-between;
             }
