@@ -4857,35 +4857,82 @@ window.quitActiveQuizEngineSession = function() {
             window.playedNeuralInsights.clear();
         }
 
-        // Restore main platform header
-        const mainPlatformHeader = document.querySelector('header') || document.getElementById('main-header') || document.querySelector('nav');
-        if (mainPlatformHeader) {
-            mainPlatformHeader.classList.remove('hidden');
-        }
+        const isMobileDevice = window.innerWidth < 1024;
 
-        window.activeQuizSession = null;
-
-        // 🎯 RESTORE PREVIOUS SNAPSHOT OR RE-RENDER ASSESSMENTS VIEW DIRECTLY
-        const contentArea = document.getElementById('dashboard-content') || document.getElementById('app-viewport');
-        
-        if (window.lastActivePapersHTMLSnapshot) {
-            // Restore exact HTML state captured during launch
-            const portalContainer = document.getElementById('active-quiz-questions-portal') || contentArea;
-            if (portalContainer) {
-                portalContainer.innerHTML = window.lastActivePapersHTMLSnapshot;
+        if (isMobileDevice) {
+            // 📱 DEDICATED MOBILE TERMINATION PIPELINE
+            const contentArea = document.getElementById('dashboard-content') || document.getElementById('app-viewport');
+            
+            // 1. Force hide sidebar entirely so it doesn't push into the mobile screen
+            const academicSidebar = document.getElementById('sidebar-container') || document.querySelector('aside, .academic-navigation-sidebar, [class*="sidebar"]');
+            if (academicSidebar) {
+                academicSidebar.style.setProperty('display', 'none', 'important');
+                academicSidebar.classList.add('hidden');
             }
-        } else if (typeof window.renderAssessmentsView === 'function') {
-            // Fallback to calling the view generator directly
-            window.renderAssessmentsView(window.currentQuizStorageKey || 'ANATOMY');
-        }
 
-        // Clean up full-width inline grid overrides
-        if (contentArea) {
-            contentArea.style.width = '';
-            contentArea.style.maxWidth = '';
-            if (contentArea.parentElement) {
-                contentArea.parentElement.style.gridTemplateColumns = '';
-                contentArea.parentElement.style.display = '';
+            // 2. Clear full-width quiz overrides
+            if (contentArea) {
+                contentArea.style.width = '';
+                contentArea.style.maxWidth = '';
+                if (contentArea.parentElement) {
+                    contentArea.parentElement.style.gridTemplateColumns = '1fr';
+                    contentArea.parentElement.style.display = 'block';
+                }
+            }
+
+            // 3. Restore main navbar header
+            const mainPlatformHeader = document.querySelector('header') || document.getElementById('main-header') || document.querySelector('nav');
+            if (mainPlatformHeader) {
+                mainPlatformHeader.classList.remove('hidden');
+            }
+
+            window.activeQuizSession = null;
+
+            // 4. Force call assessment slots view directly for mobile
+            const activeKey = window.currentQuizStorageKey || 'ANATOMY';
+            if (typeof window.renderAssessmentsView === 'function') {
+                window.renderAssessmentsView(activeKey);
+            } else if (typeof window.renderCategoryAssessments === 'function') {
+                window.renderCategoryAssessments(activeKey);
+            } else {
+                const activeTab = document.querySelector(`[data-category="${activeKey}"]`) || document.querySelector('.category-tab.active');
+                if (activeTab) activeTab.click();
+            }
+
+        } else {
+            // 💻 DESKTOP TERMINATION PIPELINE (Unchanged)
+            const contentArea = document.getElementById('dashboard-content');
+            if (contentArea) {
+                contentArea.classList.remove('items-start', 'justify-start');
+                contentArea.classList.add('items-center', 'justify-center');
+                contentArea.style.width = '';
+                contentArea.style.maxWidth = '';
+            }
+
+            const mainPlatformHeader = document.querySelector('header') || document.getElementById('main-header') || document.querySelector('nav');
+            if (mainPlatformHeader) {
+                mainPlatformHeader.classList.remove('hidden');
+            }
+
+            const academicSidebar = document.getElementById('sidebar-container') || document.querySelector('aside, .academic-navigation-sidebar, [class*="sidebar"]');
+            if (academicSidebar) {
+                academicSidebar.style.removeProperty('display');
+                academicSidebar.classList.remove('hidden');
+                academicSidebar.style.display = 'flex';
+                academicSidebar.style.flexDirection = 'column';
+                academicSidebar.style.justifyContent = 'space-between';
+            }
+
+            const mainLayoutGrid = contentArea?.parentElement || document.querySelector('main')?.parentElement;
+            if (mainLayoutGrid) {
+                mainLayoutGrid.style.gridTemplateColumns = '';
+                mainLayoutGrid.style.display = '';
+            }
+
+            window.activeQuizSession = null;
+
+            if (typeof window.forceExitQuizViewUIMatrixShell === 'function') {
+                window.forceExitQuizViewUIMatrixShell();
             }
         }
     };
