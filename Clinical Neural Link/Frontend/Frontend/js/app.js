@@ -4856,15 +4856,6 @@ window.quitActiveQuizEngineSession = function() {
         if (window.playedNeuralInsights) {
             window.playedNeuralInsights.clear();
         }
-        
-        // Reset dashboard content container styles
-        const contentArea = document.getElementById('dashboard-content');
-        if (contentArea) {
-            contentArea.classList.remove('items-start', 'justify-start');
-            contentArea.classList.add('items-center', 'justify-center');
-            contentArea.style.width = '';
-            contentArea.style.maxWidth = '';
-        }
 
         // Restore main platform header
         const mainPlatformHeader = document.querySelector('header') || document.getElementById('main-header') || document.querySelector('nav');
@@ -4872,27 +4863,30 @@ window.quitActiveQuizEngineSession = function() {
             mainPlatformHeader.classList.remove('hidden');
         }
 
-        // 🎯 CLEAR INLINE SIDEBAR OVERRIDES (Allow CSS Media Queries from HTML to govern layout)
-        const academicSidebar = document.getElementById('sidebar-container') || document.querySelector('aside, .academic-navigation-sidebar, [class*="sidebar"]');
-        if (academicSidebar) {
-            academicSidebar.style.removeProperty('display');
-            academicSidebar.classList.remove('hidden');
-        }
-
-        // Reset grid container inline styles completely
-        const mainLayoutGrid = contentArea?.parentElement || document.querySelector('main')?.parentElement;
-        if (mainLayoutGrid) {
-            mainLayoutGrid.style.gridTemplateColumns = ''; 
-            mainLayoutGrid.style.display = ''; 
-        }
-
         window.activeQuizSession = null;
 
-        // ⚡ ROUTE DIRECTLY BACK TO ASSESSMENT SLOTS VIEW
-        if (typeof window.renderAssessmentsView === 'function') {
-            window.renderAssessmentsView();
-        } else if (typeof window.forceExitQuizViewUIMatrixShell === 'function') {
-            window.forceExitQuizViewUIMatrixShell();
+        // 🎯 RESTORE PREVIOUS SNAPSHOT OR RE-RENDER ASSESSMENTS VIEW DIRECTLY
+        const contentArea = document.getElementById('dashboard-content') || document.getElementById('app-viewport');
+        
+        if (window.lastActivePapersHTMLSnapshot) {
+            // Restore exact HTML state captured during launch
+            const portalContainer = document.getElementById('active-quiz-questions-portal') || contentArea;
+            if (portalContainer) {
+                portalContainer.innerHTML = window.lastActivePapersHTMLSnapshot;
+            }
+        } else if (typeof window.renderAssessmentsView === 'function') {
+            // Fallback to calling the view generator directly
+            window.renderAssessmentsView(window.currentQuizStorageKey || 'ANATOMY');
+        }
+
+        // Clean up full-width inline grid overrides
+        if (contentArea) {
+            contentArea.style.width = '';
+            contentArea.style.maxWidth = '';
+            if (contentArea.parentElement) {
+                contentArea.parentElement.style.gridTemplateColumns = '';
+                contentArea.parentElement.style.display = '';
+            }
         }
     };
 };
