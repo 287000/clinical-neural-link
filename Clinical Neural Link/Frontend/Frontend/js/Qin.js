@@ -916,63 +916,118 @@ if (hasImage) {
         </div>
     `;
 }
-    // PACK INTERFACE VIEWPORT INNER SHELL HTML FRAMEWORK
-    const totalDisplayIndex = currentQuestion.type === 'scenario' 
-        ? `${originalDatabaseNumber}.${session.currentSubQuestionIndex + 1}` 
-        : `${originalDatabaseNumber}`;
+   // PACK INTERFACE VIEWPORT INNER SHELL HTML FRAMEWORK
+const totalDisplayIndex = currentQuestion.type === 'scenario' 
+    ? `${originalDatabaseNumber}.${session.currentSubQuestionIndex + 1}` 
+    : `${originalDatabaseNumber}`;
 
-    const isFirstItemOverall = currentIndex === 0 && (session.currentSubQuestionIndex === undefined || session.currentSubQuestionIndex === 0);
+const isFirstItemOverall = currentIndex === 0 && (session.currentSubQuestionIndex === undefined || session.currentSubQuestionIndex === 0);
 
-    contentArea.innerHTML = `
-        <div class="absolute inset-0 w-full h-full overflow-y-auto bg-slate-950/20 custom-scrollbar-shell" style="scroll-behavior: smooth;">
-            <div class="w-full max-w-5xl mx-auto flex flex-col pt-8 px-6 min-h-full pb-16 selection:bg-transparent animate-in fade-in duration-200">
+contentArea.innerHTML = `
+    <div class="absolute inset-0 w-full h-full overflow-y-auto bg-slate-950/20 custom-scrollbar-shell" style="scroll-behavior: smooth;">
+        <div class="w-full max-w-5xl mx-auto flex flex-col pt-8 px-6 min-h-full pb-16 selection:bg-transparent animate-in fade-in duration-200">
+            
+            <div id="quiz-engine-top-header" class="flex items-center justify-between w-full pb-4 border-b border-slate-800/40 mb-5">
+                <div>
+                    <span class="text-[9px] font-mono font-black bg-slate-900 text-slate-400 px-2 py-1 rounded border border-slate-800 uppercase tracking-widest">
+                        Item ${totalDisplayIndex} (Block ${currentIndex + 1}/${totalQuestions})
+                    </span>
+                    <span class="text-[9px] font-extrabold bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded uppercase tracking-widest ml-2">
+                        ${effectiveType.toUpperCase()}
+                    </span>
+                </div>
                 
-                <div id="quiz-engine-top-header" class="flex items-center justify-between w-full pb-4 border-b border-slate-800/40 mb-5">
-                    <div>
-                        <span class="text-[9px] font-mono font-black bg-slate-900 text-slate-400 px-2 py-1 rounded border border-slate-800 uppercase tracking-widest">
-                            Item ${totalDisplayIndex} (Block ${currentIndex + 1}/${totalQuestions})
-                        </span>
-                        <span class="text-[9px] font-extrabold bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded uppercase tracking-widest ml-2">
-                            ${effectiveType.toUpperCase()}
-                        </span>
-                    </div>
-                    
+                <div class="flex items-center space-x-2">
+                    <!-- 💻 DESKTOP QUIT BUTTON (Visible only on lg / 1024px+ screens) -->
                     <button onclick="window.quitActiveQuizEngineSession()" 
-                        class="bg-slate-900/40 hover:bg-red-950/20 hover:text-red-400 text-slate-400 border border-slate-800/80 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center space-x-1.5 cursor-pointer active:scale-95">
+                        class="hidden lg:flex bg-slate-900/40 hover:bg-red-950/20 hover:text-red-400 text-slate-400 border border-slate-800/80 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all items-center space-x-1.5 cursor-pointer active:scale-95">
                         <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
                         <span>Quit Session</span>
                     </button>
-                </div>
 
-                <div class="w-full h-1 bg-slate-900 rounded-full mb-5 overflow-hidden">
-                    <div class="h-full bg-purple-600 transition-all duration-300" style="width: ${progressBarPercent}%"></div>
-                </div>
-
-                ${sectionHeaderHTML}
-                
-                <div class="w-full mb-6">
-                    ${mainLayoutBodyHTML}
-                </div>
-
-                <div class="flex items-center justify-between w-full border-t border-slate-900 pt-5 mt-auto">
-                    <button onclick="window.navigateQuizPrevItem()" 
-                        ${isFirstItemOverall ? 'disabled class="opacity-20 cursor-not-allowed bg-slate-900/40 border border-slate-800/80 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider"' : 'class="cursor-pointer hover:bg-slate-800 text-slate-300 bg-slate-900/40 border border-slate-800/80 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors flex items-center space-x-1"'} >
-                        <span>&larr; Previous</span>
+                    <!-- 📱 DEDICATED MOBILE QUIT BUTTON (Visible only on screens below lg / 1024px) -->
+                    <button onclick="window.mobileDirectQuitToAssessments()" 
+                        class="flex lg:hidden bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all items-center space-x-1.5 cursor-pointer active:scale-95">
+                        <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+                        <span>Quit (Mobile)</span>
                     </button>
-
-                    ${isLocked ? `
-                        <button onclick="${!hasMoreQuestionsAhead ? 'window.compileQuizFinalDiagnosticsPerformance()' : 'window.navigateQuizNextItem()'}" 
-                            class="bg-purple-600 hover:bg-purple-500 text-white border border-purple-400/20 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-purple-950/40 transition-all flex items-center space-x-1 cursor-pointer">
-                            <span>${!hasMoreQuestionsAhead ? 'Finish & Grade' : 'Next Item &rarr;'}</span>
-                        </button>
-                    ` : `<div class="text-[10px] font-mono italic text-slate-600 tracking-wide">Please select or submit an answer response to proceed...</div>`}
                 </div>
             </div>
+
+            <div class="w-full h-1 bg-slate-900 rounded-full mb-5 overflow-hidden">
+                <div class="h-full bg-purple-600 transition-all duration-300" style="width: ${progressBarPercent}%"></div>
+            </div>
+
+            ${sectionHeaderHTML}
+            
+            <div class="w-full mb-6">
+                ${mainLayoutBodyHTML}
+            </div>
+
+            <div class="flex items-center justify-between w-full border-t border-slate-900 pt-5 mt-auto">
+                <button onclick="window.navigateQuizPrevItem()" 
+                    ${isFirstItemOverall ? 'disabled class="opacity-20 cursor-not-allowed bg-slate-900/40 border border-slate-800/80 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider"' : 'class="cursor-pointer hover:bg-slate-800 text-slate-300 bg-slate-900/40 border border-slate-800/80 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors flex items-center space-x-1"'} >
+                    <span>&larr; Previous</span>
+                </button>
+
+                ${isLocked ? `
+                    <button onclick="${!hasMoreQuestionsAhead ? 'window.compileQuizFinalDiagnosticsPerformance()' : 'window.navigateQuizNextItem()'}" 
+                        class="bg-purple-600 hover:bg-purple-500 text-white border border-purple-400/20 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-purple-950/40 transition-all flex items-center space-x-1 cursor-pointer">
+                        <span>${!hasMoreQuestionsAhead ? 'Finish & Grade' : 'Next Item &rarr;'}</span>
+                    </button>
+                ` : `<div class="text-[10px] font-mono italic text-slate-600 tracking-wide">Please select or submit an answer response to proceed...</div>`}
+            </div>
         </div>
-    `;
+    </div>
+`;
 
     if (window.lucide) window.lucide.createIcons();
     contentArea.scrollTop = 0;
+};
+window.mobileDirectQuitToAssessments = function() {
+    // 1. Clear session memory
+    window.activeQuizSession = null;
+    if (window.playedNeuralInsights) {
+        window.playedNeuralInsights.clear();
+    }
+
+    // 2. Target main content area and reset full-width overrides
+    const contentArea = document.getElementById('dashboard-content') || document.getElementById('app-viewport');
+    if (contentArea) {
+        contentArea.style.width = '';
+        contentArea.style.maxWidth = '';
+        if (contentArea.parentElement) {
+            contentArea.parentElement.style.gridTemplateColumns = '1fr';
+            contentArea.parentElement.style.display = 'block';
+        }
+    }
+
+    // 3. Keep sidebar strictly hidden
+    const academicSidebar = document.getElementById('sidebar-container') || document.querySelector('aside, .academic-navigation-sidebar, [class*="sidebar"]');
+    if (academicSidebar) {
+        academicSidebar.style.setProperty('display', 'none', 'important');
+        academicSidebar.classList.add('hidden');
+    }
+
+    // 4. Restore header
+    const mainPlatformHeader = document.querySelector('header') || document.getElementById('main-header') || document.querySelector('nav');
+    if (mainPlatformHeader) {
+        mainPlatformHeader.classList.remove('hidden');
+    }
+
+    // 5. Force render assessment view directly
+    const targetKey = window.currentQuizStorageKey || 'ANATOMY';
+    console.log("📱 [Mobile Quit Engine] Triggering view restoration for key:", targetKey);
+
+    if (typeof window.renderAssessmentsView === 'function') {
+        window.renderAssessmentsView(targetKey);
+    } else if (typeof window.renderCategoryAssessments === 'function') {
+        window.renderCategoryAssessments(targetKey);
+    } else {
+        // Fallback tab click
+        const activeTab = document.querySelector(`[data-category="${targetKey}"]`) || document.querySelector('.category-tab.active');
+        if (activeTab) activeTab.click();
+    }
 };
 /**
  * Dynamic scale controller for assessment images
