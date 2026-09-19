@@ -2359,34 +2359,43 @@ window.compileQuizFinalDiagnosticsPerformance = function() {
         metricAccentColorClass = "text-amber-400 border-amber-500/20 bg-amber-950/10";
     }
 
-    contentArea.innerHTML = `
-        <div class="w-full max-w-2xl mx-auto text-center pt-10 pb-16 px-4 animate-in zoom-in-95 duration-300 selection:bg-transparent">
+  contentArea.innerHTML = `
+    <div class="w-full max-w-2xl mx-auto text-center pt-10 pb-16 px-4 animate-in zoom-in-95 duration-300 selection:bg-transparent">
+        
+        <div class="w-20 h-20 mx-auto rounded-2xl border flex items-center justify-center mb-6 ${metricAccentColorClass}">
+            <i data-lucide="activity" class="w-10 h-10"></i>
+        </div>
+
+        <h2 class="text-xl font-black text-white uppercase tracking-wider mb-1">Assessment Session Compiled</h2>
+        <p class="text-[10px] text-slate-500 font-mono uppercase tracking-widest mb-6">Unified Metrics & Performance Analysis Framework</p>
+
+        <div class="bg-[#050b18]/40 border border-slate-800/80 rounded-2xl p-8 max-w-md mx-auto mb-6">
+            <div class="text-5xl font-mono font-black text-white tracking-tighter mb-2">
+                ${finalPercentageRate}<span class="text-purple-500 text-2xl">%</span>
+            </div>
+            <div class="text-[9px] font-mono font-black uppercase tracking-widest text-slate-400 mb-6">Overall Competency Score</div>
             
-            <div class="w-20 h-20 mx-auto rounded-2xl border flex items-center justify-center mb-6 ${metricAccentColorClass}">
-                <i data-lucide="activity" class="w-10 h-10"></i>
+            <div class="border-t border-slate-900/60 pt-4 text-left p-3 border rounded-xl ${metricAccentColorClass}">
+                <h4 class="text-[10px] font-black uppercase tracking-wider mb-1">${diagnosticTitle}</h4>
+                <p class="text-[11px] font-sans font-medium leading-relaxed opacity-90">${diagnosticAdviceText}</p>
             </div>
+        </div>
 
-            <h2 class="text-xl font-black text-white uppercase tracking-wider mb-1">Assessment Session Compiled</h2>
-            <p class="text-[10px] text-slate-500 font-mono uppercase tracking-widest mb-6">Unified Metrics & Performance Analysis Framework</p>
-
-            <div class="bg-[#050b18]/40 border border-slate-800/80 rounded-2xl p-8 max-w-md mx-auto mb-6">
-                <div class="text-5xl font-mono font-black text-white tracking-tighter mb-2">
-                    ${finalPercentageRate}<span class="text-purple-500 text-2xl">%</span>
-                </div>
-                <div class="text-[9px] font-mono font-black uppercase tracking-widest text-slate-400 mb-6">Overall Competency Score</div>
-                
-                <div class="border-t border-slate-900/60 pt-4 text-left p-3 border rounded-xl ${metricAccentColorClass}">
-                    <h4 class="text-[10px] font-black uppercase tracking-wider mb-1">${diagnosticTitle}</h4>
-                    <p class="text-[11px] font-sans font-medium leading-relaxed opacity-90">${diagnosticAdviceText}</p>
-                </div>
-            </div>
-
+        <div class="flex items-center justify-center space-x-2">
+            <!-- 💻 DESKTOP RETURN BUTTON (Visible only on lg / 1024px+ screens) -->
             <button onclick="window.forceExitQuizViewUIMatrixShell()" 
-                class="px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white font-black text-xs uppercase tracking-widest rounded-xl border border-purple-400/20 transition-all transform active:scale-98 shadow-md cursor-pointer inline-block mx-auto">
+                class="hidden lg:inline-block px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white font-black text-xs uppercase tracking-widest rounded-xl border border-purple-400/20 transition-all transform active:scale-98 shadow-md cursor-pointer">
+                Return to Workspace
+            </button>
+
+            <!-- 📱 DEDICATED MOBILE RETURN BUTTON (Visible only on screens below lg / 1024px) -->
+            <button onclick="window.mobileDirectQuitToAssessments()" 
+                class="inline-block lg:hidden px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white font-black text-xs uppercase tracking-widest rounded-xl border border-purple-400/20 transition-all transform active:scale-98 shadow-md cursor-pointer">
                 Return to Workspace
             </button>
         </div>
-    `;
+    </div>
+`;
 
     if (window.lucide) window.lucide.createIcons();
 };
