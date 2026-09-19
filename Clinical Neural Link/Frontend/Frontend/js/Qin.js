@@ -916,7 +916,7 @@ if (hasImage) {
         </div>
     `;
 }
-   // PACK INTERFACE VIEWPORT INNER SHELL HTML FRAMEWORK
+  // PACK INTERFACE VIEWPORT INNER SHELL HTML FRAMEWORK
 const totalDisplayIndex = currentQuestion.type === 'scenario' 
     ? `${originalDatabaseNumber}.${session.currentSubQuestionIndex + 1}` 
     : `${originalDatabaseNumber}`;
@@ -938,18 +938,18 @@ contentArea.innerHTML = `
                 </div>
                 
                 <div class="flex items-center space-x-2">
-                    <!-- 💻 DESKTOP QUIT BUTTON (Visible only on lg / 1024px+ screens) -->
-                    <button onclick="window.quitActiveQuizEngineSession()" 
+                    <!-- 💻 DESKTOP QUIT BUTTON -->
+                    <button onclick="window.promptTerminateSessionConfirmation()" 
                         class="hidden lg:flex bg-slate-900/40 hover:bg-red-950/20 hover:text-red-400 text-slate-400 border border-slate-800/80 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all items-center space-x-1.5 cursor-pointer active:scale-95">
                         <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
-                        <span>Quit Session</span>
+                        <span>Quit</span>
                     </button>
 
-                    <!-- 📱 DEDICATED MOBILE QUIT BUTTON (Visible only on screens below lg / 1024px) -->
-                    <button onclick="window.mobileDirectQuitToAssessments()" 
+                    <!-- 📱 MOBILE QUIT BUTTON -->
+                    <button onclick="window.promptTerminateSessionConfirmation()" 
                         class="flex lg:hidden bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all items-center space-x-1.5 cursor-pointer active:scale-95">
                         <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
-                        <span>Quit (Mobile)</span>
+                        <span>Quit</span>
                     </button>
                 </div>
             </div>
@@ -980,9 +980,101 @@ contentArea.innerHTML = `
         </div>
     </div>
 `;
-
     if (window.lucide) window.lucide.createIcons();
     contentArea.scrollTop = 0;
+};
+/**
+ * Prompts the student with a confirmation overlay before terminating the active session
+ */
+window.promptTerminateSessionConfirmation = function() {
+    // Prevent duplicate modals if clicked repeatedly
+    if (document.getElementById('quiz-termination-modal')) return;
+
+    const modalHTML = `
+        <div id="quiz-termination-modal" class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+            <div class="w-full max-w-sm bg-[#070d19] border border-slate-800 rounded-2xl p-6 shadow-2xl shadow-red-950/20 flex flex-col items-center text-center animate-in zoom-in-95 duration-200">
+                
+                <div class="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 mb-4">
+                    <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+                </div>
+
+                <h3 class="text-sm font-black text-slate-100 uppercase tracking-wide mb-1">
+                    Terminate Session?
+                </h3>
+                <p class="text-xs text-slate-400 leading-relaxed mb-6 font-medium">
+                    Are you sure you want to exit? Your current session progress will be lost.
+                </p>
+
+                <div class="flex items-center space-x-3 w-full">
+                    <button onclick="window.closeTerminationModal()" 
+                        class="flex-1 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer">
+                        Cancel
+                    </button>
+
+                    <button onclick="window.confirmAndExecuteTermination()" 
+                        class="flex-1 bg-red-600 hover:bg-red-500 text-white border border-red-400/20 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider shadow-lg shadow-red-950/40 transition-all cursor-pointer">
+                        Terminate
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    if (window.lucide) window.lucide.createIcons();
+};
+
+/**
+ * Removes the modal overlay from the screen
+ */
+window.closeTerminationModal = function() {
+    const modal = document.getElementById('quiz-termination-modal');
+    if (modal) modal.remove();
+};
+
+/**
+ * Confirms termination, destroys the modal, and executes view restoration
+ */
+window.confirmAndExecuteTermination = function() {
+    window.closeTerminationModal();
+
+    // Direct Mobile Exit Logic
+    window.activeQuizSession = null;
+    if (window.playedNeuralInsights) {
+        window.playedNeuralInsights.clear();
+    }
+
+    const contentArea = document.getElementById('dashboard-content') || document.getElementById('app-viewport');
+    if (contentArea) {
+        contentArea.style.width = '';
+        contentArea.style.maxWidth = '';
+        if (contentArea.parentElement) {
+            contentArea.parentElement.style.gridTemplateColumns = '1fr';
+            contentArea.parentElement.style.display = 'block';
+        }
+    }
+
+    const academicSidebar = document.getElementById('sidebar-container') || document.querySelector('aside, .academic-navigation-sidebar, [class*="sidebar"]');
+    if (academicSidebar) {
+        academicSidebar.style.setProperty('display', 'none', 'important');
+        academicSidebar.classList.add('hidden');
+    }
+
+    const mainPlatformHeader = document.querySelector('header') || document.getElementById('main-header') || document.querySelector('nav');
+    if (mainPlatformHeader) {
+        mainPlatformHeader.classList.remove('hidden');
+    }
+
+    const targetKey = window.currentQuizStorageKey || 'ANATOMY';
+
+    if (typeof window.renderAssessmentsView === 'function') {
+        window.renderAssessmentsView(targetKey);
+    } else if (typeof window.renderCategoryAssessments === 'function') {
+        window.renderCategoryAssessments(targetKey);
+    } else {
+        const activeTab = document.querySelector(`[data-category="${targetKey}"]`) || document.querySelector('.category-tab.active');
+        if (activeTab) activeTab.click();
+    }
 };
 window.mobileDirectQuitToAssessments = function() {
     // 1. Clear session memory
