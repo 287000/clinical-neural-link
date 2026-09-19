@@ -939,10 +939,10 @@ contentArea.innerHTML = `
                 
                 <div class="flex items-center space-x-2">
                     <!-- 💻 DESKTOP QUIT BUTTON -->
-                    <button onclick="window.promptTerminateSessionConfirmation()" 
+                    <button onclick="window.quitActiveQuizEngineSession()" 
                         class="hidden lg:flex bg-slate-900/40 hover:bg-red-950/20 hover:text-red-400 text-slate-400 border border-slate-800/80 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all items-center space-x-1.5 cursor-pointer active:scale-95">
                         <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
-                        <span>Quit</span>
+                        <span>Quit Session</span>
                     </button>
 
                     <!-- 📱 MOBILE QUIT BUTTON -->
