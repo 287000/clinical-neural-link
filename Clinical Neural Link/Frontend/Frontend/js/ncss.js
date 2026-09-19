@@ -1291,13 +1291,25 @@ window.renderLogin = function() {
     const viewport = document.getElementById('app-viewport');
     if (!viewport) return;
     
-    // Clear inline styles on the viewport and its parent container
+    // 1. Wipe all persistent inline layout overrides on the viewport and its parent
     viewport.removeAttribute('style');
     if (viewport.parentElement) {
         viewport.parentElement.removeAttribute('style');
     }
 
-    // Explicit flex reset centering container layout style with responsive screen padding
+    // 2. Explicitly hide main header & sidebar to prevent top offset height shifts on mobile
+    const mainPlatformHeader = document.querySelector('header') || document.getElementById('main-header') || document.querySelector('nav');
+    if (mainPlatformHeader) {
+        mainPlatformHeader.classList.add('hidden');
+    }
+
+    const academicSidebar = document.getElementById('sidebar-container') || document.querySelector('aside, .academic-navigation-sidebar, [class*="sidebar"]');
+    if (academicSidebar) {
+        academicSidebar.style.setProperty('display', 'none', 'important');
+        academicSidebar.classList.add('hidden');
+    }
+
+    // 3. Explicit flex reset centering container layout style with responsive screen padding
     viewport.className = "w-full h-full min-h-screen flex items-center justify-center bg-[#050b18] p-4 sm:p-6";
     
     viewport.innerHTML = `
