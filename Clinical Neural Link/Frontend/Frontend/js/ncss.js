@@ -1291,6 +1291,12 @@ window.renderLogin = function() {
     const viewport = document.getElementById('app-viewport');
     if (!viewport) return;
     
+    // Clear inline styles on the viewport and its parent container
+    viewport.removeAttribute('style');
+    if (viewport.parentElement) {
+        viewport.parentElement.removeAttribute('style');
+    }
+
     // Explicit flex reset centering container layout style with responsive screen padding
     viewport.className = "w-full h-full min-h-screen flex items-center justify-center bg-[#050b18] p-4 sm:p-6";
     
