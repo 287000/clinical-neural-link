@@ -1049,8 +1049,9 @@ window.confirmAndExecuteTermination = function() {
         contentArea.style.width = '';
         contentArea.style.maxWidth = '';
         if (contentArea.parentElement) {
-            contentArea.parentElement.style.gridTemplateColumns = '1fr';
-            contentArea.parentElement.style.display = 'block';
+            // FIX: Remove inline layout overrides completely instead of forcing display: block
+            contentArea.parentElement.style.removeProperty('grid-template-columns');
+            contentArea.parentElement.style.removeProperty('display');
         }
     }
 
@@ -1076,6 +1077,7 @@ window.confirmAndExecuteTermination = function() {
         if (activeTab) activeTab.click();
     }
 };
+
 window.mobileDirectQuitToAssessments = function() {
     // 1. Clear session memory
     window.activeQuizSession = null;
@@ -1089,8 +1091,9 @@ window.mobileDirectQuitToAssessments = function() {
         contentArea.style.width = '';
         contentArea.style.maxWidth = '';
         if (contentArea.parentElement) {
-            contentArea.parentElement.style.gridTemplateColumns = '1fr';
-            contentArea.parentElement.style.display = 'block';
+            // FIX: Remove inline layout overrides completely instead of forcing display: block
+            contentArea.parentElement.style.removeProperty('grid-template-columns');
+            contentArea.parentElement.style.removeProperty('display');
         }
     }
 
