@@ -1313,18 +1313,18 @@ window.renderLogin = function() {
     viewport.className = "w-full h-full min-h-screen relative overflow-hidden flex items-center justify-center p-4 sm:p-6 bg-[#050b18]";
     
     viewport.innerHTML = `
-        <!-- Single CBU-SOM Campus Background Picture -->
+        <!-- Single CBU-SOM Campus Background Picture (Sharp & Visible) -->
         <div id="login-bg-container" class="absolute inset-0 w-full h-full z-0 overflow-hidden">
-            <div class="absolute inset-0 bg-cover bg-center scale-105"
+            <div class="absolute inset-0 bg-cover bg-center scale-100"
                  style="background-image: url('../assets/icons/cbu_som.jpg');">
             </div>
-            <!-- Dark Gradient & Vignette Overlay for High Contrast -->
-            <div class="absolute inset-0 bg-gradient-to-t from-[#030712] via-[#050b18]/80 to-[#030712]/90 backdrop-blur-[2px]"></div>
+            <!-- Lightened subtle gradient overlay for image clarity -->
+            <div class="absolute inset-0 bg-slate-950/35 bg-gradient-to-t from-slate-950/75 via-transparent to-slate-950/50"></div>
         </div>
 
         <!-- Glassmorphic Transparent Login Modal Container -->
         <div id="login-container" class="relative z-10 w-full flex justify-center animate-in fade-in zoom-in duration-700">
-            <div class="bg-slate-950/60 backdrop-blur-xl px-6 py-8 sm:p-12 rounded-3xl shadow-2xl w-[90%] sm:w-full max-w-md border border-slate-700/50 shadow-blue-950/50">
+            <div class="bg-slate-950/70 backdrop-blur-xl px-6 py-8 sm:p-12 rounded-3xl shadow-2xl w-[90%] sm:w-full max-w-md border border-slate-700/60 shadow-blue-950/80">
                 
                 <div class="flex justify-center mb-6">
                     <div class="bg-blue-600/20 border border-blue-400/30 p-4 rounded-2xl shadow-inner backdrop-blur-md">
@@ -1339,12 +1339,12 @@ window.renderLogin = function() {
                 
                 <form id="login-form" class="flex flex-col">
                     <input type="text" id="login-full-name" placeholder="Full Name" required autocomplete="off"
-                        class="border p-4 rounded-xl mb-5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-slate-900/70 text-white border-slate-700/70 text-base placeholder-slate-400 backdrop-blur-md transition">
+                        class="border p-4 rounded-xl mb-5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-slate-900/80 text-white border-slate-700/80 text-base placeholder-slate-400 backdrop-blur-md transition">
                     
                     <!-- Password-masked Student Number input with eye toggle button -->
                     <div class="relative w-full mb-8">
                         <input type="password" id="login-student-number" placeholder="Student Number" required autocomplete="off"
-                            class="w-full border p-4 pr-12 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-slate-900/70 text-white border-slate-700/70 text-base placeholder-slate-400 backdrop-blur-md transition">
+                            class="w-full border p-4 pr-12 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-slate-900/80 text-white border-slate-700/80 text-base placeholder-slate-400 backdrop-blur-md transition">
                         
                         <button type="button" onclick="window.toggleStudentNumberVisibility()" 
                             class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white focus:outline-none p-1 transition"
