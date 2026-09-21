@@ -1287,11 +1287,27 @@ window.toggleStudentNumberVisibility = function() {
     }
 };
 
+// Global array for campus background images (includes all 4 photos)
+window.CAMPUS_IMAGES = [
+    '../assets/icons/cbu_som_1.jpg',
+    '../assets/icons/cbu_som_2.jpg',
+    '../assets/icons/cbu_som_3.jpg',
+    '../assets/icons/cbu_som_4.jpg'
+];
+
+window.loginSlideshowTimer = null;
+
 window.renderLogin = function() {
     const viewport = document.getElementById('app-viewport');
     if (!viewport) return;
 
-    // 1. Wipe all persistent inline layout overrides
+    // Clear existing slideshow timer if running
+    if (window.loginSlideshowTimer) {
+        clearInterval(window.loginSlideshowTimer);
+        window.loginSlideshowTimer = null;
+    }
+
+    // 1. Wipe persistent inline layout overrides
     viewport.removeAttribute('style');
     if (viewport.parentElement) {
         viewport.parentElement.removeAttribute('style');
@@ -1312,18 +1328,27 @@ window.renderLogin = function() {
     // 3. Fullscreen flex layout
     viewport.className = "w-full h-full min-h-screen relative overflow-hidden flex items-center justify-center p-4 sm:p-6 bg-[#050b18]";
     
+    // Generate slideshow layer elements
+    const images = window.CAMPUS_IMAGES && window.CAMPUS_IMAGES.length > 0 
+        ? window.CAMPUS_IMAGES 
+        : ['../assets/icons/cbu_som_1.jpg'];
+
+    const bgLayersHtml = images.map((imgUrl, index) => `
+        <div class="login-bg-layer absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out ${index === 0 ? 'opacity-100 z-10' : 'opacity-0 z-0'}"
+             style="background-image: url('${imgUrl}');">
+        </div>
+    `).join('');
+
     viewport.innerHTML = `
-        <!-- Single CBU-SOM Campus Background Picture (Sharp & Visible) -->
+        <!-- CBU-SOM Campus Auto-Rotating Background Container -->
         <div id="login-bg-container" class="absolute inset-0 w-full h-full z-0 overflow-hidden">
-            <div class="absolute inset-0 bg-cover bg-center scale-100"
-                 style="background-image: url('../assets/icons/cbu_som.jpg');">
-            </div>
-            <!-- Lightened subtle gradient overlay for image clarity -->
-            <div class="absolute inset-0 bg-slate-950/35 bg-gradient-to-t from-slate-950/75 via-transparent to-slate-950/50"></div>
+            ${bgLayersHtml}
+            <!-- Subtle gradient overlay for readability -->
+            <div class="absolute inset-0 z-20 bg-slate-950/35 bg-gradient-to-t from-slate-950/75 via-transparent to-slate-950/50"></div>
         </div>
 
         <!-- Glassmorphic Transparent Login Modal Container -->
-        <div id="login-container" class="relative z-10 w-full flex justify-center animate-in fade-in zoom-in duration-700">
+        <div id="login-container" class="relative z-30 w-full flex justify-center animate-in fade-in zoom-in duration-700">
             <div class="bg-slate-950/70 backdrop-blur-xl px-6 py-8 sm:p-12 rounded-3xl shadow-2xl w-[90%] sm:w-full max-w-md border border-slate-700/60 shadow-blue-950/80">
                 
                 <div class="flex justify-center mb-6">
@@ -1368,8 +1393,28 @@ window.renderLogin = function() {
     // Initialize Lucide icons
     if (window.lucide) {
         lucide.createIcons();
-    } else {
-        console.warn("⚠️ Lucide engine not yet loaded on canvas viewport namespace.");
+    }
+
+    // Start 7-second slideshow loop if multiple images are available
+    if (images.length > 1) {
+        let currentIndex = 0;
+        window.loginSlideshowTimer = setInterval(() => {
+            const layers = document.querySelectorAll('.login-bg-layer');
+            if (!layers || layers.length === 0) {
+                clearInterval(window.loginSlideshowTimer);
+                return;
+            }
+            // Hide previous image layer
+            layers[currentIndex].classList.remove('opacity-100', 'z-10');
+            layers[currentIndex].classList.add('opacity-0', 'z-0');
+
+            // Advance index
+            currentIndex = (currentIndex + 1) % layers.length;
+
+            // Reveal next image layer
+            layers[currentIndex].classList.remove('opacity-0', 'z-0');
+            layers[currentIndex].classList.add('opacity-100', 'z-10');
+        }, 7000); // 7 seconds interval
     }
 
     // Bind form submission
