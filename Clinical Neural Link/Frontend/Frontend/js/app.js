@@ -1904,6 +1904,35 @@ window.showDashboard = async function() {
     }
 
     viewport.innerHTML = `
+        <!-- DYNAMIC AUTO-HIDE SCROLLBAR STYLES -->
+        <style>
+            .custom-scrollbar {
+                scrollbar-width: thin;
+                scrollbar-color: transparent transparent;
+                transition: scrollbar-color 0.4s ease-in-out;
+            }
+            .custom-scrollbar::-webkit-scrollbar {
+                width: 6px;
+            }
+            .custom-scrollbar::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            .custom-scrollbar::-webkit-scrollbar-thumb {
+                background-color: transparent;
+                border-radius: 9999px;
+                transition: background-color 0.4s ease-in-out;
+            }
+            .custom-scrollbar.is-scrolling {
+                scrollbar-color: rgba(255, 255, 255, 0.4) transparent;
+            }
+            .custom-scrollbar.is-scrolling::-webkit-scrollbar-thumb {
+                background-color: rgba(255, 255, 255, 0.4);
+            }
+            .custom-scrollbar.is-scrolling::-webkit-scrollbar-thumb:hover {
+                background-color: rgba(255, 255, 255, 0.7);
+            }
+        </style>
+
         <!-- GLOBAL RESPONSIVE HEADER -->
         <header class="fixed top-0 left-0 w-full flex justify-between items-center px-4 sm:px-6 py-3.5 z-[9999] bg-[#050b18]/90 backdrop-blur-md border-b border-slate-800/40">
             <div class="flex items-center space-x-2.5 sm:space-x-3">
@@ -1913,7 +1942,7 @@ window.showDashboard = async function() {
                 <h1 class="font-black text-white text-xs sm:text-sm tracking-[0.15em] sm:tracking-[0.2em] uppercase">Clinical Neural Link</h1>
             </div>
 
-            <!-- Header Status Badges (Hidden on mobile top right to save space, rendered below title on mobile center) -->
+            <!-- Header Status Badges -->
             <div id="terminal-identity-rack" class="hidden sm:flex items-center justify-center transition-all duration-300">
                 ${identityRackHTML}
             </div>
@@ -1926,7 +1955,7 @@ window.showDashboard = async function() {
                 </button>
         </header>
 
-        <!-- DESKTOP PC SIDEBAR (Hidden on mobile) -->
+        <!-- DESKTOP PC SIDEBAR -->
         <aside id="sidebar-container" class="hidden md:flex w-80 h-full border-r border-slate-800/60 bg-[#070e1e]/60 p-6 flex-col justify-between z-40">
             <div class="space-y-6">
                 <div class="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em] mb-4">
@@ -1962,15 +1991,15 @@ window.showDashboard = async function() {
         </aside>
 
         <!-- MAIN DASHBOARD CONTENT (Dynamic Responsive Center Space) -->
-        <main id="dashboard-content" class="flex-1 h-full p-4 sm:p-8 overflow-y-auto bg-[#050b18]">
+        <main id="dashboard-content" class="flex-1 h-full p-4 sm:p-8 overflow-y-auto custom-scrollbar bg-[#050b18]">
             <div class="w-full max-w-5xl mx-auto space-y-6 sm:space-y-8">
                 
-                <!-- MOBILE-ONLY STATUS HEADER (Appears at top of mobile dashboard) -->
+                <!-- MOBILE-ONLY STATUS HEADER -->
                 <div class="flex md:hidden justify-center items-center py-1">
                     ${identityRackHTML}
                 </div>
 
-                <!-- DESKTOP BILLBOARD CAROUSEL (Hidden on mobile phone views) -->
+                <!-- DESKTOP BILLBOARD CAROUSEL -->
                 <div id="student-billboard" class="hidden md:flex relative w-full h-[460px] sm:h-[520px] rounded-2xl overflow-hidden border border-slate-800/80 bg-slate-950 items-end p-10 sm:p-12 bg-cover bg-center transition-all duration-1000 ease-in-out shadow-2xl shadow-blue-950/20">
                     <div class="absolute inset-0 bg-gradient-to-t from-[#050b18] via-[#050b18]/60 to-transparent pointer-events-none z-10"></div>
                     
@@ -1982,7 +2011,7 @@ window.showDashboard = async function() {
                     </div>
                 </div>
 
-                <!-- MOBILE-ONLY ACADEMIC PROGRAM SELECTION CARDS (Replaces sidebar on phones) -->
+                <!-- MOBILE-ONLY ACADEMIC PROGRAM SELECTION CARDS -->
                 <div class="block md:hidden space-y-4">
                     <div class="text-center space-y-1 mb-6">
                         <span class="text-[9px] font-black text-blue-400 uppercase tracking-[0.3em]">Academic Portfolios</span>
@@ -2044,7 +2073,7 @@ window.showDashboard = async function() {
                     </div>
                 </div>
 
-                <!-- DESKTOP OPERATIONAL INSTRUCTION BANNER (Hidden on mobile) -->
+                <!-- DESKTOP OPERATIONAL INSTRUCTION BANNER -->
                 <div class="hidden md:flex p-6 rounded-xl bg-[#070e1e]/40 border border-slate-800/40 items-center space-x-4">
                     <div class="w-10 h-10 rounded-lg bg-blue-500/5 border border-blue-500/10 flex items-center justify-center text-blue-400">
                         <i data-lucide="terminal" class="w-4 h-4"></i>
@@ -2151,6 +2180,19 @@ window.showDashboard = async function() {
     if (window.lucide) lucide.createIcons();
 
     initializeDashboardBillboard();
+
+    // Attach dynamic scroll listener to trigger scrollbar visibility
+    const mainContent = document.getElementById('dashboard-content');
+    if (mainContent) {
+        let scrollTimeout;
+        mainContent.addEventListener('scroll', () => {
+            mainContent.classList.add('is-scrolling');
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(() => {
+                mainContent.classList.remove('is-scrolling');
+            }, 800); // Scrollbar fades out 800ms after scrolling stops
+        });
+    }
 
     if (typeof window.subscribeToSystemSettingsChanges === 'function') {
         window.subscribeToSystemSettingsChanges();
