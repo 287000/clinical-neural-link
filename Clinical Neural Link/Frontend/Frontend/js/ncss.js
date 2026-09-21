@@ -1287,10 +1287,32 @@ window.toggleStudentNumberVisibility = function() {
     }
 };
 
+// 1. Campus slideshow images configuration with local asset fallback options
+window.CAMPUS_IMAGES = [
+    'https://images.unsplash.com/photo-1562774053-701939374585?q=80&w=1600&auto=format&fit=crop', // Campus architecture 1
+    'https://images.unsplash.com/photo-1541829070764-84a7d30dd3f3?q=80&w=1600&auto=format&fit=crop', // Medical campus hall 2
+    'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=1600&auto=format&fit=crop'  // University grounds 3
+    // Note: You can replace any URL above with local paths like './assets/cbu-som-1.jpg'
+];
+
+window.loginSlideTimer = null;
+window.currentLoginSlide = 0;
+
+// Helper function to safely clear the slideshow timer when leaving the login screen
+window.clearLoginSlideshow = function() {
+    if (window.loginSlideTimer) {
+        clearInterval(window.loginSlideTimer);
+        window.loginSlideTimer = null;
+    }
+};
+
 window.renderLogin = function() {
     const viewport = document.getElementById('app-viewport');
     if (!viewport) return;
     
+    // Clear any existing slideshow timers before starting
+    window.clearLoginSlideshow();
+
     // 1. Wipe all persistent inline layout overrides on the viewport and its parent
     viewport.removeAttribute('style');
     if (viewport.parentElement) {
@@ -1310,48 +1332,81 @@ window.renderLogin = function() {
     }
 
     // 3. Explicit flex reset centering container layout style with responsive screen padding
-    viewport.className = "w-full h-full min-h-screen flex items-center justify-center bg-[#050b18] p-4 sm:p-6";
+    viewport.className = "w-full h-full min-h-screen relative overflow-hidden flex items-center justify-center p-4 sm:p-6 bg-[#050b18]";
     
     viewport.innerHTML = `
-        <div id="login-container" class="w-full flex justify-center animate-in fade-in zoom-in duration-700">
-            <div class="bg-slate-900 px-6 py-8 sm:p-12 rounded-2xl shadow-2xl w-[90%] sm:w-full max-w-md border border-slate-700">
+        <!-- Dynamic Background Image Slideshow (Only active during login phase) -->
+        <div id="login-bg-container" class="absolute inset-0 w-full h-full z-0 overflow-hidden">
+            ${window.CAMPUS_IMAGES.map((img, idx) => `
+                <div id="login-slide-${idx}" 
+                     class="absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out scale-105 ${idx === 0 ? 'opacity-100' : 'opacity-0'}"
+                     style="background-image: url('${img}');">
+                </div>
+            `).join('')}
+            <!-- Dark Overlay Vignette for High-Contrast Visibility -->
+            <div class="absolute inset-0 bg-gradient-to-t from-[#030712] via-[#050b18]/80 to-[#030712]/90 backdrop-blur-[2px]"></div>
+        </div>
+
+        <!-- Glassmorphic Transparent Login Container -->
+        <div id="login-container" class="relative z-10 w-full flex justify-center animate-in fade-in zoom-in duration-700">
+            <div class="bg-slate-950/60 backdrop-blur-xl px-6 py-8 sm:p-12 rounded-3xl shadow-2xl w-[90%] sm:w-full max-w-md border border-slate-700/50 shadow-blue-950/50">
                 
                 <div class="flex justify-center mb-6">
-                    <div class="bg-blue-100 p-4 rounded-full">
-                        <i data-lucide="fingerprint" class="text-blue-900 w-12 h-12"></i>
+                    <div class="bg-blue-600/20 border border-blue-400/30 p-4 rounded-2xl shadow-inner backdrop-blur-md">
+                        <i data-lucide="fingerprint" class="text-blue-400 w-12 h-12"></i>
                     </div>
                 </div>
 
-                <h1 class="text-3xl font-bold mb-8 text-center text-white tracking-tighter uppercase">Access Portal</h1>
+                <div class="text-center mb-8">
+                    <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight uppercase">Access Portal</h1>
+                    <p class="text-[11px] font-bold text-blue-400 uppercase tracking-widest mt-1">Michael Chilufya Sata School of Medicine</p>
+                </div>
                 
                 <form id="login-form" class="flex flex-col">
                     <input type="text" id="login-full-name" placeholder="Full Name" required autocomplete="off"
-                        class="border p-4 rounded-lg mb-6 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-800 text-white border-slate-600 text-lg">
+                        class="border p-4 rounded-xl mb-5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-slate-900/70 text-white border-slate-700/70 text-base placeholder-slate-400 backdrop-blur-md transition">
                     
                     <!-- Password-masked Student Number input with eye toggle button -->
                     <div class="relative w-full mb-8">
                         <input type="password" id="login-student-number" placeholder="Student Number" required autocomplete="off"
-                            class="w-full border p-4 pr-12 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-800 text-white border-slate-600 text-lg">
+                            class="w-full border p-4 pr-12 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-slate-900/70 text-white border-slate-700/70 text-base placeholder-slate-400 backdrop-blur-md transition">
                         
                         <button type="button" onclick="window.toggleStudentNumberVisibility()" 
                             class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white focus:outline-none p-1 transition"
                             aria-label="Toggle Student Number Visibility">
                             <span id="eye-icon-container">
-                                <i data-lucide="eye" class="w-6 h-6"></i>
+                                <i data-lucide="eye" class="w-5 h-5"></i>
                             </span>
                         </button>
                     </div>
                     
                     <button type="submit"
-                        class="bg-blue-700 text-white font-bold rounded-lg py-4 shadow-lg shadow-blue-500/20 hover:bg-blue-600 transition text-xl cursor-pointer">
+                        class="bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl py-4 shadow-lg shadow-blue-600/30 transition duration-200 text-lg cursor-pointer active:scale-[0.98]">
                         Enter Portal
                     </button>
                 </form>
+
             </div>
         </div>
     `;
 
-    // Initialize Lucide icons on the newly rendered elements
+    // 4. Initialize 10-second slideshow interval timer
+    window.loginSlideTimer = setInterval(() => {
+        const totalSlides = window.CAMPUS_IMAGES.length;
+        const currentElem = document.getElementById(`login-slide-${window.currentLoginSlide}`);
+        
+        window.currentLoginSlide = (window.currentLoginSlide + 1) % totalSlides;
+        const nextElem = document.getElementById(`login-slide-${window.currentLoginSlide}`);
+
+        if (currentElem && nextElem) {
+            currentElem.classList.remove('opacity-100');
+            currentElem.classList.add('opacity-0');
+            nextElem.classList.remove('opacity-0');
+            nextElem.classList.add('opacity-100');
+        }
+    }, 10000);
+
+    // Initialize Lucide icons
     if (window.lucide) {
         lucide.createIcons();
     } else {
@@ -1363,6 +1418,8 @@ window.renderLogin = function() {
     if (loginForm) {
         loginForm.addEventListener('submit', function(e) {
             e.preventDefault();
+            // Clear slideshow interval when user logs in
+            window.clearLoginSlideshow();
             if (typeof window.handlePortalLogin === 'function') {
                 window.handlePortalLogin();
             }
