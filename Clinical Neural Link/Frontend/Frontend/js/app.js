@@ -1918,10 +1918,12 @@ window.showDashboard = async function() {
                 ${identityRackHTML}
             </div>
             
-            <button type="button" onclick="window.logout(event)" 
-                class="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[9px] sm:text-[10px] font-black tracking-widest transition-all uppercase cursor-pointer">
-                Log Out
-            </button>
+           <button type="button" onclick="window.logout(event)" 
+                    title="Logout"
+                    aria-label="Logout"
+                    class="w-11 h-11 bg-blue-950/60 hover:bg-rose-950/60 text-blue-200 hover:text-rose-300 border border-blue-800/50 hover:border-rose-800/60 rounded-xl flex items-center justify-center transition cursor-pointer active:scale-95 shadow-sm">
+                    <i data-lucide="log-out" class="w-5 h-5"></i>
+                </button>
         </header>
 
         <!-- DESKTOP PC SIDEBAR (Hidden on mobile) -->
