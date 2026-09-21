@@ -422,10 +422,10 @@ function selectYear(yearNumber) {
             </div>
 
             <!-- SECTION HEADER -->
-            <div class="mb-6 sm:mb-8">
-                <h2 class="text-lg sm:text-2xl font-black text-white uppercase tracking-wider">${displayYear} — Curriculum Modules</h2>
-                <p class="text-[9px] sm:text-[10px] text-blue-400 font-bold uppercase tracking-widest mt-1">Select standard module to launch active file banks</p>
-            </div>
+           <div class="mb-6 sm:mb-8">
+    <h2 class="text-base sm:text-xl font-black text-white uppercase tracking-wider">${displayYear} — Curriculum Modules</h2>
+    <p class="text-[9px] sm:text-[10px] text-blue-400 font-bold uppercase tracking-widest mt-1">Select standard module to launch active file banks</p>
+</div>
 
             <!-- MODULES GRID -->
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
@@ -571,10 +571,10 @@ function selectCourse(courseName, explicitProgramKey = null, explicitYearNumber 
             </div>
 
             <!-- COURSE SECTION HEADER -->
-            <div class="mb-6 sm:mb-8">
-                <h2 class="text-lg sm:text-2xl font-black text-white uppercase tracking-wider">${courseName} Hub</h2>
-                <p class="text-[9px] sm:text-[10px] text-blue-400 font-bold uppercase tracking-widest mt-1">Select preparation matrix or execute performance assessment</p>
-            </div>
+           <div class="mb-6 sm:mb-8">
+    <h2 class="text-base sm:text-xl font-black text-white uppercase tracking-wider">${courseName} Hub</h2>
+    <p class="text-[9px] sm:text-[10px] text-blue-400 font-bold uppercase tracking-widest mt-1">Select preparation matrix or execute performance assessment</p>
+</div>
 
             <!-- VIEW MODE SELECTION GRID -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 pt-2">
@@ -662,10 +662,10 @@ window.navigateToSlotWorkspace = function(slotId) {
             </div>
 
             <!-- SECTION HEADER -->
-            <div class="mb-6 sm:mb-8">
-                <h2 class="text-lg sm:text-2xl font-black text-white uppercase tracking-wider">${cleanSlotId} Bank &mdash; Available Papers</h2>
-                <p class="text-[9px] sm:text-[10px] text-purple-400 font-bold uppercase tracking-widest mt-1">Review and execute published data records inside this repository</p>
-            </div>
+           <div class="mb-6 sm:mb-8">
+    <h2 class="text-base sm:text-xl font-black text-white uppercase tracking-wider">${cleanSlotId} Bank &mdash; Available Papers</h2>
+    <p class="text-[9px] sm:text-[10px] text-purple-400 font-bold uppercase tracking-widest mt-1">Review and execute published data records inside this repository</p>
+</div>
 
             <!-- TARGET QUESTION BLUEPRINT PORTAL CONTAINER -->
             <div id="active-quiz-questions-portal" class="w-full space-y-3 mt-2"></div>
