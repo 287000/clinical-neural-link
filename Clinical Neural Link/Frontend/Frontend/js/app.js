@@ -280,11 +280,10 @@ async function selectProgram(programKey) {
             </div>
 
             <!-- PROGRAM SECTION TITLE -->
-            <div class="mb-6 sm:mb-8">
-                <h2 class="text-lg sm:text-2xl font-black text-white uppercase tracking-wider">${displayName}</h2>
-                <p class="text-[9px] sm:text-[10px] text-blue-400 font-bold uppercase tracking-widest mt-1">Select Academic Year Portfolio</p>
-            </div>
-
+           <div class="mb-6 sm:mb-8">
+    <h2 class="text-base sm:text-xl font-black text-white uppercase tracking-wider">${displayName}</h2>
+    <p class="text-[9px] sm:text-[10px] text-blue-400 font-bold uppercase tracking-widest mt-1">Select Academic Year Portfolio</p>
+</div>
             <!-- ACADEMIC YEARS GRID -->
             <div class="grid grid-cols-2 sm:grid-cols-3 gap-3.5 sm:gap-5">
                 ${years.map(year => `
