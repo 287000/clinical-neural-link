@@ -1287,39 +1287,17 @@ window.toggleStudentNumberVisibility = function() {
     }
 };
 
-// 1. Campus slideshow images configuration with local asset fallback options
-window.CAMPUS_IMAGES = [
-    'https://images.unsplash.com/photo-1562774053-701939374585?q=80&w=1600&auto=format&fit=crop', // Campus architecture 1
-    'https://images.unsplash.com/photo-1541829070764-84a7d30dd3f3?q=80&w=1600&auto=format&fit=crop', // Medical campus hall 2
-    'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=1600&auto=format&fit=crop'  // University grounds 3
-    // Note: You can replace any URL above with local paths like './assets/cbu-som-1.jpg'
-];
-
-window.loginSlideTimer = null;
-window.currentLoginSlide = 0;
-
-// Helper function to safely clear the slideshow timer when leaving the login screen
-window.clearLoginSlideshow = function() {
-    if (window.loginSlideTimer) {
-        clearInterval(window.loginSlideTimer);
-        window.loginSlideTimer = null;
-    }
-};
-
 window.renderLogin = function() {
     const viewport = document.getElementById('app-viewport');
     if (!viewport) return;
-    
-    // Clear any existing slideshow timers before starting
-    window.clearLoginSlideshow();
 
-    // 1. Wipe all persistent inline layout overrides on the viewport and its parent
+    // 1. Wipe all persistent inline layout overrides
     viewport.removeAttribute('style');
     if (viewport.parentElement) {
         viewport.parentElement.removeAttribute('style');
     }
 
-    // 2. Explicitly hide main header & sidebar to prevent top offset height shifts on mobile
+    // 2. Hide platform header & sidebar during login phase
     const mainPlatformHeader = document.querySelector('header') || document.getElementById('main-header') || document.querySelector('nav');
     if (mainPlatformHeader) {
         mainPlatformHeader.classList.add('hidden');
@@ -1331,23 +1309,20 @@ window.renderLogin = function() {
         academicSidebar.classList.add('hidden');
     }
 
-    // 3. Explicit flex reset centering container layout style with responsive screen padding
+    // 3. Fullscreen flex layout
     viewport.className = "w-full h-full min-h-screen relative overflow-hidden flex items-center justify-center p-4 sm:p-6 bg-[#050b18]";
     
     viewport.innerHTML = `
-        <!-- Dynamic Background Image Slideshow (Only active during login phase) -->
+        <!-- Single CBU-SOM Campus Background Picture -->
         <div id="login-bg-container" class="absolute inset-0 w-full h-full z-0 overflow-hidden">
-            ${window.CAMPUS_IMAGES.map((img, idx) => `
-                <div id="login-slide-${idx}" 
-                     class="absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out scale-105 ${idx === 0 ? 'opacity-100' : 'opacity-0'}"
-                     style="background-image: url('${img}');">
-                </div>
-            `).join('')}
-            <!-- Dark Overlay Vignette for High-Contrast Visibility -->
+            <div class="absolute inset-0 bg-cover bg-center scale-105"
+                 style="background-image: url('../assets/icons/cbu_som.jpg');">
+            </div>
+            <!-- Dark Gradient & Vignette Overlay for High Contrast -->
             <div class="absolute inset-0 bg-gradient-to-t from-[#030712] via-[#050b18]/80 to-[#030712]/90 backdrop-blur-[2px]"></div>
         </div>
 
-        <!-- Glassmorphic Transparent Login Container -->
+        <!-- Glassmorphic Transparent Login Modal Container -->
         <div id="login-container" class="relative z-10 w-full flex justify-center animate-in fade-in zoom-in duration-700">
             <div class="bg-slate-950/60 backdrop-blur-xl px-6 py-8 sm:p-12 rounded-3xl shadow-2xl w-[90%] sm:w-full max-w-md border border-slate-700/50 shadow-blue-950/50">
                 
@@ -1390,22 +1365,6 @@ window.renderLogin = function() {
         </div>
     `;
 
-    // 4. Initialize 10-second slideshow interval timer
-    window.loginSlideTimer = setInterval(() => {
-        const totalSlides = window.CAMPUS_IMAGES.length;
-        const currentElem = document.getElementById(`login-slide-${window.currentLoginSlide}`);
-        
-        window.currentLoginSlide = (window.currentLoginSlide + 1) % totalSlides;
-        const nextElem = document.getElementById(`login-slide-${window.currentLoginSlide}`);
-
-        if (currentElem && nextElem) {
-            currentElem.classList.remove('opacity-100');
-            currentElem.classList.add('opacity-0');
-            nextElem.classList.remove('opacity-0');
-            nextElem.classList.add('opacity-100');
-        }
-    }, 10000);
-
     // Initialize Lucide icons
     if (window.lucide) {
         lucide.createIcons();
@@ -1413,13 +1372,11 @@ window.renderLogin = function() {
         console.warn("⚠️ Lucide engine not yet loaded on canvas viewport namespace.");
     }
 
-    // Bind form submission to the authentication handler module
+    // Bind form submission
     const loginForm = document.getElementById('login-form');
     if (loginForm) {
         loginForm.addEventListener('submit', function(e) {
             e.preventDefault();
-            // Clear slideshow interval when user logs in
-            window.clearLoginSlideshow();
             if (typeof window.handlePortalLogin === 'function') {
                 window.handlePortalLogin();
             }
