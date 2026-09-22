@@ -1293,7 +1293,6 @@ window.CAMPUS_IMAGES = [
     '../assets/icons/cbu_som_2.jpg',
     '../assets/icons/cbu_som_3.jpg',
     '../assets/icons/cbu_som_4.jpg'
-    '../assets/icons/cbu_som_5.jpg'
 ];
 
 window.loginSlideshowTimer = null;
