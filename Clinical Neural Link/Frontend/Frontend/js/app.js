@@ -2529,13 +2529,14 @@ window.showNotification = showNotification;
 
 // 🛡️ ENFORCED SESSION WATCHDOG - PREVENTS ACCOUNT SHARING
 // 🛡️ ENFORCED CLEAN WORKSPACE WATCHDOG
-
-
 function startSessionWatchdog() {
     const checkIntervalTime = 5000; // Evaluates tracking context loops every 5 seconds
 
     window.watchdogInterval = setInterval(async () => {
-        // 🎯 FIX: Pulling from sessionStorage to align with your authentication flow
+        // 🛡️ 1. GUARD: Ignore watchdog if user is currently in the middle of logging out
+        if (window.isLoggingOut) return;
+
+        // Pulling from sessionStorage to align with authentication flow
         const sessionData = sessionStorage.getItem('neural_link_active_session');
         const localFingerprint = localStorage.getItem('neural_link_device_fingerprint');
         if (!sessionData || !localFingerprint) return;
@@ -2548,7 +2549,6 @@ function startSessionWatchdog() {
         if (!studentNum) return;
 
         try {
-            // 🎯 FIX: Changed table from 'active_sessions' to 'portal_active_sessions_ledger'
             const { data: currentServerSession, error } = await window.supabase
                 .from('portal_active_sessions_ledger')
                 .select('*')
@@ -2557,12 +2557,19 @@ function startSessionWatchdog() {
 
             if (error) throw error;
 
+            // 🛡️ 2. GUARD: Re-check flag after async Supabase query resolves
+            if (window.isLoggingOut) return;
+
             const serverFingerprint = currentServerSession ? currentServerSession.device_fingerprint : null;
 
             console.log(`📡 Watchdog Patrolling -> Local Context: ${localFingerprint} | Active Backend Lease Holder: ${serverFingerprint}`);
 
             // 🚨 CONFLICT HARD DETECTION HANDSHAKE:
+            // Only trigger eviction if the server session exists BUT has a different fingerprint.
+            // If currentServerSession is null, ensure it wasn't triggered by a clean logout sequence.
             if (!currentServerSession || serverFingerprint !== localFingerprint) {
+                if (window.isLoggingOut) return; // Double check guard before firing modal
+
                 console.warn("🛑 Session Mismatch or Eviction. Initiating formal eviction sequence...");
                 
                 clearInterval(window.watchdogInterval);
@@ -2585,105 +2592,6 @@ function startSessionWatchdog() {
     }, checkIntervalTime);
 }
 
-// Ensure the watchdog loop attaches automatically on DOM loading cycles
-document.addEventListener("DOMContentLoaded", () => {
-    startSessionWatchdog();
-});
-
-window.showSecurityEvictionModal = function() {
-    const overlay = document.createElement('div');
-    overlay.id = "security-eviction-overlay";
-    overlay.className = "fixed inset-0 w-screen h-screen bg-[#0a0e17]/85 backdrop-blur-md flex items-center justify-center font-sans z-[999999]";
-
-    overlay.innerHTML = `
-        <div class="relative z-[1000000] bg-gradient-to-br from-[#161c2a] to-[#0e121b] border border-red-500/30 shadow-2xl rounded-xl p-8 max-w-md w-[90%] text-center text-gray-100 pointer-events-auto">
-            <div class="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-5 text-red-500 text-3xl">🛡️</div>
-            <h3 class="m-0 mb-3 text-xl font-semibold tracking-tight">Security Session Intercept</h3>
-            <p class="m-0 mb-1 text-xs uppercase text-gray-400 tracking-wider font-medium">Clinical Neural Link Management System</p>
-            <hr class="border-0 border-t border-white/10 my-4">
-            <p class="m-0 mb-6 text-sm leading-relaxed text-gray-300 text-left">
-                This system terminal has been securely disconnected. The central identity engine detected that this student account successfully established an active session on an alternative hardware profile or secondary browser node.
-            </p>
-            <button type="button" 
-                onclick="document.getElementById('security-eviction-overlay').remove(); if(typeof window.renderLogin === 'function') { window.renderLogin(); }" 
-                class="relative z-[1000001] bg-gradient-to-r from-red-500 to-red-600 text-white border-none py-3 px-7 text-sm font-semibold rounded-md cursor-pointer w-full transition duration-200 shadow-lg shadow-red-500/20 hover:opacity-90 pointer-events-auto">
-                Return to Security Gate
-            </button>
-        </div>
-    `;
-    document.body.appendChild(overlay);
-};
-// 📡 Global Pusher Linker
-window.initializePusherRealTime = function(studentNumber) {
-    if (!studentNumber) return;
-    
-    // Verify that the global Supabase client instance is available
-    if (!window.supabase) {
-        console.error("❌ Supabase client matrix is missing! Cannot establish real-time channel pipeline.");
-        return;
-    }
-    
-    // Safety check to ensure we don't spin up duplicate channel subscriptions on the same window lifecycle
-    if (window.currentPusherInstance) {
-        console.log("📡 Supabase Realtime instance already linked. Skipping duplicate subscription.");
-        return;
-    }
-
-    console.log(`📡 Linking real-time database listener node for student: ${studentNumber}`);
-    
-    // Set up a native Supabase Realtime channel listening to table row updates directly
-    const channel = window.supabase
-        .channel(`student-updates-${studentNumber}`) // 🟩 Fixed: Clean, brief channel path string
-        .on(
-            'postgres_changes',
-            {
-                event: 'UPDATE',
-                schema: 'public',
-                table: 'authorized_students_registry', // 🟩 Fixed: Pointed to your real database table name
-                filter: `student_number=eq.${studentNumber}`
-            },
-            (payload) => {
-                const freshData = payload.new;
-                console.log("⚡ [Supabase Realtime Event Received]: Status shifted to:", freshData.payment_status);
-                
-                // 1. Sync cache structures with the fresh database row properties
-                if (window.currentUserSession) {
-                    window.currentUserSession.payment_status = freshData.payment_status;
-                    window.currentUserSession.payment_expiry = freshData.payment_expiry;
-                }
-                
-                const sessionData = sessionStorage.getItem('neural_link_active_session');
-                if (sessionData) {
-                    const parsed = JSON.parse(sessionData);
-                    parsed.payment_status = freshData.payment_status;
-                    parsed.payment_expiry = freshData.payment_expiry;
-                    sessionStorage.setItem('neural_link_active_session', JSON.stringify(parsed));
-                }
-
-                // 2. Clear out the payment overlay instantly
-                if (typeof window.openPaymentModal === 'function') {
-                    window.openPaymentModal(false);
-                }
-                
-                // 3. Re-render the dashboard components instantly to unlock restricted modules
-                if (typeof showDashboard === 'function') {
-                    showDashboard();
-                }
-            }
-        )
-        .subscribe((status) => {
-            if (status === 'SUBSCRIBED') {
-                console.log(`🟩 Supabase Realtime matrix synchronized for student channel: ${studentNumber}`);
-            }
-        });
-
-    // Cache the channel handle globally to match your existing validation checks and prevent resource leaks
-    window.currentPusherInstance = channel;
-};
-// Ensure the watchdog loop attaches automatically on DOM loading cycles
-document.addEventListener("DOMContentLoaded", () => {
-    startSessionWatchdog();
-});
 
 window.showSecurityEvictionModal = function() {
     const overlay = document.createElement('div');
