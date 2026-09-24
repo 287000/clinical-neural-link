@@ -2527,16 +2527,15 @@ function showNotification({ title, message, type = 'info' }) {
 
 window.showNotification = showNotification;
 
-// 🛡️ ENFORCED SESSION WATCHDOG - PREVENTS ACCOUNT SHARING
-// 🛡️ ENFORCED CLEAN WORKSPACE WATCHDOG
+
 function startSessionWatchdog() {
     const checkIntervalTime = 5000; // Evaluates tracking context loops every 5 seconds
 
     window.watchdogInterval = setInterval(async () => {
-        // 🛡️ 1. GUARD: Ignore watchdog if user is currently in the middle of logging out
+        // 🛡️ 1. GUARD: Exit immediately if the user clicked the Logout button
         if (window.isLoggingOut) return;
 
-        // Pulling from sessionStorage to align with authentication flow
+        // Pulling from sessionStorage to align with your authentication flow
         const sessionData = sessionStorage.getItem('neural_link_active_session');
         const localFingerprint = localStorage.getItem('neural_link_device_fingerprint');
         if (!sessionData || !localFingerprint) return;
@@ -2557,7 +2556,7 @@ function startSessionWatchdog() {
 
             if (error) throw error;
 
-            // 🛡️ 2. GUARD: Re-check flag after async Supabase query resolves
+            // 🛡️ 2. GUARD: Check flag again after async database query completes
             if (window.isLoggingOut) return;
 
             const serverFingerprint = currentServerSession ? currentServerSession.device_fingerprint : null;
@@ -2565,10 +2564,10 @@ function startSessionWatchdog() {
             console.log(`📡 Watchdog Patrolling -> Local Context: ${localFingerprint} | Active Backend Lease Holder: ${serverFingerprint}`);
 
             // 🚨 CONFLICT HARD DETECTION HANDSHAKE:
-            // Only trigger eviction if the server session exists BUT has a different fingerprint.
-            // If currentServerSession is null, ensure it wasn't triggered by a clean logout sequence.
+            // Checks if another device overwrote the fingerprint in Supabase OR if session was terminated externally
             if (!currentServerSession || serverFingerprint !== localFingerprint) {
-                if (window.isLoggingOut) return; // Double check guard before firing modal
+                // 🛡️ 3. GUARD: Final safety barrier to ensure logout wasn't initiated during DB lookup
+                if (window.isLoggingOut) return;
 
                 console.warn("🛑 Session Mismatch or Eviction. Initiating formal eviction sequence...");
                 
@@ -2592,6 +2591,10 @@ function startSessionWatchdog() {
     }, checkIntervalTime);
 }
 
+// Ensure the watchdog loop attaches automatically on DOM loading cycles
+document.addEventListener("DOMContentLoaded", () => {
+    startSessionWatchdog();
+});
 
 window.showSecurityEvictionModal = function() {
     const overlay = document.createElement('div');
