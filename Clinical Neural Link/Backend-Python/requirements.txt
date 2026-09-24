@@ -9,3 +9,4 @@ httpx
 pusher
 python-multipart
 supabase
+psycopg2-binary
