@@ -2,17 +2,17 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-# 1. Define PostgreSQL connection details (fallback to environment variable if set)
+# 1. Define PostgreSQL connection details (fallback to Supabase production connection)
 DATABASE_URL = os.getenv(
     "DATABASE_URL", 
-    "postgresql://postgres:CBUMEDCNL-287@localhost:5432/clinical_neural_link"
+    "postgresql://postgres.djaiakndrpptwgyfkyfk:bj8VedAxSRjmzuBG@aws-0-eu-central-1.pooler.supabase.com:6543/postgres"
 )
 
 # 2. Create the database engine with high-concurrency connection pooling
 engine = create_engine(
     DATABASE_URL,
-    pool_size=20,          # Keeps 20 active connections open in the pool
-    max_overflow=30,       # Spawns up to 30 additional temporary connections during traffic spikes (50 total)
+    pool_size=10,          # Keeps active connections within Supabase free tier limits
+    max_overflow=10,       # Spawns up to 10 additional temporary connections during traffic spikes
     pool_timeout=30,       # Waits up to 30 seconds for a connection slot before timing out
     pool_recycle=1800,     # Recycles connections every 30 minutes to clear stale connections
     pool_pre_ping=True     # Verifies connection health before executing queries to prevent drops
