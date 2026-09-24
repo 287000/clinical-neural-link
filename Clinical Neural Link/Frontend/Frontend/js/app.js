@@ -1962,56 +1962,57 @@ window.showDashboard = async function() {
                 </div>
                 
                 <nav class="flex flex-col space-y-2" id="program-nav">
-                    <button onclick="selectProgram('mbchb')" class="w-full text-left bg-[#070e1e] hover:bg-blue-600/10 border border-slate-800 hover:border-blue-500/40 p-5 rounded-2xl transition-all flex items-center justify-between group shadow-lg cursor-pointer">
-                            <div class="flex items-center space-x-4">
-                                <div class="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-                                    <i data-lucide="stethoscope" class="w-5 h-5"></i>
-                                </div>
-                                <div>
-                                    <h3 class="text-sm font-black text-white uppercase tracking-wider">MBCHB, BDS and CM</h3>
-                                    <p class="text-[10px] text-slate-400 mt-0.5">Medicine, Dental & Clinical Medicine</p>
-                                </div>
-                            </div>
-                            <i data-lucide="chevron-right" class="w-5 h-5 text-slate-500 group-hover:text-blue-400 transition-colors"></i>
-                        </button>
+                   <button onclick="selectProgram('mbchb')" class="w-full text-left bg-[#070e1e] hover:bg-blue-600/10 border border-slate-800 hover:border-blue-500/40 p-3 rounded-xl transition-all flex items-center justify-between group shadow-lg cursor-pointer">
+    <div class="flex items-center space-x-2.5 min-w-0 pr-1">
+        <div class="w-8 h-8 shrink-0 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+            <i data-lucide="stethoscope" class="w-4 h-4"></i>
+        </div>
+        <div class="truncate">
+            <h3 class="text-xs font-black text-white uppercase tracking-tight truncate">MBCHB, BDS and CM</h3>
+            <p class="text-[9px] text-slate-400 mt-0.5 truncate">Medicine, Dental & Clinical Medicine</p>
+        </div>
+    </div>
+    <i data-lucide="chevron-right" class="w-4 h-4 shrink-0 text-slate-500 group-hover:text-blue-400 transition-colors"></i>
+</button>
 
-                    <button onclick="selectProgram('biomedical')" class="w-full text-left bg-[#070e1e] hover:bg-blue-600/10 border border-slate-800 hover:border-blue-500/40 p-5 rounded-2xl transition-all flex items-center justify-between group shadow-lg cursor-pointer">
-                            <div class="flex items-center space-x-4">
-                                <div class="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-                                    <i data-lucide="microscope" class="w-5 h-5"></i>
-                                </div>
-                                <div>
-                                    <h3 class="text-sm font-black text-white uppercase tracking-wider">Biomedical Science</h3>
-                                    <p class="text-[10px] text-slate-400 mt-0.5">Laboratory & Clinical Diagnostics</p>
-                                </div>
-                            </div>
-                            <i data-lucide="chevron-right" class="w-5 h-5 text-slate-500 group-hover:text-blue-400 transition-colors"></i>
-                        </button>
-                    <button onclick="selectProgram('public_health')" class="w-full text-left bg-[#070e1e] hover:bg-blue-600/10 border border-slate-800 hover:border-blue-500/40 p-5 rounded-2xl transition-all flex items-center justify-between group shadow-lg cursor-pointer">
-                            <div class="flex items-center space-x-4">
-                                <div class="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-                                    <i data-lucide="activity" class="w-5 h-5"></i>
-                                </div>
-                                <div>
-                                    <h3 class="text-sm font-black text-white uppercase tracking-wider">Public Health</h3>
-                                    <p class="text-[10px] text-slate-400 mt-0.5">Epidemiology & Health Systems</p>
-                                </div>
-                            </div>
-                            <i data-lucide="chevron-right" class="w-5 h-5 text-slate-500 group-hover:text-blue-400 transition-colors"></i>
-                        </button>
+<button onclick="selectProgram('biomedical')" class="w-full text-left bg-[#070e1e] hover:bg-blue-600/10 border border-slate-800 hover:border-blue-500/40 p-3 rounded-xl transition-all flex items-center justify-between group shadow-lg cursor-pointer">
+    <div class="flex items-center space-x-2.5 min-w-0 pr-1">
+        <div class="w-8 h-8 shrink-0 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+            <i data-lucide="microscope" class="w-4 h-4"></i>
+        </div>
+        <div class="truncate">
+            <h3 class="text-xs font-black text-white uppercase tracking-tight truncate">Biomedical Science</h3>
+            <p class="text-[9px] text-slate-400 mt-0.5 truncate">Laboratory & Clinical Diagnostics</p>
+        </div>
+    </div>
+    <i data-lucide="chevron-right" class="w-4 h-4 shrink-0 text-slate-500 group-hover:text-blue-400 transition-colors"></i>
+</button>
 
-                     <button onclick="selectProgram('environmental')" class="w-full text-left bg-[#070e1e] hover:bg-blue-600/10 border border-slate-800 hover:border-blue-500/40 p-5 rounded-2xl transition-all flex items-center justify-between group shadow-lg cursor-pointer">
-                            <div class="flex items-center space-x-4">
-                                <div class="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-                                    <i data-lucide="leaf" class="w-5 h-5"></i>
-                                </div>
-                                <div>
-                                    <h3 class="text-sm font-black text-white uppercase tracking-wider">Environmental Health</h3>
-                                    <p class="text-[10px] text-slate-400 mt-0.5">Occupational & Environmental Core</p>
-                                </div>
-                            </div>
-                            <i data-lucide="chevron-right" class="w-5 h-5 text-slate-500 group-hover:text-blue-400 transition-colors"></i>
-                        </button>
+<button onclick="selectProgram('public_health')" class="w-full text-left bg-[#070e1e] hover:bg-blue-600/10 border border-slate-800 hover:border-blue-500/40 p-3 rounded-xl transition-all flex items-center justify-between group shadow-lg cursor-pointer">
+    <div class="flex items-center space-x-2.5 min-w-0 pr-1">
+        <div class="w-8 h-8 shrink-0 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+            <i data-lucide="activity" class="w-4 h-4"></i>
+        </div>
+        <div class="truncate">
+            <h3 class="text-xs font-black text-white uppercase tracking-tight truncate">Public Health</h3>
+            <p class="text-[9px] text-slate-400 mt-0.5 truncate">Epidemiology & Health Systems</p>
+        </div>
+    </div>
+    <i data-lucide="chevron-right" class="w-4 h-4 shrink-0 text-slate-500 group-hover:text-blue-400 transition-colors"></i>
+</button>
+
+<button onclick="selectProgram('environmental')" class="w-full text-left bg-[#070e1e] hover:bg-blue-600/10 border border-slate-800 hover:border-blue-500/40 p-3 rounded-xl transition-all flex items-center justify-between group shadow-lg cursor-pointer">
+    <div class="flex items-center space-x-2.5 min-w-0 pr-1">
+        <div class="w-8 h-8 shrink-0 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+            <i data-lucide="leaf" class="w-4 h-4"></i>
+        </div>
+        <div class="truncate">
+            <h3 class="text-xs font-black text-white uppercase tracking-tight truncate">Environmental Health</h3>
+            <p class="text-[9px] text-slate-400 mt-0.5 truncate">Occupational & Environmental Core</p>
+        </div>
+    </div>
+    <i data-lucide="chevron-right" class="w-4 h-4 shrink-0 text-slate-500 group-hover:text-blue-400 transition-colors"></i>
+</button>
                 </nav>
             </div>
 
