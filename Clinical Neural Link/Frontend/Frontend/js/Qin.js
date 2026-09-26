@@ -1405,20 +1405,62 @@ window.confirmMatrixSelection = function(sectionId) {
         const globalIndex = session.flatQuestionsList.indexOf(peerQuestions[i]);
         if (session.chosenQuestionIds.has(globalIndex)) {
             firstSelectedGlobalIndex = globalIndex;
-            break; // Found the first item, snap out of the loop
+            break;
         }
     }
 
-    // 4. Fallback Safety Guard: If somehow nothing matched, default to the first peer item
     if (firstSelectedGlobalIndex === -1 && peerQuestions.length > 0) {
         firstSelectedGlobalIndex = session.flatQuestionsList.indexOf(peerQuestions[0]);
     }
 
-    // 5. Shift the master state tracker pointer directly to their first chosen item
+    // 4. Set current pointer to the first selected item
     session.currentQuestionIndex = firstSelectedGlobalIndex;
 
-    // 6. Force-re-trigger the main viewport rendering pipeline smoothly
+    // 5. Force-re-trigger rendering pipeline
     window.renderActiveQuizEngineViewItem();
+};
+window.advanceToNextQuizQuestion = function() {
+    const session = window.activeQuizSession;
+    if (!session) return;
+
+    const currentQuestion = session.flatQuestionsList[session.currentQuestionIndex];
+    const currentSectionId = currentQuestion ? currentQuestion.sectionId : null;
+
+    // Check if the current section required essay/matrix selection
+    const isMatrixSection = session.completedPreSelections && session.completedPreSelections.has(currentSectionId);
+
+    let nextIndex = -1;
+
+    if (isMatrixSection) {
+        // Find the NEXT global index that belongs to the same section AND was explicitly chosen by the student
+        for (let i = session.currentQuestionIndex + 1; i < session.flatQuestionsList.length; i++) {
+            const q = session.flatQuestionsList[i];
+            
+            // If we moved into a new section, stop searching inside matrix mode
+            if (q.sectionId !== currentSectionId) {
+                nextIndex = i; // Move to the next section start
+                break;
+            }
+
+            // If it's in the same matrix section and was selected, pick it!
+            if (session.chosenQuestionIds.has(i)) {
+                nextIndex = i;
+                break;
+            }
+        }
+    } else {
+        // Standard sequential question increment
+        nextIndex = session.currentQuestionIndex + 1;
+    }
+
+    // Check if quiz is finished or should transition to results
+    if (nextIndex !== -1 && nextIndex < session.flatQuestionsList.length) {
+        session.currentQuestionIndex = nextIndex;
+        window.renderActiveQuizEngineViewItem();
+    } else {
+        // All selected questions finished! Trigger assessment completion summary screen
+        window.completeQuizSession();
+    }
 };
 
 
