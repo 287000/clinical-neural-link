@@ -1802,18 +1802,30 @@ window.navigateQuizNextItem = function() {
 
     while (searchIndex < session.flatQuestionsList.length) {
         const candidateQuestion = session.flatQuestionsList[searchIndex];
+        const sectionId = candidateQuestion.sectionId;
         const isChoiceSection = candidateQuestion.sectionRequiredCount < candidateQuestion.totalSectionQuestionsCount;
+        
+        // Check if the student has already completed the checkbox selection gate for this section
+        const hasCompletedMatrixGate = session.completedPreSelections && session.completedPreSelections.has(sectionId);
 
-        // If it's a choice/matrix section, ONLY stop if the student explicitly checked this index
         if (isChoiceSection) {
-            if (session.chosenQuestionIds && session.chosenQuestionIds.has(searchIndex)) {
+            if (hasCompletedMatrixGate) {
+                // The student already chose their questions for this section.
+                // ONLY stop if this question index was explicitly checked.
+                if (session.chosenQuestionIds && session.chosenQuestionIds.has(searchIndex)) {
+                    targetIndex = searchIndex;
+                    break;
+                }
+                // Skip unselected questions in completed choice sections
+                searchIndex++;
+            } else {
+                // The student has NOT reached/completed Section B's choice matrix screen yet.
+                // Target this question index so the matrix selection screen can render for them!
                 targetIndex = searchIndex;
                 break;
             }
-            // Skip unselected questions in choice sections
-            searchIndex++;
         } else {
-            // Non-choice standard question: target directly
+            // Standard non-choice section (e.g. standard MCQs): Target directly
             targetIndex = searchIndex;
             break;
         }
@@ -1823,11 +1835,10 @@ window.navigateQuizNextItem = function() {
         session.currentQuestionIndex = targetIndex;
         window.renderActiveQuizEngineViewItem();
     } else {
-        // No remaining selected questions in any section: Finish & Grade
+        // No remaining questions across all sections: Finish & Grade
         window.compileQuizFinalDiagnosticsPerformance();
     }
 };
-
 // =========================================================================
 // NAVIGATION ENGINE: BACKWARD STEPPING THROUGH PARTS, SUBS, & PARENTS
 // =========================================================================
