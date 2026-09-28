@@ -1795,50 +1795,36 @@ window.submitClinicalLongAnswerSubmission = async function(currentResponseKey) {
 // =========================================================================
 window.navigateQuizNextItem = function() {
     const session = window.activeQuizSession;
-    if (!session) return;
+    if (!session || !session.flatQuestionsList) return;
 
-    const currentQuestion = session.flatQuestionsList[session.currentQuestionIndex];
-    const subIndex = session.currentSubQuestionIndex || 0;
-    const partIndex = session.currentSubPartIndex || 0;
+    let searchIndex = session.currentQuestionIndex + 1;
+    let targetIndex = -1;
 
-    let activeSubQuestion = null;
-    let subPartsList = null;
+    while (searchIndex < session.flatQuestionsList.length) {
+        const candidateQuestion = session.flatQuestionsList[searchIndex];
+        const isChoiceSection = candidateQuestion.sectionRequiredCount < candidateQuestion.totalSectionQuestionsCount;
 
-    if (currentQuestion.type === 'scenario' && currentQuestion.subQuestions) {
-        activeSubQuestion = currentQuestion.subQuestions[subIndex];
-        if (activeSubQuestion) {
-            subPartsList = activeSubQuestion.subParts || activeSubQuestion.parts;
+        // If it's a choice/matrix section, ONLY stop if the student explicitly checked this index
+        if (isChoiceSection) {
+            if (session.chosenQuestionIds && session.chosenQuestionIds.has(searchIndex)) {
+                targetIndex = searchIndex;
+                break;
+            }
+            // Skip unselected questions in choice sections
+            searchIndex++;
+        } else {
+            // Non-choice standard question: target directly
+            targetIndex = searchIndex;
+            break;
         }
-    } else {
-        subPartsList = currentQuestion.subParts || currentQuestion.parts;
     }
 
-    // 1. Advance to next sub-part if present
-    if (Array.isArray(subPartsList) && partIndex + 1 < subPartsList.length) {
-        session.currentSubPartIndex = partIndex + 1;
-        window.renderActiveQuizEngineViewItem();
-        return;
-    }
-
-    // 2. No remaining sub-parts; reset part index and check for next sub-question (scenario)
-    session.currentSubPartIndex = 0;
-
-    if (currentQuestion.type === 'scenario' && currentQuestion.subQuestions && subIndex + 1 < currentQuestion.subQuestions.length) {
-        session.currentSubQuestionIndex = subIndex + 1;
-        window.renderActiveQuizEngineViewItem();
-        return;
-    }
-
-    // 3. No remaining sub-questions; reset sub index and advance to next main question block
-    session.currentSubQuestionIndex = 0;
-
-    if (session.currentQuestionIndex + 1 < session.flatQuestionsList.length) {
-        session.currentQuestionIndex++;
+    if (targetIndex !== -1) {
+        session.currentQuestionIndex = targetIndex;
         window.renderActiveQuizEngineViewItem();
     } else {
-        if (typeof window.triggerQuizFinalSubmissionFlow === 'function') {
-            window.triggerQuizFinalSubmissionFlow();
-        }
+        // No remaining selected questions in any section: Finish & Grade
+        window.compileQuizFinalDiagnosticsPerformance();
     }
 };
 
