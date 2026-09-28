@@ -1423,46 +1423,40 @@ window.advanceToNextQuizQuestion = function() {
     const session = window.activeQuizSession;
     if (!session) return;
 
-    const currentQuestion = session.flatQuestionsList[session.currentQuestionIndex];
-    const currentSectionId = currentQuestion ? currentQuestion.sectionId : null;
+    let searchIndex = session.currentQuestionIndex + 1;
+    let targetIndex = -1;
 
-    // Check if the current section required essay/matrix selection
-    const isMatrixSection = session.completedPreSelections && session.completedPreSelections.has(currentSectionId);
+    while (searchIndex < session.flatQuestionsList.length) {
+        const candidateQuestion = session.flatQuestionsList[searchIndex];
+        const sectionId = candidateQuestion ? candidateQuestion.sectionId : null;
 
-    let nextIndex = -1;
+        // Has this section's matrix selection gate been locked/completed by the student?
+        const isMatrixSection = session.completedPreSelections && session.completedPreSelections.has(sectionId);
 
-    if (isMatrixSection) {
-        // Find the NEXT global index that belongs to the same section AND was explicitly chosen by the student
-        for (let i = session.currentQuestionIndex + 1; i < session.flatQuestionsList.length; i++) {
-            const q = session.flatQuestionsList[i];
-            
-            // If we moved into a new section, stop searching inside matrix mode
-            if (q.sectionId !== currentSectionId) {
-                nextIndex = i; // Move to the next section start
+        if (isMatrixSection) {
+            // If it's a matrix section and the student explicitly checked this question, we stop here!
+            if (session.chosenQuestionIds.has(searchIndex)) {
+                targetIndex = searchIndex;
                 break;
             }
-
-            // If it's in the same matrix section and was selected, pick it!
-            if (session.chosenQuestionIds.has(i)) {
-                nextIndex = i;
-                break;
-            }
+            // If it's a matrix section but NOT checked, skip it and continue the loop!
+            searchIndex++;
+        } else {
+            // Standard section (or matrix selection gate screen itself): target this question!
+            targetIndex = searchIndex;
+            break;
         }
-    } else {
-        // Standard sequential question increment
-        nextIndex = session.currentQuestionIndex + 1;
     }
 
-    // Check if quiz is finished or should transition to results
-    if (nextIndex !== -1 && nextIndex < session.flatQuestionsList.length) {
-        session.currentQuestionIndex = nextIndex;
+    // Check if we found a valid target question or if the quiz is finished
+    if (targetIndex !== -1) {
+        session.currentQuestionIndex = targetIndex;
         window.renderActiveQuizEngineViewItem();
     } else {
-        // All selected questions finished! Trigger assessment completion summary screen
+        // No remaining valid/chosen questions across all sections!
         window.completeQuizSession();
     }
 };
-
 
 window.evaluateStudentAnswerSelection = function(chosenLetter, chosenText, currentResponseKey) {
     const session = window.activeQuizSession;
