@@ -5057,12 +5057,19 @@ window.renderTargetQuizBlueprintCards = function(examDataStructure, dynamicQuest
         const userRole = window.currentUserSession ? window.currentUserSession.role : 'STUDENT';
         const isAdmin = (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN');
 
+        // Helper to format string into Title Case
+        const toTitleCase = (str) => {
+            return str.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+        };
+
         // 4. GENERATE CLEAN CLICKABLE COMPONENT ROWS
         let completeHTMLOutput = "";
 
         quizCollectionArray.forEach((quizItem, dynamicIndex) => {
             let rawTitleText = quizItem.quizTitle || quizItem.title || "ASSIGNED ASSESSMENT PAPER";
-            let cleanTitle = rawTitleText.toUpperCase();
+            
+            // Format title into balanced Title Case
+            let cleanTitle = toTitleCase(rawTitleText.trim());
             if (!/^\d+/.test(cleanTitle)) {
                 const currentItemNumber = String(dynamicIndex + 1).padStart(2, '0');
                 cleanTitle = `${currentItemNumber}. ${cleanTitle}`;
@@ -5074,12 +5081,12 @@ window.renderTargetQuizBlueprintCards = function(examDataStructure, dynamicQuest
             completeHTMLOutput += `
                 <div class="w-full flex items-center justify-between space-x-2 sm:space-x-3 animate-in fade-in duration-200">
                     <div onclick="window.launchTargetAssessmentInstance('${storageKey}', ${dynamicIndex})"
-                        class="flex items-center space-x-3 sm:space-x-4 bg-[#050b18]/60 border border-slate-800/80 hover:border-purple-500/50 rounded-xl p-3.5 sm:p-4 w-full transition-all duration-200 cursor-pointer group active:scale-[0.99] shadow-sm">
+                        class="flex items-center space-x-3 sm:space-x-4 bg-[#050b18]/60 border border-slate-800/80 hover:border-purple-500/50 rounded-xl p-3 sm:p-3.5 w-full transition-all duration-200 cursor-pointer group active:scale-[0.99] shadow-sm">
                         <div class="text-slate-500 group-hover:text-purple-400 transition-colors pl-0.5 shrink-0">
-                            <i data-lucide="file-text" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+                            <i data-lucide="file-text" class="w-4 h-4 sm:w-4 sm:h-4"></i>
                         </div>
                         <div class="min-w-0 flex-1">
-                            <span class="text-xs sm:text-sm font-black text-slate-200 group-hover:text-white transition-colors uppercase tracking-wide selection:bg-transparent block truncate">
+                            <span class="text-xs sm:text-xs font-semibold text-slate-200 group-hover:text-white transition-colors tracking-wide selection:bg-transparent block truncate">
                                 ${cleanTitle}
                             </span>
                         </div>
@@ -5087,7 +5094,7 @@ window.renderTargetQuizBlueprintCards = function(examDataStructure, dynamicQuest
                     </div>
 
                     <button onclick="window.purgeIndividualQuizSlotItem('${storageKey}', ${dynamicIndex})"
-                        class="${hideClass} p-3.5 sm:p-4 bg-[#050b18]/60 border border-slate-800/80 hover:border-red-500/40 text-slate-500 hover:text-red-400 rounded-xl transition-all duration-200 flex items-center justify-center cursor-pointer group hover:bg-red-950/10 shrink-0"
+                        class="${hideClass} p-3 sm:p-3.5 bg-[#050b18]/60 border border-slate-800/80 hover:border-red-500/40 text-slate-500 hover:text-red-400 rounded-xl transition-all duration-200 flex items-center justify-center cursor-pointer group hover:bg-red-950/10 shrink-0"
                         ${inlineStyle}
                         title="Purge Specified Assessment Item">
                         <i data-lucide="trash-2" class="w-4 h-4 transition-transform group-active:scale-90"></i>
@@ -5193,7 +5200,6 @@ window.renderTargetQuizBlueprintCards = function(examDataStructure, dynamicQuest
             `;
         });
 };
-
 // =========================================================================
 // 📡 REAL-TIME PUSHER LISTENER FOR ASSESSMENT PUBLISHING
 // =========================================================================
