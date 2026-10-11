@@ -1797,6 +1797,52 @@ window.navigateQuizNextItem = function() {
     const session = window.activeQuizSession;
     if (!session || !session.flatQuestionsList) return;
 
+    // 1. Check if the current question has sub-questions (e.g., 1.1, 1.2, 1.3 or subQuestions array)
+    // and if we are currently viewing one that has a next sub-question available.
+    const currentQ = session.flatQuestionsList[session.currentQuestionIndex];
+    
+    // Support multiple common data structures for sub-questions
+    if (currentQ) {
+        // If currentQ has a subQuestions array or sub-index tracker
+        if (Array.isArray(currentQ.subQuestions) && currentQ.subQuestions.length > 0) {
+            if (typeof session.currentSubIndex === 'undefined') {
+                session.currentSubIndex = 0;
+            }
+            if (session.currentSubIndex < currentQ.subQuestions.length - 1) {
+                session.currentSubIndex++;
+                window.renderActiveQuizEngineViewItem();
+                return;
+            } else {
+                // Reset sub-index when moving past the last sub-question of this parent
+                session.currentSubIndex = 0;
+            }
+        }
+        
+        // Alternatively, if sub-questions are flattened or tracked by parent question IDs/prefixes (e.g., "1.1", "1.2")
+        // Let's check if the next item in flatQuestionsList belongs to the same parent question stem
+        let nextPotentialIndex = session.currentQuestionIndex + 1;
+        if (nextPotentialIndex < session.flatQuestionsList.length) {
+            const nextQ = session.flatQuestionsList[nextPotentialIndex];
+            
+            // Helper to extract parent stem (e.g., "1.1" -> "1", "2.1" -> "2" or matching parentId)
+            const getParentStem = (q) => {
+                if (q.parentId) return q.parentId;
+                const idStr = String(q.questionNumber || q.id || '');
+                return idStr.includes('.') ? idStr.split('.')[0] : idStr;
+            };
+
+            const currentStem = getParentStem(currentQ);
+            const nextStem = getParentStem(nextQ);
+
+            // If the next item shares the same parent stem, it's a sub-question belonging to the same block!
+            if (currentStem && nextStem && currentStem === nextStem) {
+                session.currentQuestionIndex = nextPotentialIndex;
+                window.renderActiveQuizEngineViewItem();
+                return;
+            }
+        }
+    }
+
     let searchIndex = session.currentQuestionIndex + 1;
     let targetIndex = -1;
 
@@ -1832,6 +1878,8 @@ window.navigateQuizNextItem = function() {
     }
 
     if (targetIndex !== -1) {
+        // Reset any sub-index when transitioning to a brand new parent question
+        session.currentSubIndex = 0;
         session.currentQuestionIndex = targetIndex;
         window.renderActiveQuizEngineViewItem();
     } else {
