@@ -1793,31 +1793,12 @@ window.submitClinicalLongAnswerSubmission = async function(currentResponseKey) {
 // =========================================================================
 // NAVIGATION ENGINE: FORWARD STEPPING THROUGH PARTS, SUBS, & PARENTS
 // =========================================================================
+// =========================================================================
+// NAVIGATION ENGINE: FORWARD STEPPING THROUGH PARTS, SUBS, & PARENTS
+// =========================================================================
 window.navigateQuizNextItem = function() {
     const session = window.activeQuizSession;
     if (!session || !session.flatQuestionsList) return;
-
-    const currentQ = session.flatQuestionsList[session.currentQuestionIndex];
-
-    // Check if the current question has sub-questions (e.g. subQuestions array or sub-items from A to E)
-    if (currentQ && currentQ.subQuestions && Array.isArray(currentQ.subQuestions)) {
-        // Initialize currentSubIndex if not already present
-        if (typeof session.currentSubIndex === 'undefined') {
-            session.currentSubIndex = 0;
-        }
-
-        // If there are more sub-questions in the current main question, advance the sub-index
-        if (session.currentSubIndex < currentQ.subQuestions.length - 1) {
-            session.currentSubIndex++;
-            if (typeof window.renderActiveQuizEngineViewItem === 'function') {
-                window.renderActiveQuizEngineViewItem();
-            }
-            return;
-        } else {
-            // Reached the end of sub-questions for this main question, reset sub-index for the next item
-            session.currentSubIndex = 0;
-        }
-    }
 
     let searchIndex = session.currentQuestionIndex + 1;
     let targetIndex = -1;
@@ -1855,17 +1836,13 @@ window.navigateQuizNextItem = function() {
 
     if (targetIndex !== -1) {
         session.currentQuestionIndex = targetIndex;
-        session.currentSubIndex = 0; // Reset sub-index for the new main question
-        if (typeof window.renderActiveQuizEngineViewItem === 'function') {
-            window.renderActiveQuizEngineViewItem();
-        }
+        window.renderActiveQuizEngineViewItem();
     } else {
         // No remaining questions across all sections: Finish & Grade
-        if (typeof window.compileQuizFinalDiagnosticsPerformance === 'function') {
-            window.compileQuizFinalDiagnosticsPerformance();
-        }
+        window.compileQuizFinalDiagnosticsPerformance();
     }
 };
+
 // =========================================================================
 // NAVIGATION ENGINE: BACKWARD STEPPING THROUGH PARTS, SUBS, & PARENTS
 // =========================================================================
