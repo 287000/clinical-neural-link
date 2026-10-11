@@ -1797,46 +1797,25 @@ window.navigateQuizNextItem = function() {
     const session = window.activeQuizSession;
     if (!session || !session.flatQuestionsList) return;
 
-    // 1. Check if the current question has sub-questions or if the items in flatQuestionsList 
-    // are grouped under sub-parts sharing the same parent stem (e.g., 1.1, 1.2, 1.3...).
     const currentQ = session.flatQuestionsList[session.currentQuestionIndex];
-    
-    if (currentQ) {
-        // A. Handle structured sub-questions array if present
-        if (Array.isArray(currentQ.subQuestions) && currentQ.subQuestions.length > 0) {
-            if (typeof session.currentSubIndex === 'undefined') {
-                session.currentSubIndex = 0;
-            }
-            if (session.currentSubIndex < currentQ.subQuestions.length - 1) {
-                session.currentSubIndex++;
-                window.renderActiveQuizEngineViewItem();
-                return;
-            } else {
-                // Reset sub-index when moving past the last sub-question of this parent
-                session.currentSubIndex = 0;
-            }
+
+    // Check if the current question has sub-questions (e.g. subQuestions array or sub-items from A to E)
+    if (currentQ && currentQ.subQuestions && Array.isArray(currentQ.subQuestions)) {
+        // Initialize currentSubIndex if not already present
+        if (typeof session.currentSubIndex === 'undefined') {
+            session.currentSubIndex = 0;
         }
-        
-        // B. Handle flattened sub-questions sharing a parent stem (e.g. "1.1", "1.2", "1.3")
-        let nextPotentialIndex = session.currentQuestionIndex + 1;
-        if (nextPotentialIndex < session.flatQuestionsList.length) {
-            const nextQ = session.flatQuestionsList[nextPotentialIndex];
-            
-            const getParentStem = (q) => {
-                if (q.parentId) return q.parentId;
-                const idStr = String(q.questionNumber || q.id || '');
-                return idStr.includes('.') ? idStr.split('.')[0] : idStr;
-            };
 
-            const currentStem = getParentStem(currentQ);
-            const nextStem = getParentStem(nextQ);
-
-            // If the next item shares the same parent stem (e.g., Question 1), step directly to it!
-            if (currentStem && nextStem && currentStem === nextStem) {
-                session.currentQuestionIndex = nextPotentialIndex;
+        // If there are more sub-questions in the current main question, advance the sub-index
+        if (session.currentSubIndex < currentQ.subQuestions.length - 1) {
+            session.currentSubIndex++;
+            if (typeof window.renderActiveQuizEngineViewItem === 'function') {
                 window.renderActiveQuizEngineViewItem();
-                return;
             }
+            return;
+        } else {
+            // Reached the end of sub-questions for this main question, reset sub-index for the next item
+            session.currentSubIndex = 0;
         }
     }
 
@@ -1875,13 +1854,16 @@ window.navigateQuizNextItem = function() {
     }
 
     if (targetIndex !== -1) {
-        // Reset sub-index when transitioning to a brand new parent question
-        session.currentSubIndex = 0;
         session.currentQuestionIndex = targetIndex;
-        window.renderActiveQuizEngineViewItem();
+        session.currentSubIndex = 0; // Reset sub-index for the new main question
+        if (typeof window.renderActiveQuizEngineViewItem === 'function') {
+            window.renderActiveQuizEngineViewItem();
+        }
     } else {
         // No remaining questions across all sections: Finish & Grade
-        window.compileQuizFinalDiagnosticsPerformance();
+        if (typeof window.compileQuizFinalDiagnosticsPerformance === 'function') {
+            window.compileQuizFinalDiagnosticsPerformance();
+        }
     }
 };
 // =========================================================================
