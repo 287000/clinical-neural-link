@@ -1790,55 +1790,134 @@ window.submitClinicalLongAnswerSubmission = async function(currentResponseKey) {
         }
     }
 };
+
 // =========================================================================
 // NAVIGATION ENGINE: FORWARD STEPPING THROUGH PARTS, SUBS, & PARENTS
 // =========================================================================
-// =========================================================================
-// NAVIGATION ENGINE: FORWARD STEPPING THROUGH PARTS, SUBS, & PARENTS
-// =========================================================================
+
 window.navigateQuizNextItem = function() {
     const session = window.activeQuizSession;
-    if (!session || !session.flatQuestionsList) return;
 
-    let searchIndex = session.currentQuestionIndex + 1;
+    if (!session || !Array.isArray(session.flatQuestionsList)) return;
+
+    const currentIndex = session.currentQuestionIndex;
+    const currentQuestion = session.flatQuestionsList[currentIndex];
+
+    if (!currentQuestion) return;
+
+    // ============================================================
+    // STEP 1: Finish the current question's nested items first.
+    // ============================================================
+
+    const subIndex = session.currentSubQuestionIndex || 0;
+    const partIndex = session.currentSubPartIndex || 0;
+
+    // SCENARIO QUESTIONS: Navigate through subquestions and their parts.
+    if (
+        currentQuestion.type === "scenario" &&
+        Array.isArray(currentQuestion.subQuestions) &&
+        currentQuestion.subQuestions.length > 0
+    ) {
+        const activeSubQuestion = currentQuestion.subQuestions[subIndex];
+
+        if (activeSubQuestion) {
+            const subParts =
+                activeSubQuestion.subParts || activeSubQuestion.parts;
+
+            // 1. Finish the remaining parts of this subquestion.
+            if (
+                Array.isArray(subParts) &&
+                partIndex < subParts.length - 1
+            ) {
+                session.currentSubPartIndex = partIndex + 1;
+                window.renderActiveQuizEngineViewItem();
+                return;
+            }
+
+            // 2. Move to the next subquestion in the same scenario.
+            if (subIndex < currentQuestion.subQuestions.length - 1) {
+                session.currentSubQuestionIndex = subIndex + 1;
+                session.currentSubPartIndex = 0;
+
+                window.renderActiveQuizEngineViewItem();
+                return;
+            }
+        }
+    } else {
+        // NON-SCENARIO QUESTIONS: Finish their own parts first.
+        const questionParts =
+            currentQuestion.subParts || currentQuestion.parts;
+
+        if (
+            Array.isArray(questionParts) &&
+            partIndex < questionParts.length - 1
+        ) {
+            session.currentSubPartIndex = partIndex + 1;
+            window.renderActiveQuizEngineViewItem();
+            return;
+        }
+    }
+
+    // ============================================================
+    // STEP 2: Find the next eligible parent question.
+    // Preserve the existing optional-section selection rules.
+    // ============================================================
+
+    let searchIndex = currentIndex + 1;
     let targetIndex = -1;
 
     while (searchIndex < session.flatQuestionsList.length) {
         const candidateQuestion = session.flatQuestionsList[searchIndex];
-        const sectionId = candidateQuestion.sectionId;
-        const isChoiceSection = candidateQuestion.sectionRequiredCount < candidateQuestion.totalSectionQuestionsCount;
-        
-        // Check if the student has already completed the checkbox selection gate for this section
-        const hasCompletedMatrixGate = session.completedPreSelections && session.completedPreSelections.has(sectionId);
 
-        if (isChoiceSection) {
-            if (hasCompletedMatrixGate) {
-                // The student already chose their questions for this section.
-                // ONLY stop if this question index was explicitly checked.
-                if (session.chosenQuestionIds && session.chosenQuestionIds.has(searchIndex)) {
-                    targetIndex = searchIndex;
-                    break;
-                }
-                // Skip unselected questions in completed choice sections
-                searchIndex++;
-            } else {
-                // The student has NOT reached/completed Section B's choice matrix screen yet.
-                // Target this question index so the matrix selection screen can render for them!
+        if (!candidateQuestion) {
+            searchIndex++;
+            continue;
+        }
+
+        const sectionId = candidateQuestion.sectionId;
+
+        const isChoiceSection =
+            candidateQuestion.sectionRequiredCount <
+            candidateQuestion.totalSectionQuestionsCount;
+
+        const hasCompletedMatrixGate =
+            session.completedPreSelections &&
+            session.completedPreSelections.has(sectionId);
+
+        if (isChoiceSection && hasCompletedMatrixGate) {
+            // Skip questions that were not selected in a completed
+            // optional-section selection matrix.
+            if (
+                session.chosenQuestionIds &&
+                session.chosenQuestionIds.has(searchIndex)
+            ) {
                 targetIndex = searchIndex;
                 break;
             }
-        } else {
-            // Standard non-choice section (e.g. standard MCQs): Target directly
-            targetIndex = searchIndex;
-            break;
+
+            searchIndex++;
+            continue;
         }
+
+        // Either a required question or a section whose selection
+        // matrix has not yet been completed.
+        targetIndex = searchIndex;
+        break;
     }
+
+    // ============================================================
+    // STEP 3: Render the next parent or finish the quiz.
+    // ============================================================
 
     if (targetIndex !== -1) {
         session.currentQuestionIndex = targetIndex;
+
+        // Start the new parent question at its first nested item.
+        session.currentSubQuestionIndex = 0;
+        session.currentSubPartIndex = 0;
+
         window.renderActiveQuizEngineViewItem();
     } else {
-        // No remaining questions across all sections: Finish & Grade
         window.compileQuizFinalDiagnosticsPerformance();
     }
 };
