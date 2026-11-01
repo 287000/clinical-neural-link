@@ -339,6 +339,9 @@ async def call_groq_with_retry(messages: list, target_model: str, max_retries: i
 # ==========================================
 # 3. ENDPOINTS
 # ==========================================
+@app.get("/health")
+def health_check():
+    return {"status": "ok", "message": "Clinical Neural Link backend is live"}
 
 @app.post("/admin/login")
 def admin_login(credentials: AdminLoginRequest):
