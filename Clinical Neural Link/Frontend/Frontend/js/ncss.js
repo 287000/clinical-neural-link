@@ -1352,7 +1352,7 @@ window.renderLogin = function() {
             <div class="bg-slate-950/70 backdrop-blur-xl px-6 py-8 sm:p-12 rounded-3xl shadow-2xl w-[90%] sm:w-full max-w-md border border-slate-700/60 shadow-blue-950/80">
                 
               <div class="flex justify-center mb-6">
-                  <img src="../assets/icons/cbu_logo.jpg" alt="CBU Logo" class="h-20 w-auto object-contain drop-shadow-md">
+                  <img src="../assets/icons/cbu_logo.jpg" alt="CBU Logo" class="h-28 w-auto object-contain drop-shadow-xl">
               </div>
 
                 <div class="text-center mb-8">
