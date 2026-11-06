@@ -1352,10 +1352,8 @@ window.renderLogin = function() {
             <div class="bg-slate-950/70 backdrop-blur-xl px-6 py-8 sm:p-12 rounded-3xl shadow-2xl w-[90%] sm:w-full max-w-md border border-slate-700/60 shadow-blue-950/80">
                 
               <div class="flex justify-center mb-6">
-                    <div class="bg-blue-600/20 border border-blue-400/30 p-2 rounded-2xl shadow-inner backdrop-blur-md flex items-center justify-center w-16 h-16 overflow-hidden">
-                        <img src="../assets/icons/cbu_logo.jpg" alt="CBU Logo" class="w-12 h-12 object-contain">
-                    </div>
-                </div>
+                  <img src="../assets/icons/cbu_logo.jpg" alt="CBU Logo" class="h-20 w-auto object-contain drop-shadow-md">
+              </div>
 
                 <div class="text-center mb-8">
                     <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight uppercase">Access Portal</h1>
