@@ -1351,11 +1351,10 @@ window.renderLogin = function() {
         <div id="login-container" class="relative z-30 w-full flex justify-center animate-in fade-in zoom-in duration-700">
             <div class="bg-slate-950/70 backdrop-blur-xl px-6 py-8 sm:p-12 rounded-3xl shadow-2xl w-[90%] sm:w-full max-w-md border border-slate-700/60 shadow-blue-950/80">
                 
-               <!-- Transparent PNG Logo directly fronting the card -->
+              <!-- Transparent blend logo directly fronting the card -->
                 <div class="flex justify-center mb-6">
-                    <img src="../assets/icons/cbu_logo.png" alt="CBU Logo" class="h-28 w-auto object-contain drop-shadow-2xl">
+                    <img src="../assets/icons/cbu_logo.png" alt="CBU Logo" class="h-28 w-auto object-contain mix-blend-screen drop-shadow-2xl">
                 </div>
-
                 <div class="text-center mb-8">
                     <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight uppercase">Access Portal</h1>
                     <p class="text-[11px] font-bold text-blue-400 uppercase tracking-widest mt-1">Michael Chilufya Sata School of Medicine</p>
