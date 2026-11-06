@@ -1351,9 +1351,9 @@ window.renderLogin = function() {
         <div id="login-container" class="relative z-30 w-full flex justify-center animate-in fade-in zoom-in duration-700">
             <div class="bg-slate-950/70 backdrop-blur-xl px-6 py-8 sm:p-12 rounded-3xl shadow-2xl w-[90%] sm:w-full max-w-md border border-slate-700/60 shadow-blue-950/80">
                 
-                <div class="flex justify-center mb-6">
-                    <div class="bg-blue-600/20 border border-blue-400/30 p-2 rounded-2xl shadow-inner backdrop-blur-md flex items-center justify-center w-16 h-16 overflow-hidden">
-                        <img src="../assets/icons/cbu_logo.jpg" alt="CBU Logo" class="w-full h-full object-contain rounded-xl">
+               <div class="flex justify-center mb-6">
+                    <div class="bg-blue-600/20 border border-blue-400/30 px-6 py-3 rounded-2xl shadow-inner backdrop-blur-md flex items-center justify-center w-36 h-16 overflow-hidden">
+                        <img src="../assets/icons/cbu_logo.jpg" alt="CBU Logo" class="w-full h-full object-contain">
                     </div>
                 </div>
 
